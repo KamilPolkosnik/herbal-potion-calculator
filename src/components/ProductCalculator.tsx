@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +12,7 @@ interface ProductCalculatorProps {
 const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, prices }) => {
   const calculateAvailableSets = (composition: any) => {
     let minSets = Infinity;
-    let limitingIngredient = '';
+    const limitingIngredients: string[] = [];
     
     // Sprawdź surowce
     for (const [ingredient, requiredAmount] of Object.entries(composition.herbs)) {
@@ -21,7 +20,10 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
       const possibleSets = Math.floor(available / (requiredAmount as number));
       if (possibleSets < minSets) {
         minSets = possibleSets;
-        limitingIngredient = ingredient;
+        limitingIngredients.length = 0; // Clear array
+        limitingIngredients.push(ingredient);
+      } else if (possibleSets === minSets) {
+        limitingIngredients.push(ingredient);
       }
     }
     
@@ -32,11 +34,14 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
       const possibleSets = Math.floor(availableDrops / (requiredDrops as number));
       if (possibleSets < minSets) {
         minSets = possibleSets;
-        limitingIngredient = ingredient;
+        limitingIngredients.length = 0; // Clear array
+        limitingIngredients.push(ingredient);
+      } else if (possibleSets === minSets) {
+        limitingIngredients.push(ingredient);
       }
     }
     
-    return { sets: minSets === Infinity ? 0 : minSets, limitingIngredient };
+    return { sets: minSets === Infinity ? 0 : minSets, limitingIngredients };
   };
 
   const calculateCostPerSet = (composition: any) => {
@@ -62,7 +67,7 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {compositions.map((composition) => {
-          const { sets, limitingIngredient } = calculateAvailableSets(composition);
+          const { sets, limitingIngredients } = calculateAvailableSets(composition);
           const costPerSet = calculateCostPerSet(composition);
           
           return (
@@ -83,10 +88,15 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                     </Badge>
                   </div>
                   
-                  {limitingIngredient && (
-                    <p className="text-sm text-red-600 mb-3">
-                      Ograniczający składnik: {limitingIngredient}
-                    </p>
+                  {limitingIngredients.length > 0 && (
+                    <div className="text-sm text-red-600 mb-3">
+                      <p className="font-medium">Ograniczające składniki:</p>
+                      <ul className="list-disc list-inside ml-2">
+                        {limitingIngredients.map((ingredient, index) => (
+                          <li key={index}>{ingredient}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                   
                   <div className="bg-gray-50 p-3 rounded-lg mb-4">
