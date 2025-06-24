@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IngredientManager from '@/components/IngredientManager';
 import ProductCalculator from '@/components/ProductCalculator';
-import { Package, Calculator, TrendingUp } from 'lucide-react';
+import ShoppingList from '@/components/ShoppingList';
+import { Package, Calculator, TrendingUp, ShoppingCart } from 'lucide-react';
 
 const Index = () => {
   const [ingredients, setIngredients] = useState<Record<string, number>>({});
@@ -24,7 +25,7 @@ const Index = () => {
         </div>
 
         <Tabs defaultValue="ingredients" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="ingredients" className="flex items-center gap-2">
               <Package size={18} />
               Składniki
@@ -32,6 +33,10 @@ const Index = () => {
             <TabsTrigger value="calculator" className="flex items-center gap-2">
               <Calculator size={18} />
               Kalkulator
+            </TabsTrigger>
+            <TabsTrigger value="shopping" className="flex items-center gap-2">
+              <ShoppingCart size={18} />
+              Lista Zakupów
             </TabsTrigger>
             <TabsTrigger value="summary" className="flex items-center gap-2">
               <TrendingUp size={18} />
@@ -61,6 +66,10 @@ const Index = () => {
             <ProductCalculator ingredients={ingredients} prices={prices} />
           </TabsContent>
 
+          <TabsContent value="shopping" className="space-y-6">
+            <ShoppingList prices={prices} />
+          </TabsContent>
+
           <TabsContent value="summary" className="space-y-6">
             <Card>
               <CardHeader>
@@ -80,7 +89,7 @@ const Index = () => {
                         .reduce((sum, [key, amount]) => {
                           const numAmount = Number(amount) || 0;
                           const price = Number(prices[key]) || 0;
-                          return sum + (numAmount * price);
+                          return sum + (numAmount * price / 100); // dzielimy przez 100 bo cena jest za 100g
                         }, 0)
                         .toFixed(2)} zł
                     </p>
@@ -107,12 +116,20 @@ const Index = () => {
                       Wartość Całkowita
                     </h3>
                     <p className="text-2xl font-bold text-purple-600">
-                      {Object.entries(ingredients)
+                      {(Object.entries(ingredients)
+                        .filter(([key]) => !key.includes('olejek'))
+                        .reduce((sum, [key, amount]) => {
+                          const numAmount = Number(amount) || 0;
+                          const price = Number(prices[key]) || 0;
+                          return sum + (numAmount * price / 100);
+                        }, 0) +
+                      Object.entries(ingredients)
+                        .filter(([key]) => key.includes('olejek'))
                         .reduce((sum, [key, amount]) => {
                           const numAmount = Number(amount) || 0;
                           const price = Number(prices[key]) || 0;
                           return sum + (numAmount * price);
-                        }, 0)
+                        }, 0))
                         .toFixed(2)} zł
                     </p>
                   </div>

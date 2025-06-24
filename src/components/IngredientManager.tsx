@@ -76,7 +76,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({
   const herbIngredients = allIngredients.filter(ing => !ing.includes('olejek'));
   const oilIngredients = allIngredients.filter(ing => ing.includes('olejek'));
 
-  const renderIngredientSection = (items: string[], title: string, unit: string) => (
+  const renderIngredientSection = (items: string[], title: string, unit: string, priceUnit: string) => (
     <Card className="mb-6">
       <CardHeader>
         <CardTitle className="text-lg text-gray-700">{title}</CardTitle>
@@ -101,7 +101,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-500">Cena (zł/{unit})</Label>
+                  <Label className="text-xs text-gray-500">Cena ({priceUnit})</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -113,7 +113,9 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({
                 </div>
               </div>
               <div className="text-xs text-gray-600 text-center mt-2">
-                Wartość: {((ingredients[ingredient] || 0) * (prices[ingredient] || 0)).toFixed(2)} zł
+                Wartość: {unit === 'g' 
+                  ? ((ingredients[ingredient] || 0) * (prices[ingredient] || 0) / 100).toFixed(2)
+                  : ((ingredients[ingredient] || 0) * (prices[ingredient] || 0)).toFixed(2)} zł
               </div>
             </div>
           ))}
@@ -129,8 +131,8 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({
         <p className="text-blue-700">200 kropel = 10 ml olejku eterycznego</p>
       </div>
       
-      {renderIngredientSection(herbIngredients, 'Surowce Ziołowe', 'g')}
-      {renderIngredientSection(oilIngredients, 'Olejki Eteryczne', 'ml')}
+      {renderIngredientSection(herbIngredients, 'Surowce Ziołowe', 'g', 'zł/100g')}
+      {renderIngredientSection(oilIngredients, 'Olejki Eteryczne', 'ml', 'zł/ml')}
     </div>
   );
 };

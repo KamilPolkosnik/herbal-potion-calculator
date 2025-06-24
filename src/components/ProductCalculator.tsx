@@ -42,10 +42,10 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
   const calculateCostPerSet = (composition: any) => {
     let totalCost = 0;
     
-    // Koszt surowców na 1 zestaw
+    // Koszt surowców na 1 zestaw (cena za 100g, więc dzielimy przez 100)
     for (const [ingredient, amount] of Object.entries(composition.herbs)) {
       const price = prices[ingredient] || 0;
-      totalCost += (amount as number) * price;
+      totalCost += (amount as number) * price / 100; // dzielimy przez 100 bo cena jest za 100g
     }
     
     // Koszt olejków na 1 zestaw (przelicz krople na ml)
