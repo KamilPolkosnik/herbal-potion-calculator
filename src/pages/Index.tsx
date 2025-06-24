@@ -1,15 +1,23 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IngredientManager from '@/components/IngredientManager';
 import ProductCalculator from '@/components/ProductCalculator';
 import ShoppingList from '@/components/ShoppingList';
+import { useIngredients } from '@/hooks/useIngredients';
 import { Package, Calculator, TrendingUp, ShoppingCart } from 'lucide-react';
 
 const Index = () => {
-  const [ingredients, setIngredients] = useState<Record<string, number>>({});
-  const [prices, setPrices] = useState<Record<string, number>>({});
+  const { ingredients, prices, loading } = useIngredients();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+        <div className="text-2xl text-gray-600">Načítavam aplikáciu...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
@@ -52,12 +60,7 @@ const Index = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <IngredientManager
-                  ingredients={ingredients}
-                  setIngredients={setIngredients}
-                  prices={prices}
-                  setPrices={setPrices}
-                />
+                <IngredientManager />
               </CardContent>
             </Card>
           </TabsContent>

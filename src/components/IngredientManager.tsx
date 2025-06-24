@@ -3,7 +3,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { useIngredients } from '@/hooks/useIngredients';
 
 const allIngredients = [
   // Surowce ziołowe
@@ -52,26 +52,16 @@ const allIngredients = [
   'olejek morski świat'
 ];
 
-interface IngredientManagerProps {
-  ingredients: Record<string, number>;
-  setIngredients: (ingredients: Record<string, number>) => void;
-  prices: Record<string, number>;
-  setPrices: (prices: Record<string, number>) => void;
-}
+const IngredientManager: React.FC = () => {
+  const { ingredients, prices, loading, updateIngredient, updatePrice } = useIngredients();
 
-const IngredientManager: React.FC<IngredientManagerProps> = ({
-  ingredients,
-  setIngredients,
-  prices,
-  setPrices
-}) => {
-  const updateIngredient = (name: string, amount: number) => {
-    setIngredients({ ...ingredients, [name]: amount });
-  };
-
-  const updatePrice = (name: string, price: number) => {
-    setPrices({ ...prices, [name]: price });
-  };
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="text-lg">Načítavam údaje...</div>
+      </div>
+    );
+  }
 
   const herbIngredients = allIngredients.filter(ing => !ing.includes('olejek'));
   const oilIngredients = allIngredients.filter(ing => ing.includes('olejek'));

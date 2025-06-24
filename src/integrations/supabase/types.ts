@@ -9,7 +9,98 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      composition_ingredients: {
+        Row: {
+          amount: number
+          composition_id: string
+          created_at: string
+          id: string
+          ingredient_name: string
+          unit: string
+        }
+        Insert: {
+          amount: number
+          composition_id: string
+          created_at?: string
+          id?: string
+          ingredient_name: string
+          unit?: string
+        }
+        Update: {
+          amount?: number
+          composition_id?: string
+          created_at?: string
+          id?: string
+          ingredient_name?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "composition_ingredients_composition_id_fkey"
+            columns: ["composition_id"]
+            isOneToOne: false
+            referencedRelation: "compositions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compositions: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ingredients: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          name: string
+          price: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
