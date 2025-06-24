@@ -7,8 +7,8 @@ import ProductCalculator from '@/components/ProductCalculator';
 import { Package, Calculator, TrendingUp } from 'lucide-react';
 
 const Index = () => {
-  const [ingredients, setIngredients] = useState({});
-  const [prices, setPrices] = useState({});
+  const [ingredients, setIngredients] = useState<Record<string, number>>({});
+  const [prices, setPrices] = useState<Record<string, number>>({});
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
@@ -78,7 +78,9 @@ const Index = () => {
                       {Object.entries(ingredients)
                         .filter(([key]) => !key.includes('olejek'))
                         .reduce((sum, [key, amount]) => {
-                          return sum + (amount || 0) * (prices[key] || 0);
+                          const numAmount = Number(amount) || 0;
+                          const price = Number(prices[key]) || 0;
+                          return sum + (numAmount * price);
                         }, 0)
                         .toFixed(2)} zł
                     </p>
@@ -92,7 +94,9 @@ const Index = () => {
                       {Object.entries(ingredients)
                         .filter(([key]) => key.includes('olejek'))
                         .reduce((sum, [key, amount]) => {
-                          return sum + (amount || 0) * (prices[key] || 0);
+                          const numAmount = Number(amount) || 0;
+                          const price = Number(prices[key]) || 0;
+                          return sum + (numAmount * price);
                         }, 0)
                         .toFixed(2)} zł
                     </p>
@@ -105,7 +109,9 @@ const Index = () => {
                     <p className="text-2xl font-bold text-purple-600">
                       {Object.entries(ingredients)
                         .reduce((sum, [key, amount]) => {
-                          return sum + (amount || 0) * (prices[key] || 0);
+                          const numAmount = Number(amount) || 0;
+                          const price = Number(prices[key]) || 0;
+                          return sum + (numAmount * price);
                         }, 0)
                         .toFixed(2)} zł
                     </p>
