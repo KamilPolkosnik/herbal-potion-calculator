@@ -42,6 +42,8 @@ export const useIngredients = () => {
 
   const updateIngredient = async (name: string, amount: number) => {
     try {
+      console.log('Updating ingredient:', name, amount);
+      
       const { error } = await supabase
         .from('ingredients')
         .upsert({
@@ -49,11 +51,17 @@ export const useIngredients = () => {
           amount,
           price: prices[name] || 0,
           unit: name.includes('olejek') ? 'ml' : 'g'
+        }, {
+          onConflict: 'name'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       setIngredients(prev => ({ ...prev, [name]: amount }));
+      console.log('Ingredient updated successfully');
     } catch (error) {
       console.error('Error updating ingredient:', error);
     }
@@ -61,6 +69,8 @@ export const useIngredients = () => {
 
   const updatePrice = async (name: string, price: number) => {
     try {
+      console.log('Updating price:', name, price);
+      
       const { error } = await supabase
         .from('ingredients')
         .upsert({
@@ -68,11 +78,17 @@ export const useIngredients = () => {
           amount: ingredients[name] || 0,
           price,
           unit: name.includes('olejek') ? 'ml' : 'g'
+        }, {
+          onConflict: 'name'
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       setPrices(prev => ({ ...prev, [name]: price }));
+      console.log('Price updated successfully');
     } catch (error) {
       console.error('Error updating price:', error);
     }

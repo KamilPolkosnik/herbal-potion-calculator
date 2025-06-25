@@ -2,19 +2,36 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import IngredientManager from '@/components/IngredientManager';
 import ProductCalculator from '@/components/ProductCalculator';
 import ShoppingList from '@/components/ShoppingList';
+import CompositionManager from '@/components/CompositionManager';
+import LoginPage from '@/components/LoginPage';
 import { useIngredients } from '@/hooks/useIngredients';
-import { Package, Calculator, TrendingUp, ShoppingCart } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Package, Calculator, TrendingUp, ShoppingCart, Settings, LogOut } from 'lucide-react';
 
 const Index = () => {
   const { ingredients, prices, loading } = useIngredients();
+  const { user, loading: authLoading, logout } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
+        <div className="text-2xl text-gray-600">Ładowanie aplikacji...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage onLogin={() => window.location.reload()} />;
+  }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
-        <div className="text-2xl text-gray-600">Načítavam aplikáciu...</div>
+        <div className="text-2xl text-gray-600">Ładowanie aplikacji...</div>
       </div>
     );
   }
@@ -22,25 +39,38 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center justify-center gap-3">
-            <Package className="text-green-600" />
-            Zarządzanie Kompozycjami Ziołowymi
-          </h1>
-          <p className="text-lg text-gray-600">
-            System kontroli składników i kalkulacji dostępnych zestawów
-          </p>
+        <div className="flex justify-between items-center mb-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center justify-center gap-3">
+              <Package className="text-green-600" />
+              Zarządzanie Kompozycjami Ziołowymi
+            </h1>
+            <p className="text-lg text-gray-600">
+              System kontroli składników i kalkulacji dostępnych zestawów
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-gray-600">Zalogowany jako: {user.username}</span>
+            <Button variant="outline" onClick={logout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Wyloguj
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="ingredients" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="ingredients" className="flex items-center gap-2">
               <Package size={18} />
               Składniki
             </TabsTrigger>
             <TabsTrigger value="calculator" className="flex items-center gap-2">
               <Calculator size={18} />
-              Kalkulator
+              Zestawy
+            </TabsTrigger>
+            <TabsTrigger value="management" className="flex items-center gap-2">
+              <Settings size={18} />
+              Zarządzanie
             </TabsTrigger>
             <TabsTrigger value="shopping" className="flex items-center gap-2">
               <ShoppingCart size={18} />
@@ -67,6 +97,19 @@ const Index = () => {
 
           <TabsContent value="calculator" className="space-y-6">
             <ProductCalculator ingredients={ingredients} prices={prices} />
+          </TabsContent>
+
+          <TabsContent value="management" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl text-center text-blue-700">
+                  Zarządzanie Zestawami
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CompositionManager />
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="shopping" className="space-y-6">
