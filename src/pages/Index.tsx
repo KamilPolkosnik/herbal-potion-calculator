@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Package, Calculator, TrendingUp, ShoppingCart, Settings, LogOut } from 'lucide-react';
 
 const Index = () => {
-  const { ingredients, prices, loading } = useIngredients();
+  const { ingredients, prices, loading, refreshData } = useIngredients();
   const { user, loading: authLoading, logout } = useAuth();
 
   if (authLoading) {
@@ -31,10 +31,17 @@ const Index = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
-        <div className="text-2xl text-gray-600">Ładowanie aplikacji...</div>
+        <div className="text-2xl text-gray-600">Ładowanie danych...</div>
       </div>
     );
   }
+
+  const handleTabChange = (value: string) => {
+    // Odśwież dane gdy przełączamy na zakładki które wymagają aktualnych danych
+    if (value === 'calculator' || value === 'management') {
+      refreshData();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
@@ -58,7 +65,7 @@ const Index = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="ingredients" className="w-full">
+        <Tabs defaultValue="ingredients" className="w-full" onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="ingredients" className="flex items-center gap-2">
               <Package size={18} />

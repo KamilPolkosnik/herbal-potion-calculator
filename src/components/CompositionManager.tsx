@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
 
@@ -46,86 +46,145 @@ const CompositionManager: React.FC = () => {
   const [newIngredient, setNewIngredient] = useState({
     ingredient_name: '',
     amount: 0,
-    unit: 'g'
+    unit: 'g',
+    category: 'zioło'
   });
-  const { ingredients } = useIngredients();
+  const [loading, setLoading] = useState(false);
+  const { ingredients, refreshData } = useIngredients();
 
   const availableIngredients = Object.keys(ingredients);
 
   const loadCompositions = async () => {
-    const { data, error } = await supabase
-      .from('compositions')
-      .select('*')
-      .order('name');
-    
-    if (error) {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('compositions')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Error loading compositions:', error);
+      } else {
+        console.log('Loaded compositions:', data);
+        setCompositions(data || []);
+      }
+    } catch (error) {
       console.error('Error loading compositions:', error);
-    } else {
-      setCompositions(data || []);
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadCompositionIngredients = async (compositionId: string) => {
-    const { data, error } = await supabase
-      .from('composition_ingredients')
-      .select('*')
-      .eq('composition_id', compositionId);
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('composition_ingredients')
+        .select('*')
+        .eq('composition_id', compositionId);
+      
+      if (error) {
+        console.error('Error loading composition ingredients:', error);
+      } else {
+        setCompositionIngredients(data || []);
+      }
+    } catch (error) {
       console.error('Error loading composition ingredients:', error);
-    } else {
-      setCompositionIngredients(data || []);
     }
   };
 
   const createComposition = async () => {
     if (!newComposition.name) return;
 
-    const { data, error } = await supabase
-      .from('compositions')
-      .insert([newComposition])
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('compositions')
+        .insert([newComposition])
+        .select()
+        .single();
 
-    if (error) {
+      if (error) {
+        console.error('Error creating composition:', error);
+      } else {
+        setCompositions(prev => [...prev, data]);
+        setNewComposition({ name: '', description: '', color: 'bg-blue-600' });
+        console.log('Composition created successfully');
+      }
+    } catch (error) {
       console.error('Error creating composition:', error);
-    } else {
-      setCompositions(prev => [...prev, data]);
-      setNewComposition({ name: '', description: '', color: 'bg-blue-600' });
     }
   };
 
   const addIngredientToComposition = async () => {
     if (!selectedComposition || !newIngredient.ingredient_name || newIngredient.amount <= 0) return;
 
-    const { error } = await supabase
-      .from('composition_ingredients')
-      .insert([{
-        composition_id: selectedComposition,
-        ingredient_name: newIngredient.ingredient_name,
-        amount: newIngredient.amount,
-        unit: newIngredient.unit
-      }]);
+    // Automatické nastavenie jednotky na základe kategórie
+    let unit = newIngredient.unit;
+    if (newIngredient.category === 'olejek') {
+      unit = 'krople';
+    } else if (newIngredient.category === 'zioło') {
+      unit = 'g';
+    }
 
-    if (error) {
+    try {
+      const { error } = await supabase
+        .from('composition_ingredients')
+        .insert([{
+          composition_id: selectedComposition,
+          ingredient_name: newIngredient.ingredient_name,
+          amount: newIngredient.amount,
+          unit: unit
+        }]);
+
+      if (error) {
+        console.error('Error adding ingredient:', error);
+      } else {
+        loadCompositionIngredients(selectedComposition);
+        setNewIngredient({ ingredient_name: '', amount: 0, unit: 'g', category: 'zioło' });
+        console.log('Ingredient added successfully');
+      }
+    } catch (error) {
       console.error('Error adding ingredient:', error);
-    } else {
-      loadCompositionIngredients(selectedComposition);
-      setNewIngredient({ ingredient_name: '', amount: 0, unit: 'g' });
     }
   };
 
   const removeIngredientFromComposition = async (ingredientName: string) => {
-    const { error } = await supabase
-      .from('composition_ingredients')
-      .delete()
-      .eq('composition_id', selectedComposition)
-      .eq('ingredient_name', ingredientName);
+    try {
+      const { error } = await supabase
+        .from('composition_ingredients')
+        .delete()
+        .eq('composition_id', selectedComposition)
+        .eq('ingredient_name', ingredientName);
 
-    if (error) {
+      if (error) {
+        console.error('Error removing ingredient:', error);
+      } else {
+        loadCompositionIngredients(selectedComposition);
+        console.log('Ingredient removed successfully');
+      }
+    } catch (error) {
       console.error('Error removing ingredient:', error);
-    } else {
-      loadCompositionIngredients(selectedComposition);
+    }
+  };
+
+  const deleteComposition = async (compositionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('compositions')
+        .delete()
+        .eq('id', compositionId);
+
+      if (error) {
+        console.error('Error deleting composition:', error);
+      } else {
+        setCompositions(prev => prev.filter(comp => comp.id !== compositionId));
+        if (selectedComposition === compositionId) {
+          setSelectedComposition('');
+          setCompositionIngredients([]);
+        }
+        console.log('Composition deleted successfully');
+      }
+    } catch (error) {
+      console.error('Error deleting composition:', error);
     }
   };
 
@@ -143,7 +202,13 @@ const CompositionManager: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Tworzenie Nowego Zestawu</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>Tworzenie Nowego Zestawu</CardTitle>
+            <Button variant="outline" onClick={loadCompositions} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Odśwież
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -187,7 +252,7 @@ const CompositionManager: React.FC = () => {
               </Select>
             </div>
           </div>
-          <Button onClick={createComposition} className="mt-4">
+          <Button onClick={createComposition} className="mt-4" disabled={!newComposition.name}>
             <Plus className="w-4 h-4 mr-2" />
             Utwórz Zestaw
           </Button>
@@ -201,7 +266,7 @@ const CompositionManager: React.FC = () => {
         <CardContent>
           <div className="space-y-4">
             <div>
-              <Label>Wybierz zestaw do edycji</Label>
+              <Label>Wybierz zestaw do edycji ({compositions.length} dostępnych)</Label>
               <Select value={selectedComposition} onValueChange={setSelectedComposition}>
                 <SelectTrigger>
                   <SelectValue placeholder="Wybierz zestaw" />
@@ -209,7 +274,10 @@ const CompositionManager: React.FC = () => {
                 <SelectContent>
                   {compositions.map(comp => (
                     <SelectItem key={comp.id} value={comp.id}>
-                      {comp.name}
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded ${comp.color}`}></div>
+                        {comp.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -218,7 +286,39 @@ const CompositionManager: React.FC = () => {
 
             {selectedComposition && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold">Dodaj składnik do zestawu</h4>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => deleteComposition(selectedComposition)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Usuń zestaw
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label>Kategoria</Label>
+                    <Select
+                      value={newIngredient.category}
+                      onValueChange={(value) => setNewIngredient(prev => ({ 
+                        ...prev, 
+                        category: value,
+                        unit: value === 'olejek' ? 'krople' : 'g'
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="zioło">Zioło</SelectItem>
+                        <SelectItem value="olejek">Olejek</SelectItem>
+                        <SelectItem value="inne">Inne</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div>
                     <Label>Składnik</Label>
                     <Select
@@ -229,11 +329,20 @@ const CompositionManager: React.FC = () => {
                         <SelectValue placeholder="Wybierz składnik" />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableIngredients.map(ingredient => (
-                          <SelectItem key={ingredient} value={ingredient}>
-                            {ingredient}
-                          </SelectItem>
-                        ))}
+                        {availableIngredients
+                          .filter(ingredient => {
+                            if (newIngredient.category === 'olejek') {
+                              return ingredient.includes('olejek');
+                            } else if (newIngredient.category === 'zioło') {
+                              return !ingredient.includes('olejek');
+                            }
+                            return true;
+                          })
+                          .map(ingredient => (
+                            <SelectItem key={ingredient} value={ingredient}>
+                              {ingredient}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -248,45 +357,44 @@ const CompositionManager: React.FC = () => {
                   </div>
                   <div>
                     <Label>Jednostka</Label>
-                    <Select
+                    <Input
                       value={newIngredient.unit}
-                      onValueChange={(value) => setNewIngredient(prev => ({ ...prev, unit: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="g">g</SelectItem>
-                        <SelectItem value="ml">ml</SelectItem>
-                        <SelectItem value="krople">krople</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      disabled
+                      className="bg-gray-100"
+                    />
                   </div>
                 </div>
-                <Button onClick={addIngredientToComposition}>
+                <Button 
+                  onClick={addIngredientToComposition}
+                  disabled={!newIngredient.ingredient_name || newIngredient.amount <= 0}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Dodaj Składnik
                 </Button>
 
                 <div className="space-y-2">
-                  <h4 className="font-semibold">Składniki w zestawie:</h4>
-                  {compositionIngredients.map((ingredient, index) => (
-                    <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                      <div>
-                        <span className="font-medium">{ingredient.ingredient_name}</span>
-                        <Badge variant="outline" className="ml-2">
-                          {ingredient.amount} {ingredient.unit}
-                        </Badge>
+                  <h4 className="font-semibold">Składniki w zestawie ({compositionIngredients.length}):</h4>
+                  {compositionIngredients.length === 0 ? (
+                    <p className="text-gray-500 text-sm">Brak składników w tym zestawie</p>
+                  ) : (
+                    compositionIngredients.map((ingredient, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                        <div>
+                          <span className="font-medium">{ingredient.ingredient_name}</span>
+                          <Badge variant="outline" className="ml-2">
+                            {ingredient.amount} {ingredient.unit}
+                          </Badge>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeIngredientFromComposition(ingredient.ingredient_name)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeIngredientFromComposition(ingredient.ingredient_name)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}

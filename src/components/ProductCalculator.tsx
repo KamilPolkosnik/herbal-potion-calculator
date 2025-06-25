@@ -1,77 +1,142 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { compositions } from '@/data/compositions';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProductCalculatorProps {
   ingredients: Record<string, number>;
   prices: Record<string, number>;
 }
 
+interface Composition {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+}
+
+interface CompositionIngredient {
+  ingredient_name: string;
+  amount: number;
+  unit: string;
+}
+
 const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, prices }) => {
-  const calculateAvailableSets = (composition: any) => {
+  const [compositions, setCompositions] = useState<Composition[]>([]);
+  const [compositionIngredients, setCompositionIngredients] = useState<Record<string, CompositionIngredient[]>>({});
+  const [loading, setLoading] = useState(true);
+
+  const loadCompositions = async () => {
+    try {
+      const { data: compositionsData, error: compositionsError } = await supabase
+        .from('compositions')
+        .select('*')
+        .order('name');
+
+      if (compositionsError) throw compositionsError;
+
+      const { data: ingredientsData, error: ingredientsError } = await supabase
+        .from('composition_ingredients')
+        .select('*');
+
+      if (ingredientsError) throw ingredientsError;
+
+      // Grupuj składniki według composition_id
+      const ingredientsByComposition: Record<string, CompositionIngredient[]> = {};
+      ingredientsData?.forEach((ingredient) => {
+        if (!ingredientsByComposition[ingredient.composition_id]) {
+          ingredientsByComposition[ingredient.composition_id] = [];
+        }
+        ingredientsByComposition[ingredient.composition_id].push({
+          ingredient_name: ingredient.ingredient_name,
+          amount: ingredient.amount,
+          unit: ingredient.unit
+        });
+      });
+
+      setCompositions(compositionsData || []);
+      setCompositionIngredients(ingredientsByComposition);
+    } catch (error) {
+      console.error('Error loading compositions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCompositions();
+  }, []);
+
+  const calculateAvailableSets = (compositionId: string) => {
+    const ingredientsList = compositionIngredients[compositionId] || [];
     let minSets = Infinity;
     const limitingIngredients: string[] = [];
     
-    // Sprawdź surowce
-    for (const [ingredient, requiredAmount] of Object.entries(composition.herbs)) {
-      const available = ingredients[ingredient] || 0;
-      const possibleSets = Math.floor(available / (requiredAmount as number));
-      if (possibleSets < minSets) {
-        minSets = possibleSets;
-        limitingIngredients.length = 0; // Clear array
-        limitingIngredients.push(ingredient);
-      } else if (possibleSets === minSets) {
-        limitingIngredients.push(ingredient);
+    for (const ingredient of ingredientsList) {
+      const available = ingredients[ingredient.ingredient_name] || 0;
+      let possibleSets = 0;
+
+      if (ingredient.unit === 'krople') {
+        // Przelicz ml na krople: 1ml = 20 kropel
+        const availableDrops = available * 20;
+        possibleSets = Math.floor(availableDrops / ingredient.amount);
+      } else {
+        // Dla gramów
+        possibleSets = Math.floor(available / ingredient.amount);
       }
-    }
-    
-    // Sprawdź olejki (przelicz ml na krople: 10ml = 200 kropel)
-    for (const [ingredient, requiredDrops] of Object.entries(composition.oils)) {
-      const availableMl = ingredients[ingredient] || 0;
-      const availableDrops = availableMl * 20; // 1ml = 20 kropel
-      const possibleSets = Math.floor(availableDrops / (requiredDrops as number));
+
       if (possibleSets < minSets) {
         minSets = possibleSets;
-        limitingIngredients.length = 0; // Clear array
-        limitingIngredients.push(ingredient);
+        limitingIngredients.length = 0;
+        limitingIngredients.push(ingredient.ingredient_name);
       } else if (possibleSets === minSets) {
-        limitingIngredients.push(ingredient);
+        limitingIngredients.push(ingredient.ingredient_name);
       }
     }
     
     return { sets: minSets === Infinity ? 0 : minSets, limitingIngredients };
   };
 
-  const calculateCostPerSet = (composition: any) => {
+  const calculateCostPerSet = (compositionId: string) => {
+    const ingredientsList = compositionIngredients[compositionId] || [];
     let totalCost = 0;
     
-    // Koszt surowców na 1 zestaw (cena za 100g, więc dzielimy przez 100)
-    for (const [ingredient, amount] of Object.entries(composition.herbs)) {
-      const price = prices[ingredient] || 0;
-      totalCost += (amount as number) * price / 100; // dzielimy przez 100 bo cena jest za 100g
-    }
-    
-    // Koszt olejków na 1 zestaw (przelicz krople na ml)
-    for (const [ingredient, drops] of Object.entries(composition.oils)) {
-      const price = prices[ingredient] || 0;
-      const mlNeeded = (drops as number) / 20; // 20 kropel = 1ml
-      totalCost += mlNeeded * price;
+    for (const ingredient of ingredientsList) {
+      const price = prices[ingredient.ingredient_name] || 0;
+      
+      if (ingredient.unit === 'krople') {
+        // Przelicz krople na ml i pomnóż przez cenę za ml
+        const mlNeeded = ingredient.amount / 20;
+        totalCost += mlNeeded * price;
+      } else {
+        // Dla gramów - cena jest za 100g
+        totalCost += (ingredient.amount * price) / 100;
+      }
     }
     
     return totalCost;
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="text-lg">Ładowanie zestawów...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {compositions.map((composition) => {
-          const { sets, limitingIngredients } = calculateAvailableSets(composition);
-          const costPerSet = calculateCostPerSet(composition);
+          const { sets, limitingIngredients } = calculateAvailableSets(composition.id);
+          const costPerSet = calculateCostPerSet(composition.id);
+          const ingredientsList = compositionIngredients[composition.id] || [];
           
           return (
-            <Card key={composition.name} className="overflow-hidden">
+            <Card key={composition.id} className="overflow-hidden">
               <CardHeader className={`${composition.color} text-white`}>
                 <CardTitle className="text-lg">{composition.name}</CardTitle>
                 <p className="text-sm opacity-90">{composition.description}</p>
@@ -115,38 +180,29 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                 </div>
                 
                 <div className="space-y-3">
-                  <h4 className="font-semibold text-gray-700">Surowce (100g):</h4>
-                  {Object.entries(composition.herbs).map(([herb, amount]) => {
-                    const available = ingredients[herb] || 0;
-                    const needed = amount as number;
-                    const percentage = Math.min((available / needed) * 100, 100);
+                  <h4 className="font-semibold text-gray-700">Składniki:</h4>
+                  {ingredientsList.map((ingredient, index) => {
+                    const available = ingredients[ingredient.ingredient_name] || 0;
+                    let needed = ingredient.amount;
+                    let availableForCalc = available;
+                    let percentage = 0;
+                    
+                    if (ingredient.unit === 'krople') {
+                      availableForCalc = available * 20; // ml na krople
+                      percentage = Math.min((availableForCalc / needed) * 100, 100);
+                    } else {
+                      percentage = Math.min((available / needed) * 100, 100);
+                    }
                     
                     return (
-                      <div key={herb} className="space-y-1">
+                      <div key={index} className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span className="capitalize">{herb}</span>
-                          <span className={available >= needed ? "text-green-600" : "text-red-600"}>
-                            {available}g / {needed}g
-                          </span>
-                        </div>
-                        <Progress value={percentage} className="h-2" />
-                      </div>
-                    );
-                  })}
-                  
-                  <h4 className="font-semibold text-gray-700 mt-4">Olejki eteryczne:</h4>
-                  {Object.entries(composition.oils).map(([oil, drops]) => {
-                    const availableMl = ingredients[oil] || 0;
-                    const availableDrops = availableMl * 20;
-                    const neededDrops = drops as number;
-                    const percentage = Math.min((availableDrops / neededDrops) * 100, 100);
-                    
-                    return (
-                      <div key={oil} className="space-y-1">
-                        <div className="flex justify-between text-sm">
-                          <span className="capitalize">{oil.replace('olejek ', '')}</span>
-                          <span className={availableDrops >= neededDrops ? "text-green-600" : "text-red-600"}>
-                            {Math.floor(availableDrops)} / {neededDrops} kropel
+                          <span className="capitalize">{ingredient.ingredient_name}</span>
+                          <span className={availableForCalc >= needed ? "text-green-600" : "text-red-600"}>
+                            {ingredient.unit === 'krople' 
+                              ? `${Math.floor(availableForCalc)} / ${needed} kropel`
+                              : `${available}${ingredient.unit} / ${needed}${ingredient.unit}`
+                            }
                           </span>
                         </div>
                         <Progress value={percentage} className="h-2" />
@@ -159,6 +215,12 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
           );
         })}
       </div>
+      
+      {compositions.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-gray-500">Brak zestawów. Dodaj nowe zestawy w zakładce "Zarządzanie".</p>
+        </div>
+      )}
     </div>
   );
 };
