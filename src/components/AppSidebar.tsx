@@ -66,7 +66,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
             </p>
           </div>
         </div>
-      </Sidebar>
+      </SidebarHeader>
       
       <SidebarContent>
         <SidebarGroup>
