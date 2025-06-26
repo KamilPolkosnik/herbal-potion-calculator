@@ -14,16 +14,25 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     
-    if (login(username, password)) {
-      onLogin();
-    } else {
-      setError('Nieprawidłowy login lub hasło');
+    try {
+      const success = await login(username, password);
+      if (success) {
+        onLogin();
+      } else {
+        setError('Nieprawidłowy login lub hasło');
+      }
+    } catch (error) {
+      setError('Wystąpił błąd podczas logowania');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -45,6 +54,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <div>
@@ -55,13 +65,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             {error && (
               <div className="text-red-600 text-sm">{error}</div>
             )}
-            <Button type="submit" className="w-full">
-              Zaloguj się
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Logowanie...' : 'Zaloguj się'}
             </Button>
           </form>
         </CardContent>

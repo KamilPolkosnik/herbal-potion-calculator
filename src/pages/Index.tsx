@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -11,6 +12,7 @@ import SalesManager from '@/components/SalesManager';
 import TransactionsList from '@/components/TransactionsList';
 import SalesStatistics from '@/components/SalesStatistics';
 import CompanySettings from '@/components/CompanySettings';
+import UserManagement from '@/components/UserManagement';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useAuth } from '@/hooks/useAuth';
 import { useSummaryData } from '@/hooks/useSummaryData';
@@ -175,16 +177,31 @@ const Index = () => {
 
       case 'settings':
         return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl text-center text-purple-700">
-                Ustawienia Firmy
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CompanySettings />
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl text-center text-purple-700">
+                  Ustawienia Firmy
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CompanySettings />
+              </CardContent>
+            </Card>
+
+            {user.role === 'admin' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl text-center text-blue-700">
+                    Zarządzanie Użytkownikami
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <UserManagement />
+                </CardContent>
+              </Card>
+            )}
+          </div>
         );
 
       default:

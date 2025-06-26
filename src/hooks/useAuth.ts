@@ -1,8 +1,10 @@
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   username: string;
+  role: string;
 }
 
 export const useAuth = () => {
@@ -17,15 +19,30 @@ export const useAuth = () => {
     setLoading(false);
   }, []);
 
-  const login = (username: string, password: string) => {
-    // Proste sprawdzenie logowania
-    if (username === 'admin' && password === '@Surokamil1234') {
-      const userData = { username: 'admin' };
+  const login = async (username: string, password: string) => {
+    try {
+      // Simple password verification - in production, use proper bcrypt
+      const passwordHash = btoa(password); // Basic encoding to match what's stored
+      
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('username, role')
+        .eq('username', username)
+        .eq('password_hash', passwordHash)
+        .single();
+
+      if (error || !data) {
+        return false;
+      }
+
+      const userData = { username: data.username, role: data.role };
       setUser(userData);
       localStorage.setItem('auth_user', JSON.stringify(userData));
       return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    return false;
   };
 
   const logout = () => {
