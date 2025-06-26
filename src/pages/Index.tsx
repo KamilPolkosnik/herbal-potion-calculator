@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -9,11 +10,13 @@ import LoginPage from '@/components/LoginPage';
 import AppSidebar from '@/components/AppSidebar';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useAuth } from '@/hooks/useAuth';
+import { useSummaryData } from '@/hooks/useSummaryData';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('ingredients');
   const { ingredients, prices, loading, refreshData } = useIngredients();
   const { user, loading: authLoading } = useAuth();
+  const { rawMaterialsValue, oilsValue, totalValue, loading: summaryLoading } = useSummaryData();
 
   if (authLoading) {
     return (
@@ -42,54 +45,6 @@ const Index = () => {
       refreshData();
     }
   };
-
-  // Oblicz wartości na podstawie rzeczywistych danych z bazy
-  const calculateRawMaterialsValue = () => {
-    console.log('=== OBLICZANIE WARTOŚCI SUROWCÓW ===');
-    console.log('Wszystkie ingredients:', ingredients);
-    console.log('Wszystkie prices:', prices);
-    
-    const rawMaterials = Object.entries(ingredients).filter(([key]) => !key.includes('olejek'));
-    console.log('Przefiltrowane surowce (bez olejków):', rawMaterials);
-    
-    const value = rawMaterials.reduce((sum, [key, amount]) => {
-      const numAmount = Number(amount) || 0;
-      const price = Number(prices[key]) || 0;
-      const itemValue = (numAmount * price / 100);
-      console.log(`${key}: ${numAmount} × ${price}/100 = ${itemValue.toFixed(2)} zł`);
-      return sum + itemValue;
-    }, 0);
-    
-    console.log('Całkowita wartość surowców:', value.toFixed(2), 'zł');
-    return value;
-  };
-
-  const calculateOilsValue = () => {
-    console.log('=== OBLICZANIE WARTOŚCI OLEJKÓW ===');
-    
-    const oils = Object.entries(ingredients).filter(([key]) => key.includes('olejek'));
-    console.log('Przefiltrowane olejki:', oils);
-    
-    const value = oils.reduce((sum, [key, amount]) => {
-      const numAmount = Number(amount) || 0;
-      const price = Number(prices[key]) || 0;
-      const itemValue = (numAmount * price);
-      console.log(`${key}: ${numAmount} × ${price} = ${itemValue.toFixed(2)} zł`);
-      return sum + itemValue;
-    }, 0);
-    
-    console.log('Całkowita wartość olejków:', value.toFixed(2), 'zł');
-    return value;
-  };
-
-  const rawMaterialsValue = calculateRawMaterialsValue();
-  const oilsValue = calculateOilsValue();
-  const totalValue = rawMaterialsValue + oilsValue;
-  
-  console.log('=== PODSUMOWANIE KOŃCOWE ===');
-  console.log('Surowce:', rawMaterialsValue.toFixed(2), 'zł');
-  console.log('Olejki:', oilsValue.toFixed(2), 'zł');
-  console.log('Razem:', totalValue.toFixed(2), 'zł');
 
   const renderContent = () => {
     switch (activeTab) {
@@ -136,34 +91,40 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-green-100 p-6 rounded-lg text-center">
-                  <h3 className="text-lg font-semibold text-green-800 mb-2">
-                    Wartość Surowców
-                  </h3>
-                  <p className="text-2xl font-bold text-green-600">
-                    {rawMaterialsValue.toFixed(2)} zł
-                  </p>
+              {summaryLoading ? (
+                <div className="flex justify-center items-center p-8">
+                  <div className="text-lg">Ładowanie podsumowania...</div>
                 </div>
-                
-                <div className="bg-blue-100 p-6 rounded-lg text-center">
-                  <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                    Wartość Olejków
-                  </h3>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {oilsValue.toFixed(2)} zł
-                  </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-green-100 p-6 rounded-lg text-center">
+                    <h3 className="text-lg font-semibold text-green-800 mb-2">
+                      Wartość Surowców
+                    </h3>
+                    <p className="text-2xl font-bold text-green-600">
+                      {rawMaterialsValue.toFixed(2)} zł
+                    </p>
+                  </div>
+                  
+                  <div className="bg-blue-100 p-6 rounded-lg text-center">
+                    <h3 className="text-lg font-semibold text-blue-800 mb-2">
+                      Wartość Olejków
+                    </h3>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {oilsValue.toFixed(2)} zł
+                    </p>
+                  </div>
+                  
+                  <div className="bg-purple-100 p-6 rounded-lg text-center">
+                    <h3 className="text-lg font-semibold text-purple-800 mb-2">
+                      Wartość Całkowita
+                    </h3>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {totalValue.toFixed(2)} zł
+                    </p>
+                  </div>
                 </div>
-                
-                <div className="bg-purple-100 p-6 rounded-lg text-center">
-                  <h3 className="text-lg font-semibold text-purple-800 mb-2">
-                    Wartość Całkowita
-                  </h3>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {totalValue.toFixed(2)} zł
-                  </p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         );
