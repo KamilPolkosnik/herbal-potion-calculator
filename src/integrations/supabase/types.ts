@@ -104,6 +104,85 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_transactions: {
+        Row: {
+          composition_id: string
+          composition_name: string
+          created_at: string
+          id: string
+          is_reversed: boolean
+          quantity: number
+          reversed_at: string | null
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          composition_id: string
+          composition_name: string
+          created_at?: string
+          id?: string
+          is_reversed?: boolean
+          quantity: number
+          reversed_at?: string | null
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          composition_id?: string
+          composition_name?: string
+          created_at?: string
+          id?: string
+          is_reversed?: boolean
+          quantity?: number
+          reversed_at?: string | null
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_transactions_composition_id_fkey"
+            columns: ["composition_id"]
+            isOneToOne: false
+            referencedRelation: "compositions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_ingredient_usage: {
+        Row: {
+          created_at: string
+          id: string
+          ingredient_name: string
+          quantity_used: number
+          transaction_id: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ingredient_name: string
+          quantity_used: number
+          transaction_id: string
+          unit: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ingredient_name?: string
+          quantity_used?: number
+          transaction_id?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_ingredient_usage_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "sales_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
