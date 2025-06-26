@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +14,7 @@ interface Composition {
   name: string;
   description: string;
   color: string;
+  sale_price: number;
 }
 
 interface CompositionIngredient {
@@ -22,6 +22,8 @@ interface CompositionIngredient {
   amount: number;
   unit: string;
 }
+
+const VAT_RATE = 0.23; // 23% VAT
 
 const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -99,6 +101,14 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
     return needed;
   };
 
+  const calculateNetPrice = (grossPrice: number) => {
+    return grossPrice / (1 + VAT_RATE);
+  };
+
+  const calculateVATAmount = (grossPrice: number) => {
+    return grossPrice - calculateNetPrice(grossPrice);
+  };
+
   const neededIngredients = calculateNeededIngredients();
   
   // Oblicz całkowity koszt
@@ -110,6 +120,15 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
       return sum + (amount * price / 100); // surowce - cena za 100g
     }
   }, 0);
+
+  // Oblicz potencjalny przychód
+  const totalPotentialRevenueGross = compositions.reduce((sum, composition) => {
+    const quantity = quantities[composition.id] || 0;
+    return sum + (quantity * composition.sale_price);
+  }, 0);
+
+  const totalPotentialRevenueNet = calculateNetPrice(totalPotentialRevenueGross);
+  const totalVAT = calculateVATAmount(totalPotentialRevenueGross);
 
   if (loading) {
     return (
@@ -139,6 +158,9 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
                   <div className={`${composition.color} text-white p-3 rounded-lg mb-3`}>
                     <h3 className="font-semibold">{composition.name}</h3>
                     <p className="text-sm opacity-90">{composition.description}</p>
+                    <div className="text-xs mt-1 opacity-80">
+                      {composition.sale_price.toFixed(2)} zł brutto ({calculateNetPrice(composition.sale_price).toFixed(2)} zł netto)
+                    </div>
                   </div>
                   <div>
                     <Label className="text-sm">Ilość zestawów</Label>
@@ -206,11 +228,41 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
               </div>
             </div>
             
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold text-blue-800">Całkowity koszt zakupów:</span>
-                <span className="text-2xl font-bold text-blue-600">{totalCost.toFixed(2)} zł</span>
+            <div className="mt-6 space-y-3">
+              <div className="p-4 bg-red-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-red-800">Całkowity koszt zakupów:</span>
+                  <span className="text-2xl font-bold text-red-600">{totalCost.toFixed(2)} zł</span>
+                </div>
               </div>
+              
+              {totalPotentialRevenueGross > 0 && (
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-green-800">Potencjalny przychód brutto:</span>
+                      <span className="text-2xl font-bold text-green-600">{totalPotentialRevenueGross.toFixed(2)} zł</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-green-700">
+                      <span>Przychód netto:</span>
+                      <span>{totalPotentialRevenueNet.toFixed(2)} zł</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-green-700">
+                      <span>VAT (23%):</span>
+                      <span>{totalVAT.toFixed(2)} zł</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {totalPotentialRevenueNet > totalCost && (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold text-blue-800">Potencjalny zysk netto:</span>
+                    <span className="text-2xl font-bold text-blue-600">{(totalPotentialRevenueNet - totalCost).toFixed(2)} zł</span>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

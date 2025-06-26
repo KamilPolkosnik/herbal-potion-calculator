@@ -24,6 +24,8 @@ interface CompositionIngredient {
   unit: string;
 }
 
+const VAT_RATE = 0.23; // 23% VAT
+
 const colorOptions = [
   { value: 'bg-purple-600', label: 'Fioletowy' },
   { value: 'bg-red-600', label: 'Czerwony' },
@@ -265,6 +267,14 @@ const CompositionManager: React.FC = () => {
     }
   };
 
+  const calculateNetPrice = (grossPrice: number) => {
+    return grossPrice / (1 + VAT_RATE);
+  };
+
+  const calculateGrossPrice = (netPrice: number) => {
+    return netPrice * (1 + VAT_RATE);
+  };
+
   const filteredIngredients = [...new Set([...availableIngredients, ...allUsedIngredients])]
     .filter(ingredient => ingredient.toLowerCase().includes(ingredientInput.toLowerCase()));
 
@@ -292,7 +302,7 @@ const CompositionManager: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label htmlFor="name">Nazwa zestawu</Label>
               <Input
@@ -333,7 +343,7 @@ const CompositionManager: React.FC = () => {
               </Select>
             </div>
             <div>
-              <Label htmlFor="sale_price">Cena sprzedaży (zł)</Label>
+              <Label htmlFor="sale_price">Cena sprzedaży brutto (zł)</Label>
               <Input
                 id="sale_price"
                 type="number"
@@ -343,12 +353,21 @@ const CompositionManager: React.FC = () => {
                 onChange={(e) => setNewComposition(prev => ({ ...prev, sale_price: parseFloat(e.target.value) || 0 }))}
                 placeholder="0.00"
               />
+              {newComposition.sale_price > 0 && (
+                <div className="text-xs text-gray-600 mt-1">
+                  Netto: {calculateNetPrice(newComposition.sale_price).toFixed(2)} zł
+                  <br />
+                  VAT (23%): {(newComposition.sale_price - calculateNetPrice(newComposition.sale_price)).toFixed(2)} zł
+                </div>
+              )}
+            </div>
+            <div className="flex items-end">
+              <Button onClick={createComposition} className="w-full" disabled={!newComposition.name}>
+                <Plus className="w-4 h-4 mr-2" />
+                Utwórz Zestaw
+              </Button>
             </div>
           </div>
-          <Button onClick={createComposition} className="mt-4" disabled={!newComposition.name}>
-            <Plus className="w-4 h-4 mr-2" />
-            Utwórz Zestaw
-          </Button>
         </CardContent>
       </Card>
 
@@ -369,7 +388,7 @@ const CompositionManager: React.FC = () => {
                     <SelectItem key={comp.id} value={comp.id}>
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded ${comp.color}`}></div>
-                        {comp.name} - {comp.sale_price.toFixed(2)} zł
+                        {comp.name} - {comp.sale_price.toFixed(2)} zł brutto ({calculateNetPrice(comp.sale_price).toFixed(2)} zł netto)
                       </div>
                     </SelectItem>
                   ))}
@@ -385,7 +404,7 @@ const CompositionManager: React.FC = () => {
                   {compositions.filter(comp => comp.id === selectedComposition).map(comp => (
                     <div key={comp.id} className="space-y-3">
                       {editingComposition === comp.id ? (
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                           <div>
                             <Label>Nazwa</Label>
                             <Input
@@ -422,7 +441,7 @@ const CompositionManager: React.FC = () => {
                             </Select>
                           </div>
                           <div>
-                            <Label>Cena sprzedaży (zł)</Label>
+                            <Label>Cena sprzedaży brutto (zł)</Label>
                             <Input
                               type="number"
                               step="0.01"
@@ -430,6 +449,11 @@ const CompositionManager: React.FC = () => {
                               value={editingCompositionData.sale_price}
                               onChange={(e) => setEditingCompositionData(prev => ({ ...prev, sale_price: parseFloat(e.target.value) || 0 }))}
                             />
+                            {editingCompositionData.sale_price > 0 && (
+                              <div className="text-xs text-gray-600 mt-1">
+                                Netto: {calculateNetPrice(editingCompositionData.sale_price).toFixed(2)} zł
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-end gap-2">
                             <Button
@@ -457,7 +481,10 @@ const CompositionManager: React.FC = () => {
                               <span className="font-medium">{comp.name}</span>
                               {comp.description && <span className="text-gray-600 ml-2">- {comp.description}</span>}
                             </div>
-                            <Badge variant="secondary">{comp.sale_price.toFixed(2)} zł</Badge>
+                            <div className="flex flex-col">
+                              <Badge variant="secondary">{comp.sale_price.toFixed(2)} zł brutto</Badge>
+                              <Badge variant="outline" className="text-xs mt-1">{calculateNetPrice(comp.sale_price).toFixed(2)} zł netto</Badge>
+                            </div>
                           </div>
                           <Button
                             size="sm"

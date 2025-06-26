@@ -23,6 +23,8 @@ interface CompositionIngredient {
   unit: string;
 }
 
+const VAT_RATE = 0.23; // 23% VAT
+
 const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, prices }) => {
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [compositionIngredients, setCompositionIngredients] = useState<Record<string, CompositionIngredient[]>>({});
@@ -128,6 +130,14 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
     return ((salePrice - costPerSet) / salePrice) * 100;
   };
 
+  const calculateNetPrice = (grossPrice: number) => {
+    return grossPrice / (1 + VAT_RATE);
+  };
+
+  const calculateVATAmount = (grossPrice: number) => {
+    return grossPrice - calculateNetPrice(grossPrice);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -142,9 +152,11 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
         {compositions.map((composition) => {
           const { sets, limitingIngredients } = calculateAvailableSets(composition.id);
           const costPerSet = calculateCostPerSet(composition.id);
-          const salePrice = composition.sale_price || 0;
-          const profit = calculateProfit(costPerSet, salePrice);
-          const profitMargin = calculateProfitMargin(costPerSet, salePrice);
+          const salePriceGross = composition.sale_price || 0;
+          const salePriceNet = calculateNetPrice(salePriceGross);
+          const vatAmount = calculateVATAmount(salePriceGross);
+          const profit = calculateProfit(costPerSet, salePriceNet); // Zysk na cenie netto
+          const profitMargin = calculateProfitMargin(costPerSet, salePriceNet);
           const ingredientsList = compositionIngredients[composition.id] || [];
           
           return (
@@ -190,16 +202,21 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                       <p className="text-sm font-medium text-gray-700 mb-1">
                         Cena sprzedaży:
                       </p>
-                      <p className="text-lg font-bold text-green-600">
-                        {salePrice.toFixed(2)} zł
-                      </p>
+                      <div className="space-y-1">
+                        <p className="text-lg font-bold text-green-600">
+                          {salePriceGross.toFixed(2)} zł brutto
+                        </p>
+                        <p className="text-sm text-green-500">
+                          {salePriceNet.toFixed(2)} zł netto + {vatAmount.toFixed(2)} zł VAT
+                        </p>
+                      </div>
                     </div>
                     
-                    {salePrice > 0 && (
+                    {salePriceGross > 0 && (
                       <>
                         <div className="bg-blue-50 p-3 rounded-lg">
                           <p className="text-sm font-medium text-gray-700 mb-1">
-                            Zysk na zestawie:
+                            Zysk na zestawie (netto):
                           </p>
                           <p className={`text-lg font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                             {profit.toFixed(2)} zł ({profitMargin.toFixed(1)}%)
@@ -211,12 +228,17 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                             <p className="text-sm font-medium text-gray-700 mb-1">
                               Potencjalny przychód:
                             </p>
-                            <p className="text-lg font-bold text-purple-600">
-                              {(sets * salePrice).toFixed(2)} zł
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              Zysk: {(sets * profit).toFixed(2)} zł
-                            </p>
+                            <div className="space-y-1">
+                              <p className="text-lg font-bold text-purple-600">
+                                {(sets * salePriceGross).toFixed(2)} zł brutto
+                              </p>
+                              <p className="text-sm text-purple-500">
+                                {(sets * salePriceNet).toFixed(2)} zł netto
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                Zysk: {(sets * profit).toFixed(2)} zł
+                              </p>
+                            </div>
                           </div>
                         )}
                       </>
