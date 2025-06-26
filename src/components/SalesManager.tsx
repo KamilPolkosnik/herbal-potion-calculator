@@ -1,11 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { ShoppingCart, Package, User } from 'lucide-react';
+import { ShoppingCart, Package, User, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSales, BuyerData } from '@/hooks/useSales';
 import { useToast } from '@/hooks/use-toast';
@@ -14,12 +14,6 @@ interface Composition {
   id: string;
   name: string;
   sale_price: number;
-}
-
-interface CompositionIngredient {
-  ingredient_name: string;
-  amount: number;
-  unit: string;
 }
 
 interface SalesManagerProps {
@@ -33,8 +27,9 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   const [customPrice, setCustomPrice] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [availabilityCheck, setAvailabilityCheck] = useState<{available: boolean; missingIngredients: string[]} | null>(null);
   const [buyerData, setBuyerData] = useState<BuyerData>({});
-  const { processSale } = useSales();
+  const { processSale, checkIngredientAvailability } = useSales();
   const { toast } = useToast();
 
   const loadCompositions = async () => {
@@ -69,11 +64,39 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     }
   }, [selectedComposition, compositions]);
 
+  // Check ingredient availability when composition or quantity changes
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (selectedComposition && quantity > 0) {
+        try {
+          const result = await checkIngredientAvailability(selectedComposition, quantity);
+          setAvailabilityCheck(result);
+        } catch (error) {
+          console.error('Error checking availability:', error);
+          setAvailabilityCheck({ available: false, missingIngredients: ['Błąd sprawdzania dostępności'] });
+        }
+      } else {
+        setAvailabilityCheck(null);
+      }
+    };
+
+    checkAvailability();
+  }, [selectedComposition, quantity, checkIngredientAvailability]);
+
   const handleSale = async () => {
     if (!selectedComposition || quantity <= 0 || customPrice < 0) {
       toast({
         title: "Błąd",
         description: "Wybierz zestaw, podaj prawidłową ilość i cenę",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!availabilityCheck?.available) {
+      toast({
+        title: "Błąd",
+        description: "Niewystarczające składniki do realizacji sprzedaży",
         variant: "destructive",
       });
       return;
@@ -126,6 +149,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
       setQuantity(1);
       setCustomPrice(0);
       setBuyerData({});
+      setAvailabilityCheck(null);
 
       // Notify parent component of data change
       if (onDataChange) {
@@ -135,7 +159,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
       console.error('Error processing sale:', error);
       toast({
         title: "Błąd",
-        description: "Nie udało się zarejestrować sprzedaży",
+        description: error instanceof Error ? error.message : "Nie udało się zarejestrować sprzedaży",
         variant: "destructive",
       });
     } finally {
@@ -155,6 +179,118 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
 
   return (
     <div className="space-y-6">
+      {/* Dane kupującego - przeniesione na górę */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Dane Kupującego (opcjonalne)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="buyer_name">Nazwa/Imię i nazwisko</Label>
+                <Input
+                  id="buyer_name"
+                  value={buyerData.name || ''}
+                  onChange={(e) => handleBuyerDataChange('name', e.target.value)}
+                  placeholder="Jan Kowalski / Firma ABC"
+                />
+              </div>
+              <div>
+                <Label htmlFor="buyer_tax_id">NIP (dla firm)</Label>
+                <Input
+                  id="buyer_tax_id"
+                  value={buyerData.tax_id || ''}
+                  onChange={(e) => handleBuyerDataChange('tax_id', e.target.value)}
+                  placeholder="1234567890"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="buyer_email">Email</Label>
+                <Input
+                  id="buyer_email"
+                  type="email"
+                  value={buyerData.email || ''}
+                  onChange={(e) => handleBuyerDataChange('email', e.target.value)}
+                  placeholder="jan@example.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="buyer_phone">Telefon</Label>
+                <Input
+                  id="buyer_phone"
+                  value={buyerData.phone || ''}
+                  onChange={(e) => handleBuyerDataChange('phone', e.target.value)}
+                  placeholder="+48 123 456 789"
+                />
+              </div>
+            </div>
+
+            {/* Szczegółowy adres */}
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-700">Adres</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <Label htmlFor="buyer_street">Ulica</Label>
+                  <Input
+                    id="buyer_street"
+                    value={buyerData.street || ''}
+                    onChange={(e) => handleBuyerDataChange('street', e.target.value)}
+                    placeholder="ul. Przykładowa"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="buyer_house_number">Nr domu</Label>
+                  <Input
+                    id="buyer_house_number"
+                    value={buyerData.house_number || ''}
+                    onChange={(e) => handleBuyerDataChange('house_number', e.target.value)}
+                    placeholder="123"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="buyer_apartment_number">Nr mieszkania</Label>
+                  <Input
+                    id="buyer_apartment_number"
+                    value={buyerData.apartment_number || ''}
+                    onChange={(e) => handleBuyerDataChange('apartment_number', e.target.value)}
+                    placeholder="45"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="buyer_postal_code">Kod pocztowy</Label>
+                  <Input
+                    id="buyer_postal_code"
+                    value={buyerData.postal_code || ''}
+                    onChange={(e) => handleBuyerDataChange('postal_code', e.target.value)}
+                    placeholder="00-000"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="buyer_city">Miasto</Label>
+                  <Input
+                    id="buyer_city"
+                    value={buyerData.city || ''}
+                    onChange={(e) => handleBuyerDataChange('city', e.target.value)}
+                    placeholder="Warszawa"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sprzedaż zestawów */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -207,6 +343,32 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
               </div>
             </div>
 
+            {/* Sprawdzenie dostępności składników */}
+            {availabilityCheck && (
+              <div className={`p-4 rounded-lg ${availabilityCheck.available ? 'bg-green-50' : 'bg-red-50'}`}>
+                <div className={`flex items-center gap-2 ${availabilityCheck.available ? 'text-green-800' : 'text-red-800'}`}>
+                  {availabilityCheck.available ? (
+                    <>
+                      <Package className="w-4 h-4" />
+                      <span className="font-medium">Składniki dostępne</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="font-medium">Niewystarczające składniki:</span>
+                    </>
+                  )}
+                </div>
+                {!availabilityCheck.available && (
+                  <ul className="mt-2 text-red-700 text-sm list-disc list-inside">
+                    {availabilityCheck.missingIngredients.map((ingredient, index) => (
+                      <li key={index}>{ingredient}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
             {selectedComp && (
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h4 className="font-semibold text-blue-800 mb-2">Podsumowanie sprzedaży:</h4>
@@ -229,79 +391,12 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
 
             <Button 
               onClick={handleSale} 
-              disabled={!selectedComposition || quantity <= 0 || processing || customPrice < 0}
+              disabled={!selectedComposition || quantity <= 0 || processing || customPrice < 0 || !availabilityCheck?.available}
               className="w-full"
             >
               <Package className="w-4 h-4 mr-2" />
               {processing ? 'Przetwarzanie...' : 'Zarejestruj Sprzedaż'}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Dane kupującego */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
-            Dane Kupującego (opcjonalne)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="buyer_name">Nazwa/Imię i nazwisko</Label>
-                <Input
-                  id="buyer_name"
-                  value={buyerData.name || ''}
-                  onChange={(e) => handleBuyerDataChange('name', e.target.value)}
-                  placeholder="Jan Kowalski / Firma ABC"
-                />
-              </div>
-              <div>
-                <Label htmlFor="buyer_tax_id">NIP (dla firm)</Label>
-                <Input
-                  id="buyer_tax_id"
-                  value={buyerData.tax_id || ''}
-                  onChange={(e) => handleBuyerDataChange('tax_id', e.target.value)}
-                  placeholder="1234567890"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="buyer_address">Adres</Label>
-              <Textarea
-                id="buyer_address"
-                value={buyerData.address || ''}
-                onChange={(e) => handleBuyerDataChange('address', e.target.value)}
-                placeholder="ul. Przykładowa 123, 00-000 Warszawa"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="buyer_email">Email</Label>
-                <Input
-                  id="buyer_email"
-                  type="email"
-                  value={buyerData.email || ''}
-                  onChange={(e) => handleBuyerDataChange('email', e.target.value)}
-                  placeholder="jan@example.com"
-                />
-              </div>
-              <div>
-                <Label htmlFor="buyer_phone">Telefon</Label>
-                <Input
-                  id="buyer_phone"
-                  value={buyerData.phone || ''}
-                  onChange={(e) => handleBuyerDataChange('phone', e.target.value)}
-                  placeholder="+48 123 456 789"
-                />
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>

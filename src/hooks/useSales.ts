@@ -31,7 +31,11 @@ export interface BuyerData {
   name?: string;
   email?: string;
   phone?: string;
-  address?: string;
+  street?: string;
+  house_number?: string;
+  apartment_number?: string;
+  postal_code?: string;
+  city?: string;
   tax_id?: string;
 }
 
@@ -55,6 +59,57 @@ export const useSales = () => {
     }
   };
 
+  const checkIngredientAvailability = async (
+    compositionId: string,
+    quantity: number
+  ): Promise<{ available: boolean; missingIngredients: string[] }> => {
+    try {
+      // Get composition ingredients
+      const { data: compositionIngredients, error: ingredientsError } = await supabase
+        .from('composition_ingredients')
+        .select('ingredient_name, amount')
+        .eq('composition_id', compositionId);
+
+      if (ingredientsError) throw ingredientsError;
+
+      if (!compositionIngredients || compositionIngredients.length === 0) {
+        return { available: false, missingIngredients: ['Brak składników w zestawie'] };
+      }
+
+      const missingIngredients: string[] = [];
+
+      // Check each ingredient availability
+      for (const ingredient of compositionIngredients) {
+        const requiredAmount = ingredient.amount * quantity;
+        
+        const { data: currentIngredient, error: fetchError } = await supabase
+          .from('ingredients')
+          .select('amount')
+          .eq('name', ingredient.ingredient_name)
+          .single();
+
+        if (fetchError || !currentIngredient) {
+          missingIngredients.push(`${ingredient.ingredient_name} (nie znaleziono)`);
+          continue;
+        }
+
+        if (currentIngredient.amount < requiredAmount) {
+          missingIngredients.push(
+            `${ingredient.ingredient_name} (dostępne: ${currentIngredient.amount}, potrzebne: ${requiredAmount})`
+          );
+        }
+      }
+
+      return {
+        available: missingIngredients.length === 0,
+        missingIngredients
+      };
+    } catch (error) {
+      console.error('Error checking ingredient availability:', error);
+      return { available: false, missingIngredients: ['Błąd sprawdzania dostępności'] };
+    }
+  };
+
   const processSale = async (
     compositionId: string,
     compositionName: string,
@@ -65,6 +120,35 @@ export const useSales = () => {
   ) => {
     try {
       console.log('Processing sale:', { compositionId, compositionName, quantity, unitPrice, buyerData });
+
+      // Check ingredient availability first
+      const { available, missingIngredients } = await checkIngredientAvailability(compositionId, quantity);
+      
+      if (!available) {
+        throw new Error(`Niewystarczające składniki: ${missingIngredients.join(', ')}`);
+      }
+
+      // Build full address from components
+      let fullAddress = '';
+      if (buyerData?.street || buyerData?.house_number || buyerData?.city) {
+        const addressParts = [];
+        if (buyerData?.street) {
+          let streetPart = buyerData.street;
+          if (buyerData?.house_number) {
+            streetPart += ` ${buyerData.house_number}`;
+            if (buyerData?.apartment_number) {
+              streetPart += `/${buyerData.apartment_number}`;
+            }
+          }
+          addressParts.push(streetPart);
+        }
+        if (buyerData?.postal_code && buyerData?.city) {
+          addressParts.push(`${buyerData.postal_code} ${buyerData.city}`);
+        } else if (buyerData?.city) {
+          addressParts.push(buyerData.city);
+        }
+        fullAddress = addressParts.join(', ');
+      }
 
       // Start transaction
       const { data: transaction, error: transactionError } = await supabase
@@ -78,7 +162,7 @@ export const useSales = () => {
           buyer_name: buyerData?.name || null,
           buyer_email: buyerData?.email || null,
           buyer_phone: buyerData?.phone || null,
-          buyer_address: buyerData?.address || null,
+          buyer_address: fullAddress || null,
           buyer_tax_id: buyerData?.tax_id || null,
         })
         .select()
@@ -246,6 +330,7 @@ export const useSales = () => {
     processSale,
     reverseTransaction,
     deleteTransaction,
+    checkIngredientAvailability,
     refreshTransactions: loadTransactions
   };
 };
