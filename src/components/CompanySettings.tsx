@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -146,16 +145,17 @@ const CompanySettings: React.FC = () => {
     );
   }
 
-  const isAdmin = user?.username === 'admin';
+  // Hide Users tab for the "admin" user specifically
+  const showUsersTab = user?.role === 'admin' && user?.username !== 'admin';
 
   return (
     <Tabs defaultValue="company" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className={`grid w-full ${showUsersTab ? 'grid-cols-2' : 'grid-cols-1'}`}>
         <TabsTrigger value="company">
           <Building className="w-4 h-4 mr-2" />
           Dane Firmy
         </TabsTrigger>
-        {isAdmin && (
+        {showUsersTab && (
           <TabsTrigger value="users">
             <Users className="w-4 h-4 mr-2" />
             Użytkownicy
@@ -328,7 +328,7 @@ const CompanySettings: React.FC = () => {
         </Card>
       </TabsContent>
 
-      {isAdmin && (
+      {showUsersTab && (
         <TabsContent value="users">
           <UserManagement />
         </TabsContent>
