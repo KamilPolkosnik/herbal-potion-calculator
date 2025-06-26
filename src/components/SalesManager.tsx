@@ -30,6 +30,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [selectedComposition, setSelectedComposition] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
+  const [customPrice, setCustomPrice] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const { processSale } = useSales();
@@ -55,11 +56,19 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     loadCompositions();
   }, []);
 
+  // Update custom price when composition changes
+  useEffect(() => {
+    const selectedComp = compositions.find(c => c.id === selectedComposition);
+    if (selectedComp) {
+      setCustomPrice(selectedComp.sale_price || 0);
+    }
+  }, [selectedComposition, compositions]);
+
   const handleSale = async () => {
-    if (!selectedComposition || quantity <= 0) {
+    if (!selectedComposition || quantity <= 0 || customPrice < 0) {
       toast({
         title: "Błąd",
-        description: "Wybierz zestaw i podaj prawidłową ilość",
+        description: "Wybierz zestaw, podaj prawidłową ilość i cenę",
         variant: "destructive",
       });
       return;
@@ -88,12 +97,12 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         return;
       }
 
-      // Process the sale
+      // Process the sale with custom price
       await processSale(
         selectedComposition,
         composition.name,
         quantity,
-        composition.sale_price || 0,
+        customPrice,
         ingredients.map(ing => ({
           name: ing.ingredient_name,
           amount: ing.amount,
@@ -109,6 +118,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
       // Reset form
       setSelectedComposition('');
       setQuantity(1);
+      setCustomPrice(0);
 
       // Notify parent component of data change
       if (onDataChange) {
@@ -163,16 +173,31 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
               </Select>
             </div>
 
-            <div>
-              <Label htmlFor="quantity">Ilość</Label>
-              <Input
-                id="quantity"
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                placeholder="Ilość sztuk"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="quantity">Ilość</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                  placeholder="Ilość sztuk"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="price">Cena jednostkowa (zł)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={customPrice}
+                  onChange={(e) => setCustomPrice(parseFloat(e.target.value) || 0)}
+                  placeholder="Cena za sztukę"
+                />
+              </div>
             </div>
 
             {selectedComp && (
@@ -180,18 +205,24 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
                 <h4 className="font-semibold text-blue-800 mb-2">Podsumowanie sprzedaży:</h4>
                 <div className="text-blue-700">
                   <p>Zestaw: {selectedComp.name}</p>
-                  <p>Cena jednostkowa: {selectedComp.sale_price?.toFixed(2) || '0.00'} zł</p>
+                  <p>Cena katalogowa: {selectedComp.sale_price?.toFixed(2) || '0.00'} zł</p>
+                  <p>Cena sprzedaży: {customPrice.toFixed(2)} zł</p>
                   <p>Ilość: {quantity} szt.</p>
                   <p className="font-semibold">
-                    Łączna wartość: {((selectedComp.sale_price || 0) * quantity).toFixed(2)} zł
+                    Łączna wartość: {(customPrice * quantity).toFixed(2)} zł
                   </p>
+                  {customPrice !== (selectedComp.sale_price || 0) && (
+                    <p className="text-orange-600 font-medium">
+                      {customPrice > (selectedComp.sale_price || 0) ? '↑ Cena wyższa' : '↓ Promocja'}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
 
             <Button 
               onClick={handleSale} 
-              disabled={!selectedComposition || quantity <= 0 || processing}
+              disabled={!selectedComposition || quantity <= 0 || processing || customPrice < 0}
               className="w-full"
             >
               <Package className="w-4 h-4 mr-2" />
