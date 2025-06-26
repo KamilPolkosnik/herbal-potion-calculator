@@ -24,6 +24,12 @@ interface AppSidebarProps {
 const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
   const { user, logout } = useAuth();
 
+  const handleLogout = () => {
+    logout();
+    // Force page reload to reset all application state
+    window.location.reload();
+  };
+
   const menuItems = [
     {
       id: 'ingredients',
@@ -100,7 +106,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
           </div>
           <Button
             variant="outline"
-            onClick={logout}
+            onClick={handleLogout}
             className="w-full justify-start"
             size="sm"
           >

@@ -91,12 +91,15 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
         minSets = possibleSets;
         limitingIngredients.length = 0;
         limitingIngredients.push(ingredient.ingredient_name);
-      } else if (possibleSets === minSets) {
+      } else if (possibleSets === minSets && possibleSets < Infinity) {
         limitingIngredients.push(ingredient.ingredient_name);
       }
     }
     
-    return { sets: minSets === Infinity ? 0 : minSets, limitingIngredients };
+    // Tylko pokaż ograniczające składniki gdy rzeczywiście ograniczają (minSets < Infinity i > 0)
+    const actualLimitingIngredients = minSets === Infinity || minSets === 0 ? [] : limitingIngredients;
+    
+    return { sets: minSets === Infinity ? 0 : minSets, limitingIngredients: actualLimitingIngredients };
   };
 
   const calculateCostPerSet = (compositionId: string) => {
@@ -153,7 +156,7 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                     </Badge>
                   </div>
                   
-                  {limitingIngredients.length > 0 && (
+                  {limitingIngredients.length > 0 && sets === 0 && (
                     <div className="text-sm text-red-600 mb-3">
                       <p className="font-medium">Ograniczające składniki:</p>
                       <ul className="list-disc list-inside ml-2">
