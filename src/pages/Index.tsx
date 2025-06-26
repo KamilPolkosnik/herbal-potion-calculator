@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -46,28 +45,51 @@ const Index = () => {
 
   // Oblicz wartości na podstawie rzeczywistych danych z bazy
   const calculateRawMaterialsValue = () => {
-    return Object.entries(ingredients)
-      .filter(([key]) => !key.includes('olejek'))
-      .reduce((sum, [key, amount]) => {
-        const numAmount = Number(amount) || 0;
-        const price = Number(prices[key]) || 0;
-        return sum + (numAmount * price / 100);
-      }, 0);
+    console.log('=== OBLICZANIE WARTOŚCI SUROWCÓW ===');
+    console.log('Wszystkie ingredients:', ingredients);
+    console.log('Wszystkie prices:', prices);
+    
+    const rawMaterials = Object.entries(ingredients).filter(([key]) => !key.includes('olejek'));
+    console.log('Przefiltrowane surowce (bez olejków):', rawMaterials);
+    
+    const value = rawMaterials.reduce((sum, [key, amount]) => {
+      const numAmount = Number(amount) || 0;
+      const price = Number(prices[key]) || 0;
+      const itemValue = (numAmount * price / 100);
+      console.log(`${key}: ${numAmount} × ${price}/100 = ${itemValue.toFixed(2)} zł`);
+      return sum + itemValue;
+    }, 0);
+    
+    console.log('Całkowita wartość surowców:', value.toFixed(2), 'zł');
+    return value;
   };
 
   const calculateOilsValue = () => {
-    return Object.entries(ingredients)
-      .filter(([key]) => key.includes('olejek'))
-      .reduce((sum, [key, amount]) => {
-        const numAmount = Number(amount) || 0;
-        const price = Number(prices[key]) || 0;
-        return sum + (numAmount * price);
-      }, 0);
+    console.log('=== OBLICZANIE WARTOŚCI OLEJKÓW ===');
+    
+    const oils = Object.entries(ingredients).filter(([key]) => key.includes('olejek'));
+    console.log('Przefiltrowane olejki:', oils);
+    
+    const value = oils.reduce((sum, [key, amount]) => {
+      const numAmount = Number(amount) || 0;
+      const price = Number(prices[key]) || 0;
+      const itemValue = (numAmount * price);
+      console.log(`${key}: ${numAmount} × ${price} = ${itemValue.toFixed(2)} zł`);
+      return sum + itemValue;
+    }, 0);
+    
+    console.log('Całkowita wartość olejków:', value.toFixed(2), 'zł');
+    return value;
   };
 
   const rawMaterialsValue = calculateRawMaterialsValue();
   const oilsValue = calculateOilsValue();
   const totalValue = rawMaterialsValue + oilsValue;
+  
+  console.log('=== PODSUMOWANIE KOŃCOWE ===');
+  console.log('Surowce:', rawMaterialsValue.toFixed(2), 'zł');
+  console.log('Olejki:', oilsValue.toFixed(2), 'zł');
+  console.log('Razem:', totalValue.toFixed(2), 'zł');
 
   const renderContent = () => {
     switch (activeTab) {
