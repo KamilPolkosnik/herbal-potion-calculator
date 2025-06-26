@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +7,11 @@ import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
 
-const IngredientManager: React.FC = () => {
+interface IngredientManagerProps {
+  onDataChange?: () => void | Promise<void>;
+}
+
+const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) => {
   const { ingredients, prices, loading, updateIngredient, updatePrice, refreshData } = useIngredients();
   const [usedIngredients, setUsedIngredients] = useState<string[]>([]);
   const [loadingIngredients, setLoadingIngredients] = useState(true);
@@ -39,6 +42,20 @@ const IngredientManager: React.FC = () => {
 
   const handleRefresh = async () => {
     await Promise.all([loadUsedIngredients(), refreshData()]);
+  };
+
+  const handleIngredientUpdate = async (ingredient: string, value: number) => {
+    await updateIngredient(ingredient, value);
+    if (onDataChange) {
+      await onDataChange();
+    }
+  };
+
+  const handlePriceUpdate = async (ingredient: string, value: number) => {
+    await updatePrice(ingredient, value);
+    if (onDataChange) {
+      await onDataChange();
+    }
   };
 
   if (loading || loadingIngredients) {
@@ -91,7 +108,7 @@ const IngredientManager: React.FC = () => {
                       id={ingredient}
                       type="number"
                       value={ingredients[ingredient] || ''}
-                      onChange={(e) => updateIngredient(ingredient, parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handleIngredientUpdate(ingredient, parseFloat(e.target.value) || 0)}
                       placeholder={`0 ${unit}`}
                       className="h-8"
                     />
@@ -102,7 +119,7 @@ const IngredientManager: React.FC = () => {
                       type="number"
                       step="0.01"
                       value={prices[ingredient] || ''}
-                      onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
+                      onChange={(e) => handlePriceUpdate(ingredient, parseFloat(e.target.value) || 0)}
                       placeholder="0.00"
                       className="h-8"
                     />

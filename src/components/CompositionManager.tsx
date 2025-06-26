@@ -24,6 +24,10 @@ interface CompositionIngredient {
   unit: string;
 }
 
+interface CompositionManagerProps {
+  onDataChange?: () => void | Promise<void>;
+}
+
 const VAT_RATE = 0.23; // 23% VAT
 
 const colorOptions = [
@@ -36,7 +40,7 @@ const colorOptions = [
   { value: 'bg-pink-600', label: 'Różowy' }
 ];
 
-const CompositionManager: React.FC = () => {
+const CompositionManager: React.FC<CompositionManagerProps> = ({ onDataChange }) => {
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [selectedComposition, setSelectedComposition] = useState<string>('');
   const [compositionIngredients, setCompositionIngredients] = useState<CompositionIngredient[]>([]);
@@ -141,6 +145,9 @@ const CompositionManager: React.FC = () => {
         setCompositions(prev => [...prev, data]);
         setNewComposition({ name: '', description: '', color: 'bg-blue-600', sale_price: 0 });
         console.log('Composition created successfully');
+        if (onDataChange) {
+          await onDataChange();
+        }
       }
     } catch (error) {
       console.error('Error creating composition:', error);
@@ -162,6 +169,9 @@ const CompositionManager: React.FC = () => {
         ));
         setEditingComposition(null);
         console.log('Composition updated successfully');
+        if (onDataChange) {
+          await onDataChange();
+        }
       }
     } catch (error) {
       console.error('Error updating composition:', error);
@@ -182,6 +192,9 @@ const CompositionManager: React.FC = () => {
         loadCompositionIngredients(selectedComposition);
         setEditingIngredient(null);
         console.log('Ingredient updated successfully');
+        if (onDataChange) {
+          await onDataChange();
+        }
       }
     } catch (error) {
       console.error('Error updating ingredient:', error);
@@ -220,6 +233,9 @@ const CompositionManager: React.FC = () => {
         setIngredientInput('');
         setShowDropdown(false);
         console.log('Ingredient added successfully');
+        if (onDataChange) {
+          await onDataChange();
+        }
       }
     } catch (error) {
       console.error('Error adding ingredient:', error);
@@ -239,6 +255,9 @@ const CompositionManager: React.FC = () => {
       } else {
         loadCompositionIngredients(selectedComposition);
         console.log('Ingredient removed successfully');
+        if (onDataChange) {
+          await onDataChange();
+        }
       }
     } catch (error) {
       console.error('Error removing ingredient:', error);
@@ -261,6 +280,9 @@ const CompositionManager: React.FC = () => {
           setCompositionIngredients([]);
         }
         console.log('Composition deleted successfully');
+        if (onDataChange) {
+          await onDataChange();
+        }
       }
     } catch (error) {
       console.error('Error deleting composition:', error);
