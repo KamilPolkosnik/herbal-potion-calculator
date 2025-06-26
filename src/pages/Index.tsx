@@ -44,6 +44,31 @@ const Index = () => {
     }
   };
 
+  // Oblicz wartości na podstawie rzeczywistych danych z bazy
+  const calculateRawMaterialsValue = () => {
+    return Object.entries(ingredients)
+      .filter(([key]) => !key.includes('olejek'))
+      .reduce((sum, [key, amount]) => {
+        const numAmount = Number(amount) || 0;
+        const price = Number(prices[key]) || 0;
+        return sum + (numAmount * price / 100);
+      }, 0);
+  };
+
+  const calculateOilsValue = () => {
+    return Object.entries(ingredients)
+      .filter(([key]) => key.includes('olejek'))
+      .reduce((sum, [key, amount]) => {
+        const numAmount = Number(amount) || 0;
+        const price = Number(prices[key]) || 0;
+        return sum + (numAmount * price);
+      }, 0);
+  };
+
+  const rawMaterialsValue = calculateRawMaterialsValue();
+  const oilsValue = calculateOilsValue();
+  const totalValue = rawMaterialsValue + oilsValue;
+
   const renderContent = () => {
     switch (activeTab) {
       case 'ingredients':
@@ -95,14 +120,7 @@ const Index = () => {
                     Wartość Surowców
                   </h3>
                   <p className="text-2xl font-bold text-green-600">
-                    {Object.entries(ingredients)
-                      .filter(([key]) => !key.includes('olejek'))
-                      .reduce((sum, [key, amount]) => {
-                        const numAmount = Number(amount) || 0;
-                        const price = Number(prices[key]) || 0;
-                        return sum + (numAmount * price / 100); // dzielimy przez 100 bo cena jest za 100g
-                      }, 0)
-                      .toFixed(2)} zł
+                    {rawMaterialsValue.toFixed(2)} zł
                   </p>
                 </div>
                 
@@ -111,14 +129,7 @@ const Index = () => {
                     Wartość Olejków
                   </h3>
                   <p className="text-2xl font-bold text-blue-600">
-                    {Object.entries(ingredients)
-                      .filter(([key]) => key.includes('olejek'))
-                      .reduce((sum, [key, amount]) => {
-                        const numAmount = Number(amount) || 0;
-                        const price = Number(prices[key]) || 0;
-                        return sum + (numAmount * price);
-                      }, 0)
-                      .toFixed(2)} zł
+                    {oilsValue.toFixed(2)} zł
                   </p>
                 </div>
                 
@@ -127,21 +138,7 @@ const Index = () => {
                     Wartość Całkowita
                   </h3>
                   <p className="text-2xl font-bold text-purple-600">
-                    {(Object.entries(ingredients)
-                      .filter(([key]) => !key.includes('olejek'))
-                      .reduce((sum, [key, amount]) => {
-                        const numAmount = Number(amount) || 0;
-                        const price = Number(prices[key]) || 0;
-                        return sum + (numAmount * price / 100);
-                      }, 0) +
-                    Object.entries(ingredients)
-                      .filter(([key]) => key.includes('olejek'))
-                      .reduce((sum, [key, amount]) => {
-                        const numAmount = Number(amount) || 0;
-                        const price = Number(prices[key]) || 0;
-                        return sum + (numAmount * price);
-                      }, 0))
-                      .toFixed(2)} zł
+                    {totalValue.toFixed(2)} zł
                   </p>
                 </div>
               </div>
