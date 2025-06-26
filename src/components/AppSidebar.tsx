@@ -13,7 +13,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign } from 'lucide-react';
+import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AppSidebarProps {
@@ -61,6 +61,12 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
       title: 'Podsumowanie',
       icon: TrendingUp,
     },
+    // Zakładka użytkowników tylko dla administratorów
+    ...(user?.role === 'admin' ? [{
+      id: 'users',
+      title: 'Użytkownicy',
+      icon: Users,
+    }] : []),
     {
       id: 'settings',
       title: 'Ustawienia',

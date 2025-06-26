@@ -110,6 +110,20 @@ const Index = () => {
           </Card>
         );
 
+      case 'users':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-center text-blue-700">
+                Zarządzanie Użytkownikami
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UserManagement />
+            </CardContent>
+          </Card>
+        );
+
       case 'summary':
         return (
           <div className="space-y-6">
@@ -177,31 +191,16 @@ const Index = () => {
 
       case 'settings':
         return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl text-center text-purple-700">
-                  Ustawienia Firmy
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CompanySettings />
-              </CardContent>
-            </Card>
-
-            {user?.role === 'admin' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl text-center text-blue-700">
-                    Zarządzanie Użytkownikami
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <UserManagement />
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-center text-purple-700">
+                Ustawienia Firmy
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CompanySettings />
+            </CardContent>
+          </Card>
         );
 
       default:
