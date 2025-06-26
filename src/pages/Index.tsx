@@ -1,20 +1,20 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
+import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import IngredientManager from '@/components/IngredientManager';
 import ProductCalculator from '@/components/ProductCalculator';
 import ShoppingList from '@/components/ShoppingList';
 import CompositionManager from '@/components/CompositionManager';
 import LoginPage from '@/components/LoginPage';
+import AppSidebar from '@/components/AppSidebar';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useAuth } from '@/hooks/useAuth';
-import { Package, Calculator, TrendingUp, ShoppingCart, Settings, LogOut } from 'lucide-react';
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState('ingredients');
   const { ingredients, prices, loading, refreshData } = useIngredients();
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   if (authLoading) {
     return (
@@ -37,162 +37,144 @@ const Index = () => {
   }
 
   const handleTabChange = (value: string) => {
+    setActiveTab(value);
     // Odśwież dane gdy przełączamy na zakładki które wymagają aktualnych danych
     if (value === 'calculator' || value === 'management') {
       refreshData();
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center justify-center gap-3">
-              <Package className="text-green-600" />
-              Zarządzanie Kompozycjami Ziołowymi
-            </h1>
-            <p className="text-lg text-gray-600">
-              System kontroli składników i kalkulacji dostępnych zestawów
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">Zalogowany jako: {user.username}</span>
-            <Button variant="outline" onClick={logout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Wyloguj
-            </Button>
-          </div>
-        </div>
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'ingredients':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-center text-green-700">
+                Zarządzanie Składnikami i Cenami
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <IngredientManager />
+            </CardContent>
+          </Card>
+        );
 
-        <Tabs defaultValue="ingredients" className="w-full" onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-5 mb-6">
-            <TabsTrigger value="ingredients" className="flex items-center gap-2">
-              <Package size={18} />
-              Składniki
-            </TabsTrigger>
-            <TabsTrigger value="calculator" className="flex items-center gap-2">
-              <Calculator size={18} />
-              Zestawy
-            </TabsTrigger>
-            <TabsTrigger value="management" className="flex items-center gap-2">
-              <Settings size={18} />
-              Zarządzanie
-            </TabsTrigger>
-            <TabsTrigger value="shopping" className="flex items-center gap-2">
-              <ShoppingCart size={18} />
-              Lista Zakupów
-            </TabsTrigger>
-            <TabsTrigger value="summary" className="flex items-center gap-2">
-              <TrendingUp size={18} />
-              Podsumowanie
-            </TabsTrigger>
-          </TabsList>
+      case 'calculator':
+        return <ProductCalculator ingredients={ingredients} prices={prices} />;
 
-          <TabsContent value="ingredients" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl text-center text-green-700">
-                  Zarządzanie Składnikami i Cenami
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <IngredientManager />
-              </CardContent>
-            </Card>
-          </TabsContent>
+      case 'management':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-center text-blue-700">
+                Zarządzanie Zestawami
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CompositionManager />
+            </CardContent>
+          </Card>
+        );
 
-          <TabsContent value="calculator" className="space-y-6">
-            <ProductCalculator ingredients={ingredients} prices={prices} />
-          </TabsContent>
+      case 'shopping':
+        return <ShoppingList prices={prices} />;
 
-          <TabsContent value="management" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl text-center text-blue-700">
-                  Zarządzanie Zestawami
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CompositionManager />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="shopping" className="space-y-6">
-            <ShoppingList prices={prices} />
-          </TabsContent>
-
-          <TabsContent value="summary" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl text-center text-blue-700">
-                  Podsumowanie Finansowe
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-green-100 p-6 rounded-lg text-center">
-                    <h3 className="text-lg font-semibold text-green-800 mb-2">
-                      Wartość Surowców
-                    </h3>
-                    <p className="text-2xl font-bold text-green-600">
-                      {Object.entries(ingredients)
-                        .filter(([key]) => !key.includes('olejek'))
-                        .reduce((sum, [key, amount]) => {
-                          const numAmount = Number(amount) || 0;
-                          const price = Number(prices[key]) || 0;
-                          return sum + (numAmount * price / 100); // dzielimy przez 100 bo cena jest za 100g
-                        }, 0)
-                        .toFixed(2)} zł
-                    </p>
-                  </div>
-                  
-                  <div className="bg-blue-100 p-6 rounded-lg text-center">
-                    <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                      Wartość Olejków
-                    </h3>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {Object.entries(ingredients)
-                        .filter(([key]) => key.includes('olejek'))
-                        .reduce((sum, [key, amount]) => {
-                          const numAmount = Number(amount) || 0;
-                          const price = Number(prices[key]) || 0;
-                          return sum + (numAmount * price);
-                        }, 0)
-                        .toFixed(2)} zł
-                    </p>
-                  </div>
-                  
-                  <div className="bg-purple-100 p-6 rounded-lg text-center">
-                    <h3 className="text-lg font-semibold text-purple-800 mb-2">
-                      Wartość Całkowita
-                    </h3>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {(Object.entries(ingredients)
-                        .filter(([key]) => !key.includes('olejek'))
-                        .reduce((sum, [key, amount]) => {
-                          const numAmount = Number(amount) || 0;
-                          const price = Number(prices[key]) || 0;
-                          return sum + (numAmount * price / 100);
-                        }, 0) +
-                      Object.entries(ingredients)
-                        .filter(([key]) => key.includes('olejek'))
-                        .reduce((sum, [key, amount]) => {
-                          const numAmount = Number(amount) || 0;
-                          const price = Number(prices[key]) || 0;
-                          return sum + (numAmount * price);
-                        }, 0))
-                        .toFixed(2)} zł
-                    </p>
-                  </div>
+      case 'summary':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-center text-blue-700">
+                Podsumowanie Finansowe
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-green-100 p-6 rounded-lg text-center">
+                  <h3 className="text-lg font-semibold text-green-800 mb-2">
+                    Wartość Surowców
+                  </h3>
+                  <p className="text-2xl font-bold text-green-600">
+                    {Object.entries(ingredients)
+                      .filter(([key]) => !key.includes('olejek'))
+                      .reduce((sum, [key, amount]) => {
+                        const numAmount = Number(amount) || 0;
+                        const price = Number(prices[key]) || 0;
+                        return sum + (numAmount * price / 100); // dzielimy przez 100 bo cena jest za 100g
+                      }, 0)
+                      .toFixed(2)} zł
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+                
+                <div className="bg-blue-100 p-6 rounded-lg text-center">
+                  <h3 className="text-lg font-semibold text-blue-800 mb-2">
+                    Wartość Olejków
+                  </h3>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {Object.entries(ingredients)
+                      .filter(([key]) => key.includes('olejek'))
+                      .reduce((sum, [key, amount]) => {
+                        const numAmount = Number(amount) || 0;
+                        const price = Number(prices[key]) || 0;
+                        return sum + (numAmount * price);
+                      }, 0)
+                      .toFixed(2)} zł
+                  </p>
+                </div>
+                
+                <div className="bg-purple-100 p-6 rounded-lg text-center">
+                  <h3 className="text-lg font-semibold text-purple-800 mb-2">
+                    Wartość Całkowita
+                  </h3>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {(Object.entries(ingredients)
+                      .filter(([key]) => !key.includes('olejek'))
+                      .reduce((sum, [key, amount]) => {
+                        const numAmount = Number(amount) || 0;
+                        const price = Number(prices[key]) || 0;
+                        return sum + (numAmount * price / 100);
+                      }, 0) +
+                    Object.entries(ingredients)
+                      .filter(([key]) => key.includes('olejek'))
+                      .reduce((sum, [key, amount]) => {
+                        const numAmount = Number(amount) || 0;
+                        const price = Number(prices[key]) || 0;
+                        return sum + (numAmount * price);
+                      }, 0))
+                      .toFixed(2)} zł
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      default:
+        return <div>Nieznana zakładka</div>;
+    }
+  };
+
+  return (
+    <>
+      <AppSidebar activeTab={activeTab} onTabChange={handleTabChange} />
+      <SidebarInset>
+        <div className="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen">
+          <header className="flex h-16 shrink-0 items-center gap-2 border-b bg-white/80 backdrop-blur-sm px-4">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex-1 text-center">
+              <h1 className="text-xl font-semibold text-gray-800">
+                Zarządzanie Kompozycjami Ziołowymi
+              </h1>
+            </div>
+          </header>
+          <main className="p-6">
+            <div className="max-w-7xl mx-auto space-y-6">
+              {renderContent()}
+            </div>
+          </main>
+        </div>
+      </SidebarInset>
+    </>
   );
 };
 
