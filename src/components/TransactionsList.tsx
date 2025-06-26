@@ -8,9 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Undo2, ShoppingCart, Calendar } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import InvoiceGenerator from './InvoiceGenerator';
 
 interface TransactionsListProps {
   onDataChange?: () => void | Promise<void>;
@@ -18,6 +20,7 @@ interface TransactionsListProps {
 
 const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => {
   const { transactions, loading, reverseTransaction } = useSales();
+  const { settings: companySettings } = useCompanySettings();
   const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -132,10 +135,10 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                   <TableHead>Nr Transakcji</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Zestaw</TableHead>
+                  <TableHead>Kupujący</TableHead>
                   <TableHead>Ilość</TableHead>
                   <TableHead>Cena jedn.</TableHead>
                   <TableHead>Łącznie</TableHead>
-                  <TableHead>Użytkownik</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Akcje</TableHead>
                 </TableRow>
@@ -150,10 +153,10 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                       {format(new Date(transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
                     </TableCell>
                     <TableCell>{transaction.composition_name}</TableCell>
+                    <TableCell>{transaction.buyer_name || 'Klient indywidualny'}</TableCell>
                     <TableCell>{transaction.quantity} szt.</TableCell>
                     <TableCell>{transaction.unit_price.toFixed(2)} zł</TableCell>
                     <TableCell>{transaction.total_price.toFixed(2)} zł</TableCell>
-                    <TableCell>admin</TableCell>
                     <TableCell>
                       {transaction.is_reversed ? (
                         <span className="text-red-600 font-medium">Cofnięta</span>
@@ -162,16 +165,23 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                       )}
                     </TableCell>
                     <TableCell>
-                      {!transaction.is_reversed && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleReverse(transaction.id, transaction.composition_name)}
-                        >
-                          <Undo2 className="w-4 h-4 mr-1" />
-                          Cofnij
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        <InvoiceGenerator 
+                          transaction={transaction}
+                          companySettings={companySettings}
+                          transactionNumber={generateTransactionNumber(transactions.findIndex(t => t.id === transaction.id))}
+                        />
+                        {!transaction.is_reversed && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReverse(transaction.id, transaction.composition_name)}
+                          >
+                            <Undo2 className="w-4 h-4 mr-1" />
+                            Cofnij
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

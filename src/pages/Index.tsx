@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -11,6 +10,7 @@ import AppSidebar from '@/components/AppSidebar';
 import SalesManager from '@/components/SalesManager';
 import TransactionsList from '@/components/TransactionsList';
 import SalesStatistics from '@/components/SalesStatistics';
+import CompanySettings from '@/components/CompanySettings';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useAuth } from '@/hooks/useAuth';
 import { useSummaryData } from '@/hooks/useSummaryData';
@@ -171,6 +171,20 @@ const Index = () => {
             {/* Transactions List */}
             <TransactionsList onDataChange={refreshSummary} />
           </div>
+        );
+
+      case 'settings':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-center text-purple-700">
+                Ustawienia Firmy
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CompanySettings />
+            </CardContent>
+          </Card>
         );
 
       default:

@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingCart, Package } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { ShoppingCart, Package, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useSales } from '@/hooks/useSales';
+import { useSales, BuyerData } from '@/hooks/useSales';
 import { useToast } from '@/hooks/use-toast';
 
 interface Composition {
@@ -33,6 +33,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   const [customPrice, setCustomPrice] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [buyerData, setBuyerData] = useState<BuyerData>({});
   const { processSale } = useSales();
   const { toast } = useToast();
 
@@ -55,6 +56,10 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   useEffect(() => {
     loadCompositions();
   }, []);
+
+  const handleBuyerDataChange = (field: keyof BuyerData, value: string) => {
+    setBuyerData(prev => ({ ...prev, [field]: value }));
+  };
 
   // Update custom price when composition changes
   useEffect(() => {
@@ -97,7 +102,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         return;
       }
 
-      // Process the sale with custom price
+      // Process the sale with custom price and buyer data
       await processSale(
         selectedComposition,
         composition.name,
@@ -107,7 +112,8 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
           name: ing.ingredient_name,
           amount: ing.amount,
           unit: ing.unit
-        }))
+        })),
+        buyerData
       );
 
       toast({
@@ -119,6 +125,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
       setSelectedComposition('');
       setQuantity(1);
       setCustomPrice(0);
+      setBuyerData({});
 
       // Notify parent component of data change
       if (onDataChange) {
@@ -228,6 +235,73 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
               <Package className="w-4 h-4 mr-2" />
               {processing ? 'Przetwarzanie...' : 'Zarejestruj Sprzedaż'}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dane kupującego */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-5 h-5" />
+            Dane Kupującego (opcjonalne)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="buyer_name">Nazwa/Imię i nazwisko</Label>
+                <Input
+                  id="buyer_name"
+                  value={buyerData.name || ''}
+                  onChange={(e) => handleBuyerDataChange('name', e.target.value)}
+                  placeholder="Jan Kowalski / Firma ABC"
+                />
+              </div>
+              <div>
+                <Label htmlFor="buyer_tax_id">NIP (dla firm)</Label>
+                <Input
+                  id="buyer_tax_id"
+                  value={buyerData.tax_id || ''}
+                  onChange={(e) => handleBuyerDataChange('tax_id', e.target.value)}
+                  placeholder="1234567890"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="buyer_address">Adres</Label>
+              <Textarea
+                id="buyer_address"
+                value={buyerData.address || ''}
+                onChange={(e) => handleBuyerDataChange('address', e.target.value)}
+                placeholder="ul. Przykładowa 123, 00-000 Warszawa"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="buyer_email">Email</Label>
+                <Input
+                  id="buyer_email"
+                  type="email"
+                  value={buyerData.email || ''}
+                  onChange={(e) => handleBuyerDataChange('email', e.target.value)}
+                  placeholder="jan@example.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="buyer_phone">Telefon</Label>
+                <Input
+                  id="buyer_phone"
+                  value={buyerData.phone || ''}
+                  onChange={(e) => handleBuyerDataChange('phone', e.target.value)}
+                  placeholder="+48 123 456 789"
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

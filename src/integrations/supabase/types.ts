@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      company_settings: {
+        Row: {
+          bank_account: string | null
+          bank_name: string | null
+          company_address: string | null
+          company_email: string | null
+          company_name: string
+          company_phone: string | null
+          company_tax_id: string | null
+          company_website: string | null
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          bank_account?: string | null
+          bank_name?: string | null
+          company_address?: string | null
+          company_email?: string | null
+          company_name: string
+          company_phone?: string | null
+          company_tax_id?: string | null
+          company_website?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          bank_account?: string | null
+          bank_name?: string | null
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string
+          company_phone?: string | null
+          company_tax_id?: string | null
+          company_website?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       composition_ingredients: {
         Row: {
           amount: number
@@ -106,6 +148,11 @@ export type Database = {
       }
       sales_transactions: {
         Row: {
+          buyer_address: string | null
+          buyer_email: string | null
+          buyer_name: string | null
+          buyer_phone: string | null
+          buyer_tax_id: string | null
           composition_id: string
           composition_name: string
           created_at: string
@@ -117,6 +164,11 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          buyer_address?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          buyer_tax_id?: string | null
           composition_id: string
           composition_name: string
           created_at?: string
@@ -128,6 +180,11 @@ export type Database = {
           unit_price: number
         }
         Update: {
+          buyer_address?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          buyer_tax_id?: string | null
           composition_id?: string
           composition_name?: string
           created_at?: string

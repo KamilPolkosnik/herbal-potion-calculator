@@ -12,6 +12,11 @@ export interface SalesTransaction {
   created_at: string;
   is_reversed: boolean;
   reversed_at: string | null;
+  buyer_name: string | null;
+  buyer_email: string | null;
+  buyer_phone: string | null;
+  buyer_address: string | null;
+  buyer_tax_id: string | null;
 }
 
 export interface IngredientUsage {
@@ -21,6 +26,14 @@ export interface IngredientUsage {
   quantity_used: number;
   unit: string;
   created_at: string;
+}
+
+export interface BuyerData {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  tax_id?: string;
 }
 
 export const useSales = () => {
@@ -48,10 +61,11 @@ export const useSales = () => {
     compositionName: string,
     quantity: number,
     unitPrice: number,
-    ingredients: Array<{ name: string; amount: number; unit: string }>
+    ingredients: Array<{ name: string; amount: number; unit: string }>,
+    buyerData?: BuyerData
   ) => {
     try {
-      console.log('Processing sale:', { compositionId, compositionName, quantity, unitPrice });
+      console.log('Processing sale:', { compositionId, compositionName, quantity, unitPrice, buyerData });
 
       // Start transaction
       const { data: transaction, error: transactionError } = await supabase
@@ -62,6 +76,11 @@ export const useSales = () => {
           quantity,
           unit_price: unitPrice,
           total_price: quantity * unitPrice,
+          buyer_name: buyerData?.name || null,
+          buyer_email: buyerData?.email || null,
+          buyer_phone: buyerData?.phone || null,
+          buyer_address: buyerData?.address || null,
+          buyer_tax_id: buyerData?.tax_id || null,
         })
         .select()
         .single();

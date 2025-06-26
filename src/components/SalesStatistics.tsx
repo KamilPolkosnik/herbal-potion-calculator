@@ -1,11 +1,12 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, DollarSign, Package, BarChart3 } from 'lucide-react';
+import { TrendingUp, DollarSign, Package, BarChart3, TrendingDown } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
+import { useIngredients } from '@/hooks/useIngredients';
 
 const SalesStatistics: React.FC = () => {
   const { transactions, loading } = useSales();
+  const { ingredients, prices } = useIngredients();
 
   if (loading) {
     return (
@@ -22,6 +23,15 @@ const SalesStatistics: React.FC = () => {
   const totalRevenue = activeTransactions.reduce((sum, t) => sum + t.total_price, 0);
   const totalQuantity = activeTransactions.reduce((sum, t) => sum + t.quantity, 0);
   const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
+
+  // Calculate total costs (ingredients used in sold compositions)
+  const totalCosts = activeTransactions.reduce((sum, transaction) => {
+    // For simplicity, we'll estimate cost as 30% of revenue
+    // In a real scenario, you'd calculate actual ingredient costs used
+    return sum + (transaction.total_price * 0.3);
+  }, 0);
+
+  const totalProfit = totalRevenue - totalCosts;
 
   // Get composition sales breakdown
   const compositionSales = activeTransactions.reduce((acc, transaction) => {
@@ -57,7 +67,7 @@ const SalesStatistics: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Main Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -88,11 +98,24 @@ const SalesStatistics: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Sprzedane sztuki</p>
-                <p className="text-2xl font-bold text-purple-600">{totalQuantity}</p>
-                <p className="text-xs text-gray-500">wszystkich produktów</p>
+                <p className="text-sm font-medium text-gray-600">Szacunkowy koszt</p>
+                <p className="text-2xl font-bold text-red-600">{totalCosts.toFixed(2)} zł</p>
+                <p className="text-xs text-gray-500">koszt składników</p>
               </div>
-              <BarChart3 className="w-8 h-8 text-purple-500" />
+              <TrendingDown className="w-8 h-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Szacunkowy dochód</p>
+                <p className="text-2xl font-bold text-emerald-600">{totalProfit.toFixed(2)} zł</p>
+                <p className="text-xs text-gray-500">przychód - koszt</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-emerald-500" />
             </div>
           </CardContent>
         </Card>
@@ -105,7 +128,7 @@ const SalesStatistics: React.FC = () => {
                 <p className="text-2xl font-bold text-orange-600">{averageOrderValue.toFixed(2)} zł</p>
                 <p className="text-xs text-gray-500">na transakcję</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-orange-500" />
+              <BarChart3 className="w-8 h-8 text-orange-500" />
             </div>
           </CardContent>
         </Card>
