@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Undo2, ShoppingCart, Calendar, Trash2 } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -21,6 +22,7 @@ interface TransactionsListProps {
 const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => {
   const { transactions, loading, reverseTransaction, deleteTransaction } = useSales();
   const { settings: companySettings } = useCompanySettings();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -203,14 +205,17 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                             Cofnij
                           </Button>
                         ) : (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete(transaction.id, transaction.composition_name)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Usuń
-                          </Button>
+                          // Przycisk "Usuń" tylko dla administratorów
+                          user?.role === 'admin' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDelete(transaction.id, transaction.composition_name)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Usuń
+                            </Button>
+                          )
                         )}
                       </div>
                     </TableCell>

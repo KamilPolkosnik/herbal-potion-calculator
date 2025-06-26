@@ -99,11 +99,12 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
       title: 'Użytkownicy',
       icon: Users,
     }] : []),
-    {
+    // Zakładka ustawień tylko dla administratorów
+    ...(user?.role === 'admin' ? [{
       id: 'settings',
       title: 'Ustawienia',
       icon: Settings,
-    },
+    }] : []),
   ];
 
   console.log('AppSidebar - menuItems length:', menuItems.length);

@@ -127,62 +127,66 @@ const Index = () => {
       case 'summary':
         return (
           <div className="space-y-6">
-            {/* Sales Statistics */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl text-center text-green-700">
-                  Statystyki Sprzedaży
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SalesStatistics />
-              </CardContent>
-            </Card>
+            {/* Sales Statistics - tylko dla administratorów */}
+            {user?.role === 'admin' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl text-center text-green-700">
+                    Statystyki Sprzedaży
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SalesStatistics />
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Financial Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-2xl text-center text-blue-700">
-                  Podsumowanie Finansowe
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {summaryLoading ? (
-                  <div className="flex justify-center items-center p-8">
-                    <div className="text-lg">Ładowanie podsumowania...</div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-green-100 p-6 rounded-lg text-center">
-                      <h3 className="text-lg font-semibold text-green-800 mb-2">
-                        Wartość Surowców
-                      </h3>
-                      <p className="text-2xl font-bold text-green-600">
-                        {rawMaterialsValue.toFixed(2)} zł
-                      </p>
+            {/* Financial Summary - tylko dla administratorów */}
+            {user?.role === 'admin' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl text-center text-blue-700">
+                    Podsumowanie Finansowe
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {summaryLoading ? (
+                    <div className="flex justify-center items-center p-8">
+                      <div className="text-lg">Ładowanie podsumowania...</div>
                     </div>
-                    
-                    <div className="bg-blue-100 p-6 rounded-lg text-center">
-                      <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                        Wartość Olejków
-                      </h3>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {oilsValue.toFixed(2)} zł
-                      </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-green-100 p-6 rounded-lg text-center">
+                        <h3 className="text-lg font-semibold text-green-800 mb-2">
+                          Wartość Surowców
+                        </h3>
+                        <p className="text-2xl font-bold text-green-600">
+                          {rawMaterialsValue.toFixed(2)} zł
+                        </p>
+                      </div>
+                      
+                      <div className="bg-blue-100 p-6 rounded-lg text-center">
+                        <h3 className="text-lg font-semibold text-blue-800 mb-2">
+                          Wartość Olejków
+                        </h3>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {oilsValue.toFixed(2)} zł
+                        </p>
+                      </div>
+                      
+                      <div className="bg-purple-100 p-6 rounded-lg text-center">
+                        <h3 className="text-lg font-semibold text-purple-800 mb-2">
+                          Wartość Całkowita
+                        </h3>
+                        <p className="text-2xl font-bold text-purple-600">
+                          {totalValue.toFixed(2)} zł
+                        </p>
+                      </div>
                     </div>
-                    
-                    <div className="bg-purple-100 p-6 rounded-lg text-center">
-                      <h3 className="text-lg font-semibold text-purple-800 mb-2">
-                        Wartość Całkowita
-                      </h3>
-                      <p className="text-2xl font-bold text-purple-600">
-                        {totalValue.toFixed(2)} zł
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             
             {/* Transactions List */}
             <TransactionsList onDataChange={refreshSummary} />
