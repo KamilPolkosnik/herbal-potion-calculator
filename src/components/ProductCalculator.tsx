@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -96,10 +95,7 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
       }
     }
     
-    // Tylko pokaż ograniczające składniki gdy rzeczywiście ograniczają (minSets < Infinity i > 0)
-    const actualLimitingIngredients = minSets === Infinity || minSets === 0 ? [] : limitingIngredients;
-    
-    return { sets: minSets === Infinity ? 0 : minSets, limitingIngredients: actualLimitingIngredients };
+    return { sets: minSets === Infinity ? 0 : minSets, limitingIngredients };
   };
 
   const calculateCostPerSet = (compositionId: string) => {
@@ -156,7 +152,7 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                     </Badge>
                   </div>
                   
-                  {limitingIngredients.length > 0 && sets === 0 && (
+                  {sets === 0 && limitingIngredients.length > 0 && (
                     <div className="text-sm text-red-600 mb-3">
                       <p className="font-medium">Ograniczające składniki:</p>
                       <ul className="list-disc list-inside ml-2">
