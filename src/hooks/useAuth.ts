@@ -13,8 +13,11 @@ export const useAuth = () => {
 
   useEffect(() => {
     const savedUser = localStorage.getItem('auth_user');
+    console.log('useAuth - savedUser from localStorage:', savedUser);
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      console.log('useAuth - parsed user:', parsedUser);
+      setUser(parsedUser);
     }
     setLoading(false);
   }, []);
@@ -24,6 +27,8 @@ export const useAuth = () => {
       // Simple password verification - in production, use proper bcrypt
       const passwordHash = btoa(password); // Basic encoding to match what's stored
       
+      console.log('Login attempt for username:', username);
+      
       const { data, error } = await supabase
         .from('app_users')
         .select('username, role')
@@ -31,11 +36,14 @@ export const useAuth = () => {
         .eq('password_hash', passwordHash)
         .single();
 
+      console.log('Login query result:', { data, error });
+
       if (error || !data) {
         return false;
       }
 
       const userData = { username: data.username, role: data.role };
+      console.log('Setting user data:', userData);
       setUser(userData);
       localStorage.setItem('auth_user', JSON.stringify(userData));
       return true;

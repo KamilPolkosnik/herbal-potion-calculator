@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Sidebar,
@@ -23,6 +22,11 @@ interface AppSidebarProps {
 
 const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
   const { user, logout } = useAuth();
+
+  // Debug logging
+  console.log('AppSidebar - current user:', user);
+  console.log('AppSidebar - user role:', user?.role);
+  console.log('AppSidebar - is admin?', user?.role === 'admin');
 
   const handleLogout = () => {
     logout();
@@ -73,6 +77,9 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
       icon: Settings,
     },
   ];
+
+  console.log('AppSidebar - menuItems length:', menuItems.length);
+  console.log('AppSidebar - menuItems:', menuItems.map(item => item.id));
 
   return (
     <Sidebar>
