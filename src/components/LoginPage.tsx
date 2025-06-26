@@ -29,7 +29,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl">
         <CardHeader>
           <CardTitle className="text-2xl text-center text-green-700">
             Logowanie
