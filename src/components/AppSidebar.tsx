@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Sidebar,
@@ -21,18 +22,45 @@ interface AppSidebarProps {
 }
 
 const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
 
   // Debug logging
   console.log('AppSidebar - current user:', user);
   console.log('AppSidebar - user role:', user?.role);
   console.log('AppSidebar - is admin?', user?.role === 'admin');
+  console.log('AppSidebar - loading:', loading);
 
   const handleLogout = () => {
     logout();
     // Force page reload to reset all application state
     window.location.reload();
   };
+
+  // Poczekaj aż dane użytkownika zostaną załadowane
+  if (loading || !user) {
+    return (
+      <Sidebar>
+        <SidebarHeader className="border-b p-4">
+          <div className="flex items-center gap-3">
+            <Package className="w-8 h-8 text-green-600" />
+            <div>
+              <h2 className="font-bold text-lg text-gray-800">
+                Zarządzanie Kompozycjami
+              </h2>
+              <p className="text-sm text-gray-600">
+                Ładowanie...
+              </p>
+            </div>
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <div className="p-4 text-center text-gray-500">
+            Ładowanie menu...
+          </div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
 
   const menuItems = [
     {
