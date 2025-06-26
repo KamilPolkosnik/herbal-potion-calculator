@@ -14,6 +14,7 @@ interface Composition {
   name: string;
   description: string;
   color: string;
+  sale_price: number;
 }
 
 interface CompositionIngredient {
@@ -118,6 +119,15 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
     return totalCost;
   };
 
+  const calculateProfit = (costPerSet: number, salePrice: number) => {
+    return salePrice - costPerSet;
+  };
+
+  const calculateProfitMargin = (costPerSet: number, salePrice: number) => {
+    if (salePrice === 0) return 0;
+    return ((salePrice - costPerSet) / salePrice) * 100;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -132,6 +142,9 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
         {compositions.map((composition) => {
           const { sets, limitingIngredients } = calculateAvailableSets(composition.id);
           const costPerSet = calculateCostPerSet(composition.id);
+          const salePrice = composition.sale_price || 0;
+          const profit = calculateProfit(costPerSet, salePrice);
+          const profitMargin = calculateProfitMargin(costPerSet, salePrice);
           const ingredientsList = compositionIngredients[composition.id] || [];
           
           return (
@@ -163,17 +176,50 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                     </div>
                   )}
                   
-                  <div className="bg-gray-50 p-3 rounded-lg mb-4">
-                    <p className="text-sm font-medium text-gray-700 mb-1">
-                      Koszt jednego zestawu:
-                    </p>
-                    <p className="text-lg font-bold text-green-600">
-                      {costPerSet.toFixed(2)} zł
-                    </p>
-                    {sets > 0 && (
-                      <p className="text-sm text-gray-600">
-                        Całkowita wartość: {(sets * costPerSet).toFixed(2)} zł
+                  <div className="grid grid-cols-1 gap-3 mb-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Koszt jednego zestawu:
                       </p>
+                      <p className="text-lg font-bold text-red-600">
+                        {costPerSet.toFixed(2)} zł
+                      </p>
+                    </div>
+                    
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Cena sprzedaży:
+                      </p>
+                      <p className="text-lg font-bold text-green-600">
+                        {salePrice.toFixed(2)} zł
+                      </p>
+                    </div>
+                    
+                    {salePrice > 0 && (
+                      <>
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <p className="text-sm font-medium text-gray-700 mb-1">
+                            Zysk na zestawie:
+                          </p>
+                          <p className={`text-lg font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                            {profit.toFixed(2)} zł ({profitMargin.toFixed(1)}%)
+                          </p>
+                        </div>
+                        
+                        {sets > 0 && (
+                          <div className="bg-purple-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-gray-700 mb-1">
+                              Potencjalny przychód:
+                            </p>
+                            <p className="text-lg font-bold text-purple-600">
+                              {(sets * salePrice).toFixed(2)} zł
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Zysk: {(sets * profit).toFixed(2)} zł
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
