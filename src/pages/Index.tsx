@@ -16,7 +16,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('ingredients');
   const { ingredients, prices, loading, refreshData } = useIngredients();
   const { user, loading: authLoading } = useAuth();
-  const { rawMaterialsValue, oilsValue, totalValue, loading: summaryLoading } = useSummaryData();
+  const { rawMaterialsValue, oilsValue, totalValue, loading: summaryLoading, refreshSummary } = useSummaryData();
 
   if (authLoading) {
     return (
@@ -44,6 +44,10 @@ const Index = () => {
     if (value === 'calculator' || value === 'management') {
       refreshData();
     }
+    // Odśwież podsumowanie gdy przełączamy na zakładkę podsumowania
+    if (value === 'summary') {
+      refreshSummary();
+    }
   };
 
   const renderContent = () => {
@@ -57,7 +61,7 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <IngredientManager />
+              <IngredientManager onDataChange={refreshSummary} />
             </CardContent>
           </Card>
         );
@@ -74,7 +78,7 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <CompositionManager />
+              <CompositionManager onDataChange={refreshSummary} />
             </CardContent>
           </Card>
         );
