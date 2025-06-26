@@ -25,6 +25,6 @@ CREATE TRIGGER update_app_users_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
--- Insert default admin user (password is hashed version of '@Surokamil1234')
+-- Insert default admin user (password is base64 encoded version of '@Surokamil1234')
 INSERT INTO public.app_users (username, password_hash, role) 
-VALUES ('admin', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
+VALUES ('admin', 'QFN1cm9rYW1pbDEyMzQ=', 'admin');
