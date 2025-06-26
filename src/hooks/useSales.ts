@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -209,6 +208,34 @@ export const useSales = () => {
     }
   };
 
+  const deleteTransaction = async (transactionId: string) => {
+    try {
+      console.log('Deleting transaction:', transactionId);
+
+      // Delete ingredient usages first (foreign key constraint)
+      const { error: usageDeleteError } = await supabase
+        .from('transaction_ingredient_usage')
+        .delete()
+        .eq('transaction_id', transactionId);
+
+      if (usageDeleteError) throw usageDeleteError;
+
+      // Delete the transaction
+      const { error: transactionDeleteError } = await supabase
+        .from('sales_transactions')
+        .delete()
+        .eq('id', transactionId);
+
+      if (transactionDeleteError) throw transactionDeleteError;
+
+      console.log('Transaction deleted successfully');
+      await loadTransactions();
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     loadTransactions();
   }, []);
@@ -218,6 +245,7 @@ export const useSales = () => {
     loading,
     processSale,
     reverseTransaction,
+    deleteTransaction,
     refreshTransactions: loadTransactions
   };
 };

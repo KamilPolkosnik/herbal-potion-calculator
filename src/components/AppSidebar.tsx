@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Sidebar,
@@ -59,6 +60,11 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
       id: 'summary',
       title: 'Podsumowanie',
       icon: TrendingUp,
+    },
+    {
+      id: 'settings',
+      title: 'Ustawienia',
+      icon: Settings,
     },
   ];
 

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Undo2, ShoppingCart, Calendar } from 'lucide-react';
+import { Undo2, ShoppingCart, Calendar, Trash2 } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +19,7 @@ interface TransactionsListProps {
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => {
-  const { transactions, loading, reverseTransaction } = useSales();
+  const { transactions, loading, reverseTransaction, deleteTransaction } = useSales();
   const { settings: companySettings } = useCompanySettings();
   const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState('');
@@ -42,6 +42,28 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       toast({
         title: "Błąd",
         description: "Nie udało się cofnąć transakcji",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (transactionId: string, compositionName: string) => {
+    try {
+      await deleteTransaction(transactionId);
+      
+      toast({
+        title: "Sukces",
+        description: `Transakcja dla ${compositionName} została usunięta`,
+      });
+
+      if (onDataChange) {
+        await onDataChange();
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się usunąć transakcji",
         variant: "destructive",
       });
     }
@@ -171,7 +193,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                           companySettings={companySettings}
                           transactionNumber={generateTransactionNumber(transactions.findIndex(t => t.id === transaction.id))}
                         />
-                        {!transaction.is_reversed && (
+                        {!transaction.is_reversed ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -179,6 +201,15 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                           >
                             <Undo2 className="w-4 h-4 mr-1" />
                             Cofnij
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(transaction.id, transaction.composition_name)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Usuń
                           </Button>
                         )}
                       </div>
