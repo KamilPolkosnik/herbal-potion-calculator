@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, RefreshCw } from 'lucide-react';
+import { Trash2, Plus, RefreshCw, Edit2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
 
@@ -38,6 +37,8 @@ const CompositionManager: React.FC = () => {
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [selectedComposition, setSelectedComposition] = useState<string>('');
   const [compositionIngredients, setCompositionIngredients] = useState<CompositionIngredient[]>([]);
+  const [editingIngredient, setEditingIngredient] = useState<string | null>(null);
+  const [editingData, setEditingData] = useState({ amount: 0, unit: '' });
   const [newComposition, setNewComposition] = useState({
     name: '',
     description: '',
@@ -47,12 +48,33 @@ const CompositionManager: React.FC = () => {
     ingredient_name: '',
     amount: 0,
     unit: 'g',
-    category: 'zioło'
+    category: 'zioło',
+    customUnit: ''
   });
+  const [ingredientInput, setIngredientInput] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [allUsedIngredients, setAllUsedIngredients] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { ingredients, refreshData } = useIngredients();
 
   const availableIngredients = Object.keys(ingredients);
+
+  const loadAllUsedIngredients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('composition_ingredients')
+        .select('ingredient_name');
+      
+      if (error) {
+        console.error('Error loading used ingredients:', error);
+      } else {
+        const uniqueIngredients = [...new Set(data?.map(item => item.ingredient_name) || [])];
+        setAllUsedIngredients(uniqueIngredients);
+      }
+    } catch (error) {
+      console.error('Error loading used ingredients:', error);
+    }
+  };
 
   const loadCompositions = async () => {
     setLoading(true);
@@ -114,15 +136,37 @@ const CompositionManager: React.FC = () => {
     }
   };
 
-  const addIngredientToComposition = async () => {
-    if (!selectedComposition || !newIngredient.ingredient_name || newIngredient.amount <= 0) return;
+  const updateIngredientInComposition = async (oldName: string, amount: number, unit: string) => {
+    try {
+      const { error } = await supabase
+        .from('composition_ingredients')
+        .update({ amount, unit })
+        .eq('composition_id', selectedComposition)
+        .eq('ingredient_name', oldName);
 
-    // Automatické nastavenie jednotky na základe kategórie
+      if (error) {
+        console.error('Error updating ingredient:', error);
+      } else {
+        loadCompositionIngredients(selectedComposition);
+        setEditingIngredient(null);
+        console.log('Ingredient updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating ingredient:', error);
+    }
+  };
+
+  const addIngredientToComposition = async () => {
+    const ingredientName = ingredientInput || newIngredient.ingredient_name;
+    if (!selectedComposition || !ingredientName || newIngredient.amount <= 0) return;
+
     let unit = newIngredient.unit;
     if (newIngredient.category === 'olejek') {
       unit = 'krople';
     } else if (newIngredient.category === 'zioło') {
       unit = 'g';
+    } else if (newIngredient.category === 'inne' && newIngredient.customUnit) {
+      unit = newIngredient.customUnit;
     }
 
     try {
@@ -130,7 +174,7 @@ const CompositionManager: React.FC = () => {
         .from('composition_ingredients')
         .insert([{
           composition_id: selectedComposition,
-          ingredient_name: newIngredient.ingredient_name,
+          ingredient_name: ingredientName,
           amount: newIngredient.amount,
           unit: unit
         }]);
@@ -139,7 +183,10 @@ const CompositionManager: React.FC = () => {
         console.error('Error adding ingredient:', error);
       } else {
         loadCompositionIngredients(selectedComposition);
-        setNewIngredient({ ingredient_name: '', amount: 0, unit: 'g', category: 'zioło' });
+        loadAllUsedIngredients();
+        setNewIngredient({ ingredient_name: '', amount: 0, unit: 'g', category: 'zioło', customUnit: '' });
+        setIngredientInput('');
+        setShowDropdown(false);
         console.log('Ingredient added successfully');
       }
     } catch (error) {
@@ -188,8 +235,12 @@ const CompositionManager: React.FC = () => {
     }
   };
 
+  const filteredIngredients = [...new Set([...availableIngredients, ...allUsedIngredients])]
+    .filter(ingredient => ingredient.toLowerCase().includes(ingredientInput.toLowerCase()));
+
   useEffect(() => {
     loadCompositions();
+    loadAllUsedIngredients();
   }, []);
 
   useEffect(() => {
@@ -298,7 +349,7 @@ const CompositionManager: React.FC = () => {
                   </Button>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div>
                     <Label>Kategoria</Label>
                     <Select
@@ -306,7 +357,8 @@ const CompositionManager: React.FC = () => {
                       onValueChange={(value) => setNewIngredient(prev => ({ 
                         ...prev, 
                         category: value,
-                        unit: value === 'olejek' ? 'krople' : 'g'
+                        unit: value === 'olejek' ? 'krople' : value === 'zioło' ? 'g' : prev.unit,
+                        customUnit: value !== 'inne' ? '' : prev.customUnit
                       }))}
                     >
                       <SelectTrigger>
@@ -319,32 +371,33 @@ const CompositionManager: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div className="relative">
                     <Label>Składnik</Label>
-                    <Select
-                      value={newIngredient.ingredient_name}
-                      onValueChange={(value) => setNewIngredient(prev => ({ ...prev, ingredient_name: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Wybierz składnik" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableIngredients
-                          .filter(ingredient => {
-                            if (newIngredient.category === 'olejek') {
-                              return ingredient.includes('olejek');
-                            } else if (newIngredient.category === 'zioło') {
-                              return !ingredient.includes('olejek');
-                            }
-                            return true;
-                          })
-                          .map(ingredient => (
-                            <SelectItem key={ingredient} value={ingredient}>
-                              {ingredient}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      value={ingredientInput}
+                      onChange={(e) => {
+                        setIngredientInput(e.target.value);
+                        setShowDropdown(true);
+                      }}
+                      onFocus={() => setShowDropdown(true)}
+                      placeholder="Wpisz lub wybierz składnik"
+                    />
+                    {showDropdown && filteredIngredients.length > 0 && (
+                      <div className="absolute z-50 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto mt-1">
+                        {filteredIngredients.map(ingredient => (
+                          <div
+                            key={ingredient}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                            onClick={() => {
+                              setIngredientInput(ingredient);
+                              setShowDropdown(false);
+                            }}
+                          >
+                            {ingredient}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Label>Ilość</Label>
@@ -357,20 +410,31 @@ const CompositionManager: React.FC = () => {
                   </div>
                   <div>
                     <Label>Jednostka</Label>
-                    <Input
-                      value={newIngredient.unit}
-                      disabled
-                      className="bg-gray-100"
-                    />
+                    {newIngredient.category === 'inne' ? (
+                      <Input
+                        value={newIngredient.customUnit}
+                        onChange={(e) => setNewIngredient(prev => ({ ...prev, customUnit: e.target.value }))}
+                        placeholder="Wpisz jednostkę"
+                      />
+                    ) : (
+                      <Input
+                        value={newIngredient.unit}
+                        disabled
+                        className="bg-gray-100"
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={addIngredientToComposition}
+                      disabled={!ingredientInput || newIngredient.amount <= 0 || (newIngredient.category === 'inne' && !newIngredient.customUnit)}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Dodaj
+                    </Button>
                   </div>
                 </div>
-                <Button 
-                  onClick={addIngredientToComposition}
-                  disabled={!newIngredient.ingredient_name || newIngredient.amount <= 0}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Dodaj Składnik
-                </Button>
 
                 <div className="space-y-2">
                   <h4 className="font-semibold">Składniki w zestawie ({compositionIngredients.length}):</h4>
@@ -379,19 +443,62 @@ const CompositionManager: React.FC = () => {
                   ) : (
                     compositionIngredients.map((ingredient, index) => (
                       <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                        <div>
+                        <div className="flex items-center gap-2">
                           <span className="font-medium">{ingredient.ingredient_name}</span>
-                          <Badge variant="outline" className="ml-2">
-                            {ingredient.amount} {ingredient.unit}
-                          </Badge>
+                          {editingIngredient === ingredient.ingredient_name ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                value={editingData.amount}
+                                onChange={(e) => setEditingData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                                className="w-20"
+                              />
+                              <Input
+                                value={editingData.unit}
+                                onChange={(e) => setEditingData(prev => ({ ...prev, unit: e.target.value }))}
+                                className="w-20"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={() => updateIngredientInComposition(ingredient.ingredient_name, editingData.amount, editingData.unit)}
+                              >
+                                Zapisz
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingIngredient(null)}
+                              >
+                                Anuluj
+                              </Button>
+                            </div>
+                          ) : (
+                            <Badge variant="outline">
+                              {ingredient.amount} {ingredient.unit}
+                            </Badge>
+                          )}
                         </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => removeIngredientFromComposition(ingredient.ingredient_name)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {editingIngredient !== ingredient.ingredient_name && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingIngredient(ingredient.ingredient_name);
+                                setEditingData({ amount: ingredient.amount, unit: ingredient.unit });
+                              }}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => removeIngredientFromComposition(ingredient.ingredient_name)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))
                   )}
