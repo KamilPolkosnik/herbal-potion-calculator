@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ShoppingListProps {
@@ -30,6 +31,24 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [compositionIngredients, setCompositionIngredients] = useState<Record<string, CompositionIngredient[]>>({});
   const [loading, setLoading] = useState(true);
+  const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
+
+  // Load checked ingredients from sessionStorage
+  useEffect(() => {
+    const savedCheckedIngredients = sessionStorage.getItem('shopping-list-checked');
+    if (savedCheckedIngredients) {
+      try {
+        setCheckedIngredients(JSON.parse(savedCheckedIngredients));
+      } catch (error) {
+        console.error('Error parsing saved checked ingredients:', error);
+      }
+    }
+  }, []);
+
+  // Save checked ingredients to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('shopping-list-checked', JSON.stringify(checkedIngredients));
+  }, [checkedIngredients]);
 
   const loadCompositions = async () => {
     try {
@@ -74,6 +93,13 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
 
   const updateQuantity = (compositionId: string, quantity: number) => {
     setQuantities({ ...quantities, [compositionId]: quantity });
+  };
+
+  const toggleIngredientCheck = (ingredientName: string) => {
+    setCheckedIngredients(prev => ({
+      ...prev,
+      [ingredientName]: !prev[ingredientName]
+    }));
   };
 
   // Obliczanie potrzebnych składników
@@ -195,13 +221,22 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
                   {Object.entries(neededIngredients)
                     .filter(([ingredient]) => !ingredient.includes('olejek'))
                     .map(([ingredient, amount]) => (
-                      <div key={ingredient} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span className="capitalize text-sm">{ingredient}</span>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{amount.toFixed(1)} g</Badge>
-                          <span className="text-sm text-gray-600">
-                            {((amount * (prices[ingredient] || 0)) / 100).toFixed(2)} zł
+                      <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <Checkbox
+                          id={`herb-${ingredient}`}
+                          checked={checkedIngredients[ingredient] || false}
+                          onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                        />
+                        <div className="flex-1 flex justify-between items-center">
+                          <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                            {ingredient}
                           </span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{amount.toFixed(1)} g</Badge>
+                            <span className="text-sm text-gray-600">
+                              {((amount * (prices[ingredient] || 0)) / 100).toFixed(2)} zł
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -214,13 +249,22 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
                   {Object.entries(neededIngredients)
                     .filter(([ingredient]) => ingredient.includes('olejek'))
                     .map(([ingredient, amount]) => (
-                      <div key={ingredient} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span className="capitalize text-sm">{ingredient.replace('olejek ', '')}</span>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{amount.toFixed(1)} ml</Badge>
-                          <span className="text-sm text-gray-600">
-                            {(amount * (prices[ingredient] || 0)).toFixed(2)} zł
+                      <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <Checkbox
+                          id={`oil-${ingredient}`}
+                          checked={checkedIngredients[ingredient] || false}
+                          onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                        />
+                        <div className="flex-1 flex justify-between items-center">
+                          <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                            {ingredient.replace('olejek ', '')}
                           </span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{amount.toFixed(1)} ml</Badge>
+                            <span className="text-sm text-gray-600">
+                              {(amount * (prices[ingredient] || 0)).toFixed(2)} zł
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))}
