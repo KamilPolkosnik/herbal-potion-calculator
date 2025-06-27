@@ -82,11 +82,14 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     ingredients.forEach(ingredient => {
       const unit = ingredientUnits[ingredient] || 'g';
       
-      if (ingredient.includes('olejek')) {
+      if (unit === 'ml') {
         oils.push(ingredient);
       } else if (unit === 'g') {
         herbs.push(ingredient);
+      } else if (unit === 'szt') {
+        others.push(ingredient);
       } else {
+        // fallback for any other units
         others.push(ingredient);
       }
     });
@@ -194,9 +197,9 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         </Button>
       </div>
       
-      {renderIngredientSection(herbs, 'Surowce Ziołowe', 'g', 'zł/100g')}
-      {renderIngredientSection(oils, 'Olejki Eteryczne', 'ml', 'zł/ml')}
-      {renderIngredientSection(others, 'Inne', 'szt', 'zł/szt')}
+      {renderIngredientSection(herbs, 'Surowce Ziołowe (g)', 'g', 'zł/100g')}
+      {renderIngredientSection(oils, 'Olejki Eteryczne (ml)', 'ml', 'zł/ml')}
+      {renderIngredientSection(others, 'Inne (szt)', 'szt', 'zł/szt')}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -141,7 +140,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
             // Dla sztuk
             needed[ingredient.ingredient_name] = (needed[ingredient.ingredient_name] || 0) + (ingredient.amount * quantity);
           } else {
-            // Dla gramów
+            // Dla gramów i ml
             needed[ingredient.ingredient_name] = (needed[ingredient.ingredient_name] || 0) + (ingredient.amount * quantity);
           }
         });
@@ -167,11 +166,14 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
     Object.entries(neededIngredients).forEach(([ingredient, amount]) => {
       const unit = ingredientUnits[ingredient] || 'g';
       
-      if (ingredient.includes('olejek')) {
+      if (unit === 'ml') {
         oils.push([ingredient, amount]);
       } else if (unit === 'g') {
         herbs.push([ingredient, amount]);
+      } else if (unit === 'szt') {
+        others.push([ingredient, amount]);
       } else {
+        // fallback for any other units
         others.push([ingredient, amount]);
       }
     });
@@ -290,7 +292,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
     
     ${herbs.length > 0 ? `
     <div class="section">
-        <div class="section-title">🌿 Surowce Ziołowe</div>
+        <div class="section-title">🌿 Surowce Ziołowe (g)</div>
         <div class="ingredients-list">
             ${herbs.map(([ingredient, amount]) => `
                 <div class="ingredient-item">
@@ -305,7 +307,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
     
     ${oils.length > 0 ? `
     <div class="section">
-        <div class="section-title">🌸 Olejki Eteryczne</div>
+        <div class="section-title">🌸 Olejki Eteryczne (ml)</div>
         <div class="ingredients-list">
             ${oils.map(([ingredient, amount]) => `
                 <div class="ingredient-item">
@@ -320,7 +322,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
     
     ${others.length > 0 ? `
     <div class="section">
-        <div class="section-title">📦 Inne</div>
+        <div class="section-title">📦 Inne (szt)</div>
         <div class="ingredients-list">
             ${others.map(([ingredient, amount]) => {
               const unit = ingredientUnits[ingredient] || 'szt';
@@ -444,7 +446,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {herbs.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe</h3>
+                  <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe (g)</h3>
                   <div className="space-y-2">
                     {herbs.map(([ingredient, amount]) => (
                       <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -472,7 +474,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
               
               {oils.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne</h3>
+                  <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne (ml)</h3>
                   <div className="space-y-2">
                     {oils.map(([ingredient, amount]) => (
                       <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -500,7 +502,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
 
               {others.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Inne</h3>
+                  <h3 className="font-semibold text-gray-700 mb-3">Inne (szt)</h3>
                   <div className="space-y-2">
                     {others.map(([ingredient, amount]) => {
                       const unit = ingredientUnits[ingredient] || 'szt';
