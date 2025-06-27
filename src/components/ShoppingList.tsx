@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [compositionIngredients, setCompositionIngredients] = useState<Record<string, CompositionIngredient[]>>({});
+  const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
 
@@ -66,6 +68,21 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
         .select('*');
 
       if (ingredientsError) throw ingredientsError;
+
+      // Load ingredient units
+      const uniqueIngredients = [...new Set(ingredientsData?.map(item => item.ingredient_name) || [])];
+      const { data: ingredientUnitsData, error: unitsError } = await supabase
+        .from('ingredients')
+        .select('name, unit')
+        .in('name', uniqueIngredients);
+
+      if (!unitsError && ingredientUnitsData) {
+        const unitsMap: Record<string, string> = {};
+        ingredientUnitsData.forEach(item => {
+          unitsMap[item.name] = item.unit;
+        });
+        setIngredientUnits(unitsMap);
+      }
 
       // Grupuj składniki według composition_id
       const ingredientsByComposition: Record<string, CompositionIngredient[]> = {};
@@ -114,10 +131,15 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
         const ingredientsList = compositionIngredients[composition.id] || [];
         
         ingredientsList.forEach((ingredient) => {
+          const actualUnit = ingredientUnits[ingredient.ingredient_name] || ingredient.unit;
+          
           if (ingredient.unit === 'krople') {
             // Przelicz krople na ml (20 kropel = 1ml)
             const mlNeeded = (ingredient.amount * quantity) / 20;
             needed[ingredient.ingredient_name] = (needed[ingredient.ingredient_name] || 0) + mlNeeded;
+          } else if (actualUnit === 'szt') {
+            // Dla sztuk
+            needed[ingredient.ingredient_name] = (needed[ingredient.ingredient_name] || 0) + (ingredient.amount * quantity);
           } else {
             // Dla gramów
             needed[ingredient.ingredient_name] = (needed[ingredient.ingredient_name] || 0) + (ingredient.amount * quantity);
@@ -137,6 +159,26 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
     return grossPrice - calculateNetPrice(grossPrice);
   };
 
+  const categorizeIngredients = (neededIngredients: Record<string, number>) => {
+    const herbs: [string, number][] = [];
+    const oils: [string, number][] = [];
+    const others: [string, number][] = [];
+
+    Object.entries(neededIngredients).forEach(([ingredient, amount]) => {
+      const unit = ingredientUnits[ingredient] || 'g';
+      
+      if (ingredient.includes('olejek')) {
+        oils.push([ingredient, amount]);
+      } else if (unit === 'g') {
+        herbs.push([ingredient, amount]);
+      } else {
+        others.push([ingredient, amount]);
+      }
+    });
+
+    return { herbs, oils, others };
+  };
+
   const generateShoppingListPDF = () => {
     const neededIngredients = calculateNeededIngredients();
     
@@ -145,6 +187,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
       return;
     }
 
+    const { herbs, oils, others } = categorizeIngredients(neededIngredients);
     const currentDate = new Date().toLocaleDateString('pl-PL');
     
     const pdfContent = `
@@ -245,12 +288,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
         <strong>Łączna liczba składników: ${Object.keys(neededIngredients).length}</strong>
     </div>
     
+    ${herbs.length > 0 ? `
     <div class="section">
         <div class="section-title">🌿 Surowce Ziołowe</div>
         <div class="ingredients-list">
-            ${Object.entries(neededIngredients)
-              .filter(([ingredient]) => !ingredient.includes('olejek'))
-              .map(([ingredient, amount]) => `
+            ${herbs.map(([ingredient, amount]) => `
                 <div class="ingredient-item">
                     <input type="checkbox" class="checkbox">
                     <span class="ingredient-name">${ingredient}</span>
@@ -259,13 +301,13 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
               `).join('')}
         </div>
     </div>
+    ` : ''}
     
+    ${oils.length > 0 ? `
     <div class="section">
         <div class="section-title">🌸 Olejki Eteryczne</div>
         <div class="ingredients-list">
-            ${Object.entries(neededIngredients)
-              .filter(([ingredient]) => ingredient.includes('olejek'))
-              .map(([ingredient, amount]) => `
+            ${oils.map(([ingredient, amount]) => `
                 <div class="ingredient-item">
                     <input type="checkbox" class="checkbox">
                     <span class="ingredient-name">${ingredient.replace('olejek ', '')}</span>
@@ -274,6 +316,25 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
               `).join('')}
         </div>
     </div>
+    ` : ''}
+    
+    ${others.length > 0 ? `
+    <div class="section">
+        <div class="section-title">📦 Inne</div>
+        <div class="ingredients-list">
+            ${others.map(([ingredient, amount]) => {
+              const unit = ingredientUnits[ingredient] || 'szt';
+              return `
+                <div class="ingredient-item">
+                    <input type="checkbox" class="checkbox">
+                    <span class="ingredient-name">${ingredient}</span>
+                    <span class="ingredient-amount">${amount.toFixed(unit === 'szt' ? 0 : 1)} ${unit}</span>
+                </div>
+              `;
+            }).join('')}
+        </div>
+    </div>
+    ` : ''}
     
     <div class="footer">
         <p>Lista wygenerowana z systemu zarządzania kompozycjami ziołowymi</p>
@@ -291,12 +352,17 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
   };
 
   const neededIngredients = calculateNeededIngredients();
+  const { herbs, oils, others } = categorizeIngredients(neededIngredients);
   
   // Oblicz całkowity koszt
   const totalCost = Object.entries(neededIngredients).reduce((sum, [ingredient, amount]) => {
     const price = prices[ingredient] || 0;
-    if (ingredient.includes('olejek')) {
+    const unit = ingredientUnits[ingredient] || 'g';
+    
+    if (unit === 'ml') {
       return sum + (amount * price); // olejki w ml
+    } else if (unit === 'szt') {
+      return sum + (amount * price); // sztuki
     } else {
       return sum + (amount * price / 100); // surowce - cena za 100g
     }
@@ -375,13 +441,12 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe</h3>
-                <div className="space-y-2">
-                  {Object.entries(neededIngredients)
-                    .filter(([ingredient]) => !ingredient.includes('olejek'))
-                    .map(([ingredient, amount]) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {herbs.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe</h3>
+                  <div className="space-y-2">
+                    {herbs.map(([ingredient, amount]) => (
                       <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                         <Checkbox
                           id={`herb-${ingredient}`}
@@ -401,15 +466,15 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
                         </div>
                       </div>
                     ))}
+                  </div>
                 </div>
-              </div>
+              )}
               
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne</h3>
-                <div className="space-y-2">
-                  {Object.entries(neededIngredients)
-                    .filter(([ingredient]) => ingredient.includes('olejek'))
-                    .map(([ingredient, amount]) => (
+              {oils.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne</h3>
+                  <div className="space-y-2">
+                    {oils.map(([ingredient, amount]) => (
                       <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                         <Checkbox
                           id={`oil-${ingredient}`}
@@ -429,8 +494,42 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
                         </div>
                       </div>
                     ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {others.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3">Inne</h3>
+                  <div className="space-y-2">
+                    {others.map(([ingredient, amount]) => {
+                      const unit = ingredientUnits[ingredient] || 'szt';
+                      const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
+                      
+                      return (
+                        <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                          <Checkbox
+                            id={`other-${ingredient}`}
+                            checked={checkedIngredients[ingredient] || false}
+                            onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                          />
+                          <div className="flex-1 flex justify-between items-center">
+                            <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                              {ingredient}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{displayAmount} {unit}</Badge>
+                              <span className="text-sm text-gray-600">
+                                {(amount * (prices[ingredient] || 0)).toFixed(2)} zł
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="mt-6 space-y-3">
