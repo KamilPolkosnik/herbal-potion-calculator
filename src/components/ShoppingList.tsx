@@ -5,11 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { FileDown } from 'lucide-react';
+import { FileDown, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ShoppingListProps {
   prices: Record<string, number>;
+  onPriceUpdate?: (ingredient: string, price: number) => void;
 }
 
 interface Composition {
@@ -28,17 +29,29 @@ interface CompositionIngredient {
 
 const VAT_RATE = 0.23; // 23% VAT
 
-const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
+const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) => {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [compositionIngredients, setCompositionIngredients] = useState<Record<string, CompositionIngredient[]>>({});
   const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
+  const [localPrices, setLocalPrices] = useState<Record<string, number>>({});
 
-  // Load checked ingredients from sessionStorage
+  // Load shopping list state from sessionStorage
   useEffect(() => {
+    const savedQuantities = sessionStorage.getItem('shopping-list-quantities');
     const savedCheckedIngredients = sessionStorage.getItem('shopping-list-checked');
+    const savedLocalPrices = sessionStorage.getItem('shopping-list-prices');
+    
+    if (savedQuantities) {
+      try {
+        setQuantities(JSON.parse(savedQuantities));
+      } catch (error) {
+        console.error('Error parsing saved quantities:', error);
+      }
+    }
+    
     if (savedCheckedIngredients) {
       try {
         setCheckedIngredients(JSON.parse(savedCheckedIngredients));
@@ -46,12 +59,41 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
         console.error('Error parsing saved checked ingredients:', error);
       }
     }
+
+    if (savedLocalPrices) {
+      try {
+        setLocalPrices(JSON.parse(savedLocalPrices));
+      } catch (error) {
+        console.error('Error parsing saved local prices:', error);
+      }
+    }
   }, []);
 
-  // Save checked ingredients to sessionStorage whenever it changes
+  // Save shopping list state to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('shopping-list-quantities', JSON.stringify(quantities));
+  }, [quantities]);
+
   useEffect(() => {
     sessionStorage.setItem('shopping-list-checked', JSON.stringify(checkedIngredients));
   }, [checkedIngredients]);
+
+  useEffect(() => {
+    sessionStorage.setItem('shopping-list-prices', JSON.stringify(localPrices));
+  }, [localPrices]);
+
+  // Initialize local prices with global prices
+  useEffect(() => {
+    setLocalPrices(prevLocalPrices => {
+      const updatedPrices = { ...prevLocalPrices };
+      Object.keys(prices).forEach(ingredient => {
+        if (!(ingredient in updatedPrices)) {
+          updatedPrices[ingredient] = prices[ingredient];
+        }
+      });
+      return updatedPrices;
+    });
+  }, [prices]);
 
   const loadCompositions = async () => {
     try {
@@ -118,6 +160,31 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
       ...prev,
       [ingredientName]: !prev[ingredientName]
     }));
+  };
+
+  const updateLocalPrice = async (ingredientName: string, newPrice: number) => {
+    setLocalPrices(prev => ({
+      ...prev,
+      [ingredientName]: newPrice
+    }));
+
+    // Update global price if onPriceUpdate is provided
+    if (onPriceUpdate) {
+      await onPriceUpdate(ingredientName, newPrice);
+    }
+  };
+
+  const clearShoppingList = () => {
+    setQuantities({});
+    setCheckedIngredients({});
+    setLocalPrices({});
+    sessionStorage.removeItem('shopping-list-quantities');
+    sessionStorage.removeItem('shopping-list-checked');
+    sessionStorage.removeItem('shopping-list-prices');
+  };
+
+  const getIngredientPrice = (ingredientName: string) => {
+    return localPrices[ingredientName] ?? prices[ingredientName] ?? 0;
   };
 
   // Obliczanie potrzebnych składników
@@ -356,9 +423,9 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
   const neededIngredients = calculateNeededIngredients();
   const { herbs, oils, others } = categorizeIngredients(neededIngredients);
   
-  // Oblicz całkowity koszt
+  // Oblicz całkowity koszt using local prices
   const totalCost = Object.entries(neededIngredients).reduce((sum, [ingredient, amount]) => {
-    const price = prices[ingredient] || 0;
+    const price = getIngredientPrice(ingredient);
     const unit = ingredientUnits[ingredient] || 'g';
     
     if (unit === 'ml') {
@@ -391,9 +458,19 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl text-center text-blue-700">
-            Lista Zakupów - Planowanie Zestawów
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl text-center text-blue-700">
+              Lista Zakupów - Planowanie Zestawów
+            </CardTitle>
+            <Button 
+              onClick={clearShoppingList} 
+              variant="outline" 
+              className="text-red-600 border-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Wyczyść
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {compositions.length === 0 ? (
@@ -449,22 +526,33 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
                   <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe (g)</h3>
                   <div className="space-y-2">
                     {herbs.map(([ingredient, amount]) => (
-                      <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                        <Checkbox
-                          id={`herb-${ingredient}`}
-                          checked={checkedIngredients[ingredient] || false}
-                          onCheckedChange={() => toggleIngredientCheck(ingredient)}
-                        />
-                        <div className="flex-1 flex justify-between items-center">
-                          <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
-                            {ingredient}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{amount.toFixed(1)} g</Badge>
-                            <span className="text-sm text-gray-600">
-                              {((amount * (prices[ingredient] || 0)) / 100).toFixed(2)} zł
+                      <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id={`herb-${ingredient}`}
+                            checked={checkedIngredients[ingredient] || false}
+                            onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                          />
+                          <div className="flex-1 flex justify-between items-center">
+                            <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                              {ingredient}
                             </span>
+                            <Badge variant="outline">{amount.toFixed(1)} g</Badge>
                           </div>
+                        </div>
+                        <div className="flex items-center gap-2 ml-6">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={getIngredientPrice(ingredient)}
+                            onChange={(e) => updateLocalPrice(ingredient, parseFloat(e.target.value) || 0)}
+                            className="w-20 h-7 text-xs"
+                            placeholder="0.00"
+                          />
+                          <span className="text-xs text-gray-600">zł/100g</span>
+                          <span className="text-sm text-gray-600 ml-auto">
+                            = {((amount * getIngredientPrice(ingredient)) / 100).toFixed(2)} zł
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -477,22 +565,33 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
                   <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne (ml)</h3>
                   <div className="space-y-2">
                     {oils.map(([ingredient, amount]) => (
-                      <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                        <Checkbox
-                          id={`oil-${ingredient}`}
-                          checked={checkedIngredients[ingredient] || false}
-                          onCheckedChange={() => toggleIngredientCheck(ingredient)}
-                        />
-                        <div className="flex-1 flex justify-between items-center">
-                          <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
-                            {ingredient.replace('olejek ', '')}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{amount.toFixed(1)} ml</Badge>
-                            <span className="text-sm text-gray-600">
-                              {(amount * (prices[ingredient] || 0)).toFixed(2)} zł
+                      <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            id={`oil-${ingredient}`}
+                            checked={checkedIngredients[ingredient] || false}
+                            onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                          />
+                          <div className="flex-1 flex justify-between items-center">
+                            <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                              {ingredient.replace('olejek ', '')}
                             </span>
+                            <Badge variant="outline">{amount.toFixed(1)} ml</Badge>
                           </div>
+                        </div>
+                        <div className="flex items-center gap-2 ml-6">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={getIngredientPrice(ingredient)}
+                            onChange={(e) => updateLocalPrice(ingredient, parseFloat(e.target.value) || 0)}
+                            className="w-20 h-7 text-xs"
+                            placeholder="0.00"
+                          />
+                          <span className="text-xs text-gray-600">zł/10ml</span>
+                          <span className="text-sm text-gray-600 ml-auto">
+                            = {(amount * getIngredientPrice(ingredient)).toFixed(2)} zł
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -509,22 +608,33 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
                       const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
                       
                       return (
-                        <div key={ingredient} className={`flex items-center gap-3 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                          <Checkbox
-                            id={`other-${ingredient}`}
-                            checked={checkedIngredients[ingredient] || false}
-                            onCheckedChange={() => toggleIngredientCheck(ingredient)}
-                          />
-                          <div className="flex-1 flex justify-between items-center">
-                            <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
-                              {ingredient}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{displayAmount} {unit}</Badge>
-                              <span className="text-sm text-gray-600">
-                                {(amount * (prices[ingredient] || 0)).toFixed(2)} zł
+                        <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              id={`other-${ingredient}`}
+                              checked={checkedIngredients[ingredient] || false}
+                              onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                            />
+                            <div className="flex-1 flex justify-between items-center">
+                              <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                                {ingredient}
                               </span>
+                              <Badge variant="outline">{displayAmount} {unit}</Badge>
                             </div>
+                          </div>
+                          <div className="flex items-center gap-2 ml-6">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={getIngredientPrice(ingredient)}
+                              onChange={(e) => updateLocalPrice(ingredient, parseFloat(e.target.value) || 0)}
+                              className="w-20 h-7 text-xs"
+                              placeholder="0.00"
+                            />
+                            <span className="text-xs text-gray-600">zł/{unit}</span>
+                            <span className="text-sm text-gray-600 ml-auto">
+                              = {(amount * getIngredientPrice(ingredient)).toFixed(2)} zł
+                            </span>
                           </div>
                         </div>
                       );
