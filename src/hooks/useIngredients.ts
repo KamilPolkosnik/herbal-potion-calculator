@@ -40,17 +40,45 @@ export const useIngredients = () => {
     }
   };
 
+  const determineUnit = (name: string) => {
+    // Sprawdź czy składnik już istnieje w bazie - jeśli tak, zachowaj jego jednostkę
+    // Jeśli nie, określ jednostkę na podstawie nazwy
+    if (name.toLowerCase().includes('olejek')) {
+      return 'ml';
+    } else if (name.toLowerCase().includes('woreczek') || name.toLowerCase().includes('pojemnik')) {
+      return 'szt.';
+    } else {
+      return 'g';
+    }
+  };
+
   const updateIngredient = async (name: string, amount: number) => {
     try {
       console.log('Updating ingredient:', name, amount);
       
+      // Najpierw sprawdź czy składnik już istnieje w bazie
+      const { data: existingIngredient, error: fetchError } = await supabase
+        .from('ingredients')
+        .select('unit')
+        .eq('name', name)
+        .single();
+
+      let unitToUse: string;
+      if (existingIngredient && !fetchError) {
+        // Użyj istniejącej jednostki
+        unitToUse = existingIngredient.unit;
+      } else {
+        // Określ jednostkę na podstawie nazwy
+        unitToUse = determineUnit(name);
+      }
+
       const { error } = await supabase
         .from('ingredients')
         .upsert({
           name,
           amount,
           price: prices[name] || 0,
-          unit: name.includes('olejek') ? 'ml' : 'g'
+          unit: unitToUse
         }, {
           onConflict: 'name'
         });
@@ -71,13 +99,29 @@ export const useIngredients = () => {
     try {
       console.log('Updating price:', name, price);
       
+      // Najpierw sprawdź czy składnik już istnieje w bazie
+      const { data: existingIngredient, error: fetchError } = await supabase
+        .from('ingredients')
+        .select('unit')
+        .eq('name', name)
+        .single();
+
+      let unitToUse: string;
+      if (existingIngredient && !fetchError) {
+        // Użyj istniejącej jednostki
+        unitToUse = existingIngredient.unit;
+      } else {
+        // Określ jednostkę na podstawie nazwy
+        unitToUse = determineUnit(name);
+      }
+
       const { error } = await supabase
         .from('ingredients')
         .upsert({
           name,
           amount: ingredients[name] || 0,
           price,
-          unit: name.includes('olejek') ? 'ml' : 'g'
+          unit: unitToUse
         }, {
           onConflict: 'name'
         });
