@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { FileDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ShoppingListProps {
@@ -135,6 +137,159 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
     return grossPrice - calculateNetPrice(grossPrice);
   };
 
+  const generateShoppingListPDF = () => {
+    const neededIngredients = calculateNeededIngredients();
+    
+    if (Object.keys(neededIngredients).length === 0) {
+      alert('Nie ma składników do wygenerowania listy zakupów. Ustaw ilości zestawów.');
+      return;
+    }
+
+    const currentDate = new Date().toLocaleDateString('pl-PL');
+    
+    const pdfContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Lista Zakupów</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            color: #333; 
+            line-height: 1.6;
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 15px;
+        }
+        .header h1 { 
+            color: #2E7D32; 
+            margin: 0; 
+            font-size: 28px;
+        }
+        .date { 
+            color: #666; 
+            margin-top: 10px; 
+            font-size: 14px;
+        }
+        .section { 
+            margin: 30px 0; 
+        }
+        .section-title { 
+            background-color: #E8F5E8; 
+            padding: 10px 15px; 
+            border-left: 4px solid #4CAF50;
+            font-size: 18px; 
+            font-weight: bold; 
+            color: #2E7D32;
+            margin-bottom: 15px;
+        }
+        .ingredients-list { 
+            display: grid; 
+            gap: 10px; 
+        }
+        .ingredient-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            padding: 12px 15px;
+            border: 1px solid #ddd; 
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .ingredient-name { 
+            font-weight: 500; 
+            text-transform: capitalize;
+            flex: 1;
+        }
+        .ingredient-amount { 
+            font-weight: bold; 
+            color: #2E7D32;
+            min-width: 80px;
+            text-align: right;
+        }
+        .checkbox { 
+            width: 18px; 
+            height: 18px; 
+            margin-right: 15px;
+            border: 2px solid #4CAF50;
+        }
+        .footer { 
+            margin-top: 40px; 
+            text-align: center; 
+            font-size: 12px; 
+            color: #666; 
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+        .summary {
+            background-color: #f0f8f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 Lista Zakupów</h1>
+        <div class="date">Wygenerowano: ${currentDate}</div>
+    </div>
+    
+    <div class="summary">
+        <strong>Łączna liczba składników: ${Object.keys(neededIngredients).length}</strong>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">🌿 Surowce Ziołowe</div>
+        <div class="ingredients-list">
+            ${Object.entries(neededIngredients)
+              .filter(([ingredient]) => !ingredient.includes('olejek'))
+              .map(([ingredient, amount]) => `
+                <div class="ingredient-item">
+                    <input type="checkbox" class="checkbox">
+                    <span class="ingredient-name">${ingredient}</span>
+                    <span class="ingredient-amount">${amount.toFixed(1)} g</span>
+                </div>
+              `).join('')}
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">🌸 Olejki Eteryczne</div>
+        <div class="ingredients-list">
+            ${Object.entries(neededIngredients)
+              .filter(([ingredient]) => ingredient.includes('olejek'))
+              .map(([ingredient, amount]) => `
+                <div class="ingredient-item">
+                    <input type="checkbox" class="checkbox">
+                    <span class="ingredient-name">${ingredient.replace('olejek ', '')}</span>
+                    <span class="ingredient-amount">${amount.toFixed(1)} ml</span>
+                </div>
+              `).join('')}
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Lista wygenerowana z systemu zarządzania kompozycjami ziołowymi</p>
+    </div>
+</body>
+</html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(pdfContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
   const neededIngredients = calculateNeededIngredients();
   
   // Oblicz całkowity koszt
@@ -209,9 +364,15 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices }) => {
       {Object.keys(neededIngredients).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl text-green-700">
-              Podsumowanie Potrzebnych Składników
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl text-green-700">
+                Podsumowanie Potrzebnych Składników
+              </CardTitle>
+              <Button onClick={generateShoppingListPDF} className="bg-green-600 hover:bg-green-700">
+                <FileDown className="w-4 h-4 mr-2" />
+                Generuj listę zakupów
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
