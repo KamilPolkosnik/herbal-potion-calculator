@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,17 +79,16 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     const others: string[] = [];
 
     ingredients.forEach(ingredient => {
-      const unit = ingredientUnits[ingredient] || 'g';
+      const unit = ingredientUnits[ingredient];
+      console.log(`Categorizing ${ingredient} with unit: ${unit}`);
       
       if (unit === 'ml') {
         oils.push(ingredient);
-      } else if (unit === 'g') {
-        herbs.push(ingredient);
-      } else if (unit === 'szt.' || unit === 'kpl.' || unit === 'szt') {
+      } else if (unit === 'szt.' || unit === 'szt' || unit === 'kpl.') {
         others.push(ingredient);
       } else {
-        // fallback for any other units
-        others.push(ingredient);
+        // Default to herbs for 'g' or any other unit
+        herbs.push(ingredient);
       }
     });
 
@@ -124,7 +122,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
 
   const { herbs, oils, others } = categorizeIngredients(usedIngredients);
 
-  const renderIngredientSection = (items: string[], title: string, unit: string, priceUnit: string) => {
+  const renderIngredientSection = (items: string[], title: string) => {
     if (items.length === 0) return null;
 
     return (
@@ -135,7 +133,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((ingredient) => {
-              const actualUnit = ingredientUnits[ingredient] || unit;
+              const actualUnit = ingredientUnits[ingredient] || 'g';
               const actualPriceUnit = (actualUnit === 'szt.' || actualUnit === 'kpl.' || actualUnit === 'szt') ? `zł/${actualUnit}` : 
                                      actualUnit === 'ml' ? 'zł/ml' : 'zł/100g';
               
@@ -197,9 +195,9 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         </Button>
       </div>
       
-      {renderIngredientSection(herbs, 'Surowce Ziołowe (g)', 'g', 'zł/100g')}
-      {renderIngredientSection(oils, 'Olejki Eteryczne (ml)', 'ml', 'zł/ml')}
-      {renderIngredientSection(others, 'Inne (szt/kpl)', 'szt.', 'zł/szt')}
+      {renderIngredientSection(herbs, 'Surowce Ziołowe (g)')}
+      {renderIngredientSection(oils, 'Olejki Eteryczne (ml)')}
+      {renderIngredientSection(others, 'Inne (szt/kpl)')}
     </div>
   );
 };
