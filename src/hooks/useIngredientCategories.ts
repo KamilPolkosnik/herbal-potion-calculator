@@ -6,20 +6,20 @@ export const useIngredientCategories = (ingredients: string[], ingredientUnits: 
     const others: string[] = [];
 
     ingredients.forEach(ingredient => {
-      // Use the actual unit from the database, not based on name
       const unit = ingredientUnits[ingredient];
-      console.log(`Categorizing ${ingredient} with unit: ${unit}`);
+      console.log(`Kategoryzowanie ${ingredient} z jednostką: ${unit}`);
       
       if (unit === 'ml') {
         oils.push(ingredient);
-      } else if (unit === 'szt.' || unit === 'szt' || unit === 'kpl.') {
+      } else if (unit === 'szt.' || unit === 'szt' || unit === 'kpl.' || unit === 'kpl') {
         others.push(ingredient);
       } else {
-        // Default to herbs for 'g' or any other unit
+        // Domyślnie dla 'g' lub innych jednostek
         herbs.push(ingredient);
       }
     });
 
+    console.log('Kategoryzacja wyników:', { herbs, oils, others });
     return { herbs, oils, others };
   };
 

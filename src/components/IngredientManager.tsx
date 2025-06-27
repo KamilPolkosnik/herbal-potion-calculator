@@ -20,32 +20,44 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
   const loadUsedIngredients = async () => {
     setLoadingIngredients(true);
     try {
-      const { data, error } = await supabase
+      console.log('Ładowanie używanych składników...');
+      
+      // Pobierz wszystkie składniki używane w zestawach
+      const { data: compositionIngredients, error } = await supabase
         .from('composition_ingredients')
         .select('ingredient_name');
       
       if (error) {
-        console.error('Error loading used ingredients:', error);
-      } else {
-        const uniqueIngredients = [...new Set(data?.map(item => item.ingredient_name) || [])];
-        setUsedIngredients(uniqueIngredients);
-
-        // Load units for each ingredient
-        const { data: ingredientsData, error: ingredientsError } = await supabase
-          .from('ingredients')
-          .select('name, unit')
-          .in('name', uniqueIngredients);
-
-        if (!ingredientsError && ingredientsData) {
-          const unitsMap: Record<string, string> = {};
-          ingredientsData.forEach(item => {
-            unitsMap[item.name] = item.unit;
-          });
-          setIngredientUnits(unitsMap);
-        }
+        console.error('Błąd podczas ładowania składników z zestawów:', error);
+        return;
       }
+
+      const uniqueIngredients = [...new Set(compositionIngredients?.map(item => item.ingredient_name) || [])];
+      console.log('Znalezione składniki w zestawach:', uniqueIngredients);
+      setUsedIngredients(uniqueIngredients);
+
+      // Pobierz jednostki dla każdego składnika z tabeli ingredients
+      const { data: ingredientsData, error: ingredientsError } = await supabase
+        .from('ingredients')
+        .select('name, unit')
+        .in('name', uniqueIngredients);
+
+      if (ingredientsError) {
+        console.error('Błąd podczas ładowania jednostek składników:', ingredientsError);
+        return;
+      }
+
+      const unitsMap: Record<string, string> = {};
+      ingredientsData?.forEach(item => {
+        unitsMap[item.name] = item.unit;
+        console.log(`Składnik: ${item.name}, Jednostka: ${item.unit}`);
+      });
+      
+      setIngredientUnits(unitsMap);
+      console.log('Mapa jednostek składników:', unitsMap);
+      
     } catch (error) {
-      console.error('Error loading used ingredients:', error);
+      console.error('Błąd podczas ładowania składników:', error);
     } finally {
       setLoadingIngredients(false);
     }

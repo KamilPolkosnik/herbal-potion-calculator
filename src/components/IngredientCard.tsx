@@ -20,18 +20,33 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
   onAmountUpdate,
   onPriceUpdate
 }) => {
-  const actualPriceUnit = (unit === 'szt.' || unit === 'kpl.' || unit === 'szt') ? `zł/${unit}` : 
-                         unit === 'ml' ? 'zł/ml' : 'zł/100g';
+  // Określ odpowiednią jednostkę ceny na podstawie jednostki produktu
+  const getPriceUnit = (unit: string) => {
+    if (unit === 'ml') {
+      return 'zł/10ml';
+    } else if (unit === 'szt.' || unit === 'szt') {
+      return 'zł/szt';
+    } else if (unit === 'kpl.' || unit === 'kpl') {
+      return 'zł/kpl';
+    } else {
+      return 'zł/100g';
+    }
+  };
 
   const calculateValue = () => {
-    if (unit === 'szt.' || unit === 'kpl.' || unit === 'szt') {
-      return (amount * price).toFixed(2);
-    } else if (unit === 'ml') {
+    if (unit === 'ml') {
+      // Dla olejków: cena za 10ml, więc wartość = (ilość/10) * cena
+      return (amount * price / 10).toFixed(2);
+    } else if (unit === 'szt.' || unit === 'kpl.' || unit === 'szt' || unit === 'kpl') {
+      // Dla sztuk/kompletów: wartość = ilość * cena
       return (amount * price).toFixed(2);
     } else {
+      // Dla gramów: cena za 100g, więc wartość = (ilość/100) * cena
       return (amount * price / 100).toFixed(2);
     }
   };
+
+  const actualPriceUnit = getPriceUnit(unit);
 
   return (
     <div className="space-y-2 p-4 border rounded-lg bg-white">
