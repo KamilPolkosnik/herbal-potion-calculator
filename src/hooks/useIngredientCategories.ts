@@ -13,9 +13,23 @@ export const useIngredientCategories = (ingredients: string[], ingredientUnits: 
         oils.push(ingredient);
       } else if (unit === 'szt.' || unit === 'szt' || unit === 'kpl.' || unit === 'kpl') {
         others.push(ingredient);
-      } else {
-        // Domyślnie dla 'g' lub innych jednostek
+      } else if (unit === 'g') {
         herbs.push(ingredient);
+      } else {
+        // Fallback logic based on ingredient name when unit is undefined
+        if (ingredient.toLowerCase().includes('olejek')) {
+          oils.push(ingredient);
+          console.log(`Fallback: ${ingredient} przypisany do olejków`);
+        } else if (ingredient.toLowerCase().includes('worek') || 
+                   ingredient.toLowerCase().includes('woreczek') || 
+                   ingredient.toLowerCase().includes('pojemnik') ||
+                   ingredient.toLowerCase().includes('szt')) {
+          others.push(ingredient);
+          console.log(`Fallback: ${ingredient} przypisany do innych`);
+        } else {
+          herbs.push(ingredient);
+          console.log(`Fallback: ${ingredient} przypisany do ziół`);
+        }
       }
     });
 

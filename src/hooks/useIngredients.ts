@@ -45,8 +45,10 @@ export const useIngredients = () => {
     // Jeśli nie, określ jednostkę na podstawie nazwy
     if (name.toLowerCase().includes('olejek')) {
       return 'ml';
-    } else if (name.toLowerCase().includes('woreczek') || name.toLowerCase().includes('pojemnik')) {
-      return 'szt.';
+    } else if (name.toLowerCase().includes('woreczek') || 
+               name.toLowerCase().includes('worek') || 
+               name.toLowerCase().includes('pojemnik')) {
+      return 'szt';
     } else {
       return 'g';
     }

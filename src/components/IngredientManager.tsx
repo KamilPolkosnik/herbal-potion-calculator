@@ -39,8 +39,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       // Pobierz jednostki dla każdego składnika z tabeli ingredients
       const { data: ingredientsData, error: ingredientsError } = await supabase
         .from('ingredients')
-        .select('name, unit')
-        .in('name', uniqueIngredients);
+        .select('name, unit');
 
       if (ingredientsError) {
         console.error('Błąd podczas ładowania jednostek składników:', ingredientsError);
@@ -51,6 +50,23 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       ingredientsData?.forEach(item => {
         unitsMap[item.name] = item.unit;
         console.log(`Składnik: ${item.name}, Jednostka: ${item.unit}`);
+      });
+
+      // Dodaj jednostki dla składników, które mogą nie być jeszcze w tabeli ingredients
+      uniqueIngredients.forEach(ingredientName => {
+        if (!unitsMap[ingredientName]) {
+          // Określ jednostkę na podstawie nazwy składnika
+          if (ingredientName.toLowerCase().includes('olejek')) {
+            unitsMap[ingredientName] = 'ml';
+          } else if (ingredientName.toLowerCase().includes('worek') || 
+                     ingredientName.toLowerCase().includes('woreczek') || 
+                     ingredientName.toLowerCase().includes('pojemnik')) {
+            unitsMap[ingredientName] = 'szt';
+          } else {
+            unitsMap[ingredientName] = 'g';
+          }
+          console.log(`Jednostka domyślna dla ${ingredientName}: ${unitsMap[ingredientName]}`);
+        }
       });
       
       setIngredientUnits(unitsMap);
