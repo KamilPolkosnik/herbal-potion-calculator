@@ -210,7 +210,7 @@ const CompositionManager: React.FC<CompositionManagerProps> = ({ onDataChange })
       unit = 'krople';
     } else if (newIngredient.category === 'zioło') {
       unit = 'g';
-    } else if (newIngredient.category === 'inne' && newIngredient.customUnit) {
+    } else if (newIngredient.category === 'inne') {
       unit = newIngredient.customUnit;
     }
 
@@ -551,7 +551,7 @@ const CompositionManager: React.FC<CompositionManagerProps> = ({ onDataChange })
                         ...prev, 
                         category: value,
                         unit: value === 'olejek' ? 'krople' : value === 'zioło' ? 'g' : prev.unit,
-                        customUnit: value !== 'inne' ? '' : prev.customUnit
+                        customUnit: value === 'inne' ? 'szt.' : ''
                       }))}
                     >
                       <SelectTrigger>
@@ -604,11 +604,18 @@ const CompositionManager: React.FC<CompositionManagerProps> = ({ onDataChange })
                   <div>
                     <Label>Jednostka</Label>
                     {newIngredient.category === 'inne' ? (
-                      <Input
+                      <Select
                         value={newIngredient.customUnit}
-                        onChange={(e) => setNewIngredient(prev => ({ ...prev, customUnit: e.target.value }))}
-                        placeholder="Wpisz jednostkę"
-                      />
+                        onValueChange={(value) => setNewIngredient(prev => ({ ...prev, customUnit: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Wybierz jednostkę" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="szt.">szt.</SelectItem>
+                          <SelectItem value="kpl.">kpl.</SelectItem>
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <Input
                         value={newIngredient.unit}
