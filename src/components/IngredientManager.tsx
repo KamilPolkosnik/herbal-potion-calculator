@@ -86,7 +86,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         oils.push(ingredient);
       } else if (unit === 'g') {
         herbs.push(ingredient);
-      } else if (unit === 'szt') {
+      } else if (unit === 'szt.' || unit === 'kpl.' || unit === 'szt') {
         others.push(ingredient);
       } else {
         // fallback for any other units
@@ -136,7 +136,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((ingredient) => {
               const actualUnit = ingredientUnits[ingredient] || unit;
-              const actualPriceUnit = actualUnit === 'szt' ? 'zł/szt' : 
+              const actualPriceUnit = (actualUnit === 'szt.' || actualUnit === 'kpl.' || actualUnit === 'szt') ? `zł/${actualUnit}` : 
                                      actualUnit === 'ml' ? 'zł/ml' : 'zł/100g';
               
               return (
@@ -169,7 +169,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
                     </div>
                   </div>
                   <div className="text-xs text-gray-600 text-center mt-2">
-                    Wartość: {actualUnit === 'szt' 
+                    Wartość: {(actualUnit === 'szt.' || actualUnit === 'kpl.' || actualUnit === 'szt')
                       ? ((ingredients[ingredient] || 0) * (prices[ingredient] || 0)).toFixed(2)
                       : actualUnit === 'ml' 
                         ? ((ingredients[ingredient] || 0) * (prices[ingredient] || 0)).toFixed(2)
@@ -199,7 +199,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       
       {renderIngredientSection(herbs, 'Surowce Ziołowe (g)', 'g', 'zł/100g')}
       {renderIngredientSection(oils, 'Olejki Eteryczne (ml)', 'ml', 'zł/ml')}
-      {renderIngredientSection(others, 'Inne (szt)', 'szt', 'zł/szt')}
+      {renderIngredientSection(others, 'Inne (szt/kpl)', 'szt.', 'zł/szt')}
     </div>
   );
 };
