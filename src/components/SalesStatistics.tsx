@@ -3,14 +3,18 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, DollarSign, Package, BarChart3, TrendingDown, FileText, Download } from 'lucide-react';
+import { TrendingUp, DollarSign, Package, BarChart3, TrendingDown, Download } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useIngredients } from '@/hooks/useIngredients';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 
-const SalesStatistics: React.FC = () => {
+interface SalesStatisticsProps {
+  onRefresh?: () => void;
+}
+
+const SalesStatistics: React.FC<SalesStatisticsProps> = ({ onRefresh }) => {
   const { transactions, loading } = useSales();
   const { ingredients, prices } = useIngredients();
   
@@ -44,7 +48,6 @@ const SalesStatistics: React.FC = () => {
       years.add(year);
     });
     
-    // Add current year if not present
     years.add(currentDate.getFullYear());
     
     return Array.from(years).sort((a, b) => b - a);
@@ -78,16 +81,18 @@ const SalesStatistics: React.FC = () => {
       totalSales: filteredTransactions.length,
       totalRevenue: filteredTransactions.reduce((sum, t) => sum + t.total_price, 0),
       totalQuantity: filteredTransactions.reduce((sum, t) => sum + t.quantity, 0),
-      transactions: filteredTransactions
+      transactions: filteredTransactions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     };
 
-    // Utwórz PDF
     const doc = new jsPDF();
     
-    // Nagłówek
+    // Nagłówek raportu
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.text(`RAPORT SPRZEDAŻY - ${reportData.period}`, 105, 20, { align: 'center' });
+    
+    // Linia oddzielająca
+    doc.line(20, 25, 190, 25);
     
     // Podsumowanie
     doc.setFontSize(12);
@@ -95,33 +100,82 @@ const SalesStatistics: React.FC = () => {
     
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Liczba transakcji: ${reportData.totalSales}`, 20, 50);
-    doc.text(`Łączny przychód: ${reportData.totalRevenue.toFixed(2)} zł`, 20, 57);
-    doc.text(`Łączna ilość: ${reportData.totalQuantity} szt.`, 20, 64);
-    doc.text(`Średnia wartość transakcji: ${reportData.totalSales > 0 ? (reportData.totalRevenue / reportData.totalSales).toFixed(2) : 0} zł`, 20, 71);
+    
+    // Ramka dla podsumowania
+    doc.rect(20, 45, 170, 30);
+    
+    doc.text(`Liczba transakcji: ${reportData.totalSales}`, 25, 53);
+    doc.text(`Łączny przychód: ${reportData.totalRevenue.toFixed(2)} zł`, 25, 59);
+    doc.text(`Łączna ilość sprzedanych produktów: ${reportData.totalQuantity} szt.`, 25, 65);
+    doc.text(`Średnia wartość transakcji: ${reportData.totalSales > 0 ? (reportData.totalRevenue / reportData.totalSales).toFixed(2) : '0.00'} zł`, 25, 71);
     
     // Szczegółowe transakcje
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('SZCZEGÓŁOWE TRANSAKCJE:', 20, 90);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    
-    let yPos = 100;
-    const pageHeight = doc.internal.pageSize.height;
-    
-    reportData.transactions.forEach((transaction, index) => {
-      if (yPos > pageHeight - 30) {
-        doc.addPage();
-        yPos = 20;
-      }
+    if (reportData.transactions.length > 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('SZCZEGÓŁOWE TRANSAKCJE:', 20, 90);
       
-      const dateStr = format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl });
-      const line = `${dateStr} - ${transaction.composition_name} (${transaction.quantity} szt.) - ${transaction.total_price.toFixed(2)} zł`;
-      doc.text(line, 20, yPos);
-      yPos += 5;
-    });
+      // Nagłówek tabeli transakcji
+      doc.setFontSize(8);
+      doc.rect(20, 95, 170, 8);
+      doc.text('Data', 22, 100);
+      doc.text('Produkt', 45, 100);
+      doc.text('Ilość', 100, 100);
+      doc.text('Cena jedn.', 120, 100);
+      doc.text('Łącznie', 145, 100);
+      doc.text('Kupujący', 165, 100);
+      
+      let yPos = 103;
+      const pageHeight = doc.internal.pageSize.height;
+      
+      doc.setFont('helvetica', 'normal');
+      
+      reportData.transactions.forEach((transaction, index) => {
+        if (yPos > pageHeight - 30) {
+          doc.addPage();
+          yPos = 20;
+          
+          // Powtórz nagłówek tabeli na nowej stronie
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.rect(20, yPos, 170, 8);
+          doc.text('Data', 22, yPos + 5);
+          doc.text('Produkt', 45, yPos + 5);
+          doc.text('Ilość', 100, yPos + 5);
+          doc.text('Cena jedn.', 120, yPos + 5);
+          doc.text('Łącznie', 145, yPos + 5);
+          doc.text('Kupujący', 165, yPos + 5);
+          yPos += 8;
+          doc.setFont('helvetica', 'normal');
+        }
+        
+        doc.rect(20, yPos, 170, 6);
+        
+        const dateStr = format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl });
+        const productName = transaction.composition_name.length > 20 ? 
+                           transaction.composition_name.substring(0, 20) + '...' : 
+                           transaction.composition_name;
+        const buyerName = (transaction.buyer_name || 'Klient ind.').length > 15 ? 
+                         (transaction.buyer_name || 'Klient ind.').substring(0, 15) + '...' : 
+                         (transaction.buyer_name || 'Klient ind.');
+        
+        doc.text(dateStr, 22, yPos + 4);
+        doc.text(productName, 45, yPos + 4);
+        doc.text(`${transaction.quantity}`, 100, yPos + 4);
+        doc.text(`${transaction.unit_price.toFixed(2)} zł`, 120, yPos + 4);
+        doc.text(`${transaction.total_price.toFixed(2)} zł`, 145, yPos + 4);
+        doc.text(buyerName, 165, yPos + 4);
+        
+        yPos += 6;
+      });
+      
+      // Dodaj przestrzeń przed stopką
+      yPos += 10;
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Brak transakcji w wybranym okresie.', 20, 100);
+    }
     
     // Stopka
     if (yPos > pageHeight - 20) {
@@ -129,11 +183,21 @@ const SalesStatistics: React.FC = () => {
       yPos = 20;
     }
     
-    doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, yPos + 10);
+    doc.line(20, yPos, 190, yPos);
+    doc.setFontSize(8);
+    doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, yPos + 8);
     
     // Zapisz PDF
-    doc.save(`raport_sprzedazy_${reportType}_${selectedYear}${reportType === 'monthly' ? `_${selectedMonth.toString().padStart(2, '0')}` : ''}.pdf`);
+    const fileName = `raport_sprzedazy_${reportType}_${selectedYear}${reportType === 'monthly' ? `_${selectedMonth.toString().padStart(2, '0')}` : ''}.pdf`;
+    doc.save(fileName);
   };
+
+  // React.useEffect do odświeżania danych po zmianie
+  React.useEffect(() => {
+    if (onRefresh) {
+      onRefresh();
+    }
+  }, [onRefresh]);
 
   if (loading) {
     return (
@@ -149,16 +213,12 @@ const SalesStatistics: React.FC = () => {
   const totalQuantity = filteredTransactions.reduce((sum, t) => sum + t.quantity, 0);
   const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-  // Calculate total costs (ingredients used in sold compositions)
   const totalCosts = filteredTransactions.reduce((sum, transaction) => {
-    // For simplicity, we'll estimate cost as 30% of revenue
-    // In a real scenario, you'd calculate actual ingredient costs used
     return sum + (transaction.total_price * 0.3);
   }, 0);
 
   const totalProfit = totalRevenue - totalCosts;
 
-  // Get composition sales breakdown
   const compositionSales = filteredTransactions.reduce((acc, transaction) => {
     const existing = acc.find(item => item.name === transaction.composition_name);
     if (existing) {
@@ -176,7 +236,6 @@ const SalesStatistics: React.FC = () => {
     return acc;
   }, [] as Array<{ name: string; quantity: number; revenue: number; count: number }>);
 
-  // Sort by revenue
   compositionSales.sort((a, b) => b.revenue - a.revenue);
   const topCompositions = compositionSales.slice(0, 5);
 

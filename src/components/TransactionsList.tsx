@@ -36,6 +36,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
         description: `Transakcja dla ${compositionName} została cofnięta`,
       });
 
+      // Wywołaj callback dla odświeżenia danych w komponencie nadrzędnym
       if (onDataChange) {
         await onDataChange();
       }
@@ -58,6 +59,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
         description: `Transakcja dla ${compositionName} została usunięta`,
       });
 
+      // Wywołaj callback dla odświeżenia danych w komponencie nadrzędnym
       if (onDataChange) {
         await onDataChange();
       }
@@ -205,7 +207,6 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                             Cofnij
                           </Button>
                         ) : (
-                          // Przycisk "Usuń" tylko dla administratorów
                           user?.role === 'admin' && (
                             <Button
                               variant="destructive"
