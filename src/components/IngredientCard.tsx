@@ -2,6 +2,8 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Info } from 'lucide-react';
 
 interface IngredientCardProps {
   ingredient: string;
@@ -10,6 +12,12 @@ interface IngredientCardProps {
   price: number;
   onAmountUpdate: (ingredient: string, value: number) => void;
   onPriceUpdate: (ingredient: string, value: number) => void;
+  compositionUsage?: Array<{
+    id: string;
+    name: string;
+    amount: number;
+    unit: string;
+  }>;
 }
 
 const IngredientCard: React.FC<IngredientCardProps> = ({
@@ -18,7 +26,8 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
   amount,
   price,
   onAmountUpdate,
-  onPriceUpdate
+  onPriceUpdate,
+  compositionUsage = []
 }) => {
   // Określ odpowiednią jednostkę ceny na podstawie jednostki produktu
   const getPriceUnit = (unit: string) => {
@@ -50,9 +59,34 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
 
   return (
     <div className="space-y-2 p-4 border rounded-lg bg-white">
-      <Label htmlFor={ingredient} className="text-sm font-medium capitalize">
-        {ingredient}
-      </Label>
+      <div className="flex items-center justify-between">
+        <Label htmlFor={ingredient} className="text-sm font-medium capitalize">
+          {ingredient}
+        </Label>
+        {compositionUsage.length > 0 && (
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <Info className="h-4 w-4 text-blue-500 cursor-help" />
+            </HoverCardTrigger>
+            <HoverCardContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">Użyty w zestawach:</h4>
+                <div className="space-y-1">
+                  {compositionUsage.map((usage) => (
+                    <div key={usage.id} className="text-xs text-gray-600">
+                      <span className="font-medium">{usage.name}</span>
+                      <span className="ml-2 text-gray-500">
+                        ({usage.amount} {usage.unit})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        )}
+      </div>
+      
       <div className="grid grid-cols-2 gap-2">
         <div>
           <Label className="text-xs text-gray-500">Stan ({unit})</Label>

@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useIngredientCategories } from '@/hooks/useIngredientCategories';
+import { useIngredientCompositions } from '@/hooks/useIngredientCompositions';
+import IngredientFilters from './IngredientFilters';
 import IngredientInfoBox from './IngredientInfoBox';
 import IngredientSection from './IngredientSection';
 import EmptyIngredientsState from './EmptyIngredientsState';
@@ -13,9 +15,12 @@ interface IngredientManagerProps {
 
 const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) => {
   const { ingredients, prices, loading, updateIngredient, updatePrice, refreshData } = useIngredients();
+  const { compositionUsage, loading: compositionLoading, refreshCompositionUsage } = useIngredientCompositions();
   const [usedIngredients, setUsedIngredients] = useState<string[]>([]);
+  const [filteredIngredients, setFilteredIngredients] = useState<string[]>([]);
   const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
   const [loadingIngredients, setLoadingIngredients] = useState(true);
+  const [filters, setFilters] = useState({ searchTerm: '', selectedComposition: '' });
 
   const loadUsedIngredients = async () => {
     setLoadingIngredients(true);
@@ -79,12 +84,50 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     }
   };
 
+  const applyFilters = async (ingredients: string[]) => {
+    let filtered = [...ingredients];
+
+    // Filtruj według nazwy składnika
+    if (filters.searchTerm) {
+      filtered = filtered.filter(ingredient =>
+        ingredient.toLowerCase().includes(filters.searchTerm.toLowerCase())
+      );
+    }
+
+    // Filtruj według wybranego zestawu
+    if (filters.selectedComposition) {
+      try {
+        const { data: compositionIngredients, error } = await supabase
+          .from('composition_ingredients')
+          .select('ingredient_name')
+          .eq('composition_id', filters.selectedComposition);
+
+        if (error) {
+          console.error('Błąd podczas filtrowania według zestawu:', error);
+          return;
+        }
+
+        const compositionIngredientNames = compositionIngredients?.map(item => item.ingredient_name) || [];
+        filtered = filtered.filter(ingredient => compositionIngredientNames.includes(ingredient));
+      } catch (error) {
+        console.error('Błąd podczas filtrowania według zestawu:', error);
+      }
+    }
+
+    setFilteredIngredients(filtered);
+  };
+
   useEffect(() => {
     loadUsedIngredients();
+    refreshCompositionUsage();
   }, []);
 
+  useEffect(() => {
+    applyFilters(usedIngredients);
+  }, [usedIngredients, filters]);
+
   const handleRefresh = async () => {
-    await Promise.all([loadUsedIngredients(), refreshData()]);
+    await Promise.all([loadUsedIngredients(), refreshData(), refreshCompositionUsage()]);
   };
 
   const handleIngredientUpdate = async (ingredient: string, value: number) => {
@@ -101,9 +144,13 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     }
   };
 
-  const { herbs, oils, others } = useIngredientCategories(usedIngredients, ingredientUnits);
+  const handleFilterChange = (newFilters: { searchTerm: string; selectedComposition: string }) => {
+    setFilters(newFilters);
+  };
 
-  if (loading || loadingIngredients) {
+  const { herbs, oils, others } = useIngredientCategories(filteredIngredients, ingredientUnits);
+
+  if (loading || loadingIngredients || compositionLoading) {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="text-lg">Ładowanie danych...</div>
@@ -117,6 +164,8 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
 
   return (
     <div className="space-y-6">
+      <IngredientFilters onFilterChange={handleFilterChange} />
+      
       <IngredientInfoBox onRefresh={handleRefresh} isLoading={loadingIngredients} />
       
       <IngredientSection
@@ -127,6 +176,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         ingredientUnits={ingredientUnits}
         onAmountUpdate={handleIngredientUpdate}
         onPriceUpdate={handlePriceUpdate}
+        compositionUsage={compositionUsage}
       />
       
       <IngredientSection
@@ -137,6 +187,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         ingredientUnits={ingredientUnits}
         onAmountUpdate={handleIngredientUpdate}
         onPriceUpdate={handlePriceUpdate}
+        compositionUsage={compositionUsage}
       />
       
       <IngredientSection
@@ -147,6 +198,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         ingredientUnits={ingredientUnits}
         onAmountUpdate={handleIngredientUpdate}
         onPriceUpdate={handlePriceUpdate}
+        compositionUsage={compositionUsage}
       />
     </div>
   );

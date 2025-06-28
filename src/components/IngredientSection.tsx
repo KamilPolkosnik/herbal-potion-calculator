@@ -11,6 +11,12 @@ interface IngredientSectionProps {
   ingredientUnits: Record<string, string>;
   onAmountUpdate: (ingredient: string, value: number) => void;
   onPriceUpdate: (ingredient: string, value: number) => void;
+  compositionUsage: Record<string, Array<{
+    id: string;
+    name: string;
+    amount: number;
+    unit: string;
+  }>>;
 }
 
 const IngredientSection: React.FC<IngredientSectionProps> = ({
@@ -20,7 +26,8 @@ const IngredientSection: React.FC<IngredientSectionProps> = ({
   prices,
   ingredientUnits,
   onAmountUpdate,
-  onPriceUpdate
+  onPriceUpdate,
+  compositionUsage
 }) => {
   if (items.length === 0) return null;
 
@@ -43,6 +50,7 @@ const IngredientSection: React.FC<IngredientSectionProps> = ({
                 price={prices[ingredient] || 0}
                 onAmountUpdate={onAmountUpdate}
                 onPriceUpdate={onPriceUpdate}
+                compositionUsage={compositionUsage[ingredient] || []}
               />
             );
           })}
