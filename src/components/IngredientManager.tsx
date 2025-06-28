@@ -84,8 +84,8 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     }
   };
 
-  const applyFilters = async (ingredients: string[]) => {
-    let filtered = [...ingredients];
+  const applyFilters = async () => {
+    let filtered = [...usedIngredients];
 
     // Filtruj według nazwy składnika
     if (filters.searchTerm) {
@@ -111,6 +111,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         filtered = filtered.filter(ingredient => compositionIngredientNames.includes(ingredient));
       } catch (error) {
         console.error('Błąd podczas filtrowania według zestawu:', error);
+        return;
       }
     }
 
@@ -123,7 +124,9 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
   }, []);
 
   useEffect(() => {
-    applyFilters(usedIngredients);
+    if (usedIngredients.length > 0) {
+      applyFilters();
+    }
   }, [usedIngredients, filters]);
 
   const handleRefresh = async () => {
