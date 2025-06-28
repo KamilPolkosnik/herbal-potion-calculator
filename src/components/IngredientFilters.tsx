@@ -89,7 +89,7 @@ const IngredientFilters: React.FC<IngredientFiltersProps> = ({ onFilterChange })
               <SelectValue placeholder="Wybierz zestaw..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Wszystkie składniki</SelectItem>
+              <SelectItem value="all">Wszystkie składniki</SelectItem>
               {compositions.map((composition) => (
                 <SelectItem key={composition.id} value={composition.id}>
                   {composition.name}

@@ -95,7 +95,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     }
 
     // Filtruj według wybranego zestawu
-    if (filters.selectedComposition) {
+    if (filters.selectedComposition && filters.selectedComposition !== 'all') {
       try {
         const { data: compositionIngredients, error } = await supabase
           .from('composition_ingredients')
