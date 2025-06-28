@@ -84,50 +84,51 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     }
   };
 
-  const applyFilters = async () => {
-    let filtered = [...usedIngredients];
-
-    // Filtruj według nazwy składnika
-    if (filters.searchTerm) {
-      filtered = filtered.filter(ingredient =>
-        ingredient.toLowerCase().includes(filters.searchTerm.toLowerCase())
-      );
-    }
-
-    // Filtruj według wybranego zestawu
-    if (filters.selectedComposition && filters.selectedComposition !== 'all') {
-      try {
-        const { data: compositionIngredients, error } = await supabase
-          .from('composition_ingredients')
-          .select('ingredient_name')
-          .eq('composition_id', filters.selectedComposition);
-
-        if (error) {
-          console.error('Błąd podczas filtrowania według zestawu:', error);
-          return;
-        }
-
-        const compositionIngredientNames = compositionIngredients?.map(item => item.ingredient_name) || [];
-        filtered = filtered.filter(ingredient => compositionIngredientNames.includes(ingredient));
-      } catch (error) {
-        console.error('Błąd podczas filtrowania według zestawu:', error);
-        return;
-      }
-    }
-
-    setFilteredIngredients(filtered);
-  };
-
   useEffect(() => {
     loadUsedIngredients();
     refreshCompositionUsage();
   }, []);
 
+  // Separate useEffect for filtering logic
   useEffect(() => {
-    if (usedIngredients.length > 0) {
-      applyFilters();
-    }
-  }, [usedIngredients, filters]);
+    if (usedIngredients.length === 0) return;
+
+    const applyFiltersSync = async () => {
+      let filtered = [...usedIngredients];
+
+      // Filtruj według nazwy składnika
+      if (filters.searchTerm) {
+        filtered = filtered.filter(ingredient =>
+          ingredient.toLowerCase().includes(filters.searchTerm.toLowerCase())
+        );
+      }
+
+      // Filtruj według wybranego zestawu
+      if (filters.selectedComposition && filters.selectedComposition !== 'all') {
+        try {
+          const { data: compositionIngredients, error } = await supabase
+            .from('composition_ingredients')
+            .select('ingredient_name')
+            .eq('composition_id', filters.selectedComposition);
+
+          if (error) {
+            console.error('Błąd podczas filtrowania według zestawu:', error);
+            return;
+          }
+
+          const compositionIngredientNames = compositionIngredients?.map(item => item.ingredient_name) || [];
+          filtered = filtered.filter(ingredient => compositionIngredientNames.includes(ingredient));
+        } catch (error) {
+          console.error('Błąd podczas filtrowania według zestawu:', error);
+          return;
+        }
+      }
+
+      setFilteredIngredients(filtered);
+    };
+
+    applyFiltersSync();
+  }, [usedIngredients, filters.searchTerm, filters.selectedComposition]);
 
   const handleRefresh = async () => {
     await Promise.all([loadUsedIngredients(), refreshData(), refreshCompositionUsage()]);
