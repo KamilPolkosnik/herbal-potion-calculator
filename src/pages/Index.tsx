@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -105,7 +104,7 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <SalesManager />
+              <SalesManager onDataChange={refreshSummary} />
             </CardContent>
           </Card>
         );

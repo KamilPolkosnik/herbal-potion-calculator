@@ -6,7 +6,6 @@ import { SalesTransaction } from '@/hooks/useSales';
 import { CompanySettings } from '@/hooks/useCompanySettings';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import jsPDF from 'jspdf';
 
 interface InvoiceGeneratorProps {
   transaction: SalesTransaction;
@@ -20,175 +19,98 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   transactionNumber 
 }) => {
   const generatePDF = () => {
-    const doc = new jsPDF();
+    const invoiceContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Faktura ${transactionNumber}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .company-info, .buyer-info { width: 45%; }
+        .invoice-title { text-align: center; font-size: 24px; font-weight: bold; margin: 30px 0; }
+        .invoice-details { margin: 20px 0; }
+        .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .items-table th { background-color: #f2f2f2; }
+        .total { text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px; }
+        .footer { margin-top: 40px; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-info">
+            <h3>Sprzedawca:</h3>
+            <p><strong>${companySettings?.company_name || 'Nazwa firmy'}</strong></p>
+            ${companySettings?.company_address ? `<p>${companySettings.company_address}</p>` : ''}
+            ${companySettings?.company_tax_id ? `<p>NIP: ${companySettings.company_tax_id}</p>` : ''}
+            ${companySettings?.company_phone ? `<p>Tel: ${companySettings.company_phone}</p>` : ''}
+            ${companySettings?.company_email ? `<p>Email: ${companySettings.company_email}</p>` : ''}
+        </div>
+        <div class="buyer-info">
+            <h3>Nabywca:</h3>
+            ${transaction.buyer_name ? `<p><strong>${transaction.buyer_name}</strong></p>` : '<p>Klient indywidualny</p>'}
+            ${transaction.buyer_address ? `<p>${transaction.buyer_address}</p>` : ''}
+            ${transaction.buyer_tax_id ? `<p>NIP: ${transaction.buyer_tax_id}</p>` : ''}
+            ${transaction.buyer_phone ? `<p>Tel: ${transaction.buyer_phone}</p>` : ''}
+            ${transaction.buyer_email ? `<p>Email: ${transaction.buyer_email}</p>` : ''}
+        </div>
+    </div>
     
-    // Ustawienia czcionki
-    doc.setFont('helvetica');
+    <div class="invoice-title">FAKTURA ${transactionNumber}</div>
     
-    // Nagłówek faktury
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`FAKTURA ${transactionNumber}`, 105, 25, { align: 'center' });
+    <div class="invoice-details">
+        <p><strong>Data wystawienia:</strong> ${format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl })}</p>
+        <p><strong>Data sprzedaży:</strong> ${format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl })}</p>
+    </div>
     
-    // Data wystawienia
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    const dateStr = format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl });
-    doc.text(`Wystawiono dnia: ${dateStr}`, 20, 40);
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Lp.</th>
+                <th>Nazwa towaru/usługi</th>
+                <th>Ilość</th>
+                <th>Cena netto</th>
+                <th>Wartość netto</th>
+                <th>VAT</th>
+                <th>Wartość brutto</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>${transaction.composition_name}</td>
+                <td>${transaction.quantity} szt.</td>
+                <td>${transaction.unit_price.toFixed(2)} zł</td>
+                <td>${transaction.total_price.toFixed(2)} zł</td>
+                <td>zw.</td>
+                <td>${transaction.total_price.toFixed(2)} zł</td>
+            </tr>
+        </tbody>
+    </table>
     
-    // Linia oddzielająca
-    doc.line(20, 45, 190, 45);
+    <div class="total">
+        <p>Razem do zapłaty: <strong>${transaction.total_price.toFixed(2)} zł</strong></p>
+    </div>
     
-    // Dane sprzedawcy i nabywcy w dwóch kolumnach
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Sprzedawca:', 20, 60);
-    doc.text('Nabywca:', 110, 60);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    
-    // Sprzedawca
-    let yPosSeller = 70;
-    if (companySettings?.company_name) {
-      doc.setFont('helvetica', 'bold');
-      doc.text(companySettings.company_name, 20, yPosSeller);
-      doc.setFont('helvetica', 'normal');
-      yPosSeller += 6;
+    ${companySettings?.bank_account ? `
+    <div class="footer">
+        <p><strong>Dane do przelewu:</strong></p>
+        <p>Bank: ${companySettings.bank_name || 'Nazwa banku'}</p>
+        <p>Numer konta: ${companySettings.bank_account}</p>
+    </div>
+    ` : ''}
+</body>
+</html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(invoiceContent);
+      printWindow.document.close();
+      printWindow.print();
     }
-    
-    if (companySettings?.company_address) {
-      doc.text(companySettings.company_address, 20, yPosSeller);
-      yPosSeller += 5;
-    }
-    
-    if (companySettings?.company_tax_id) {
-      doc.text(`NIP: ${companySettings.company_tax_id}`, 20, yPosSeller);
-      yPosSeller += 5;
-    }
-    
-    if (companySettings?.company_phone) {
-      doc.text(`Tel: ${companySettings.company_phone}`, 20, yPosSeller);
-      yPosSeller += 5;
-    }
-    
-    if (companySettings?.company_email) {
-      doc.text(`Email: ${companySettings.company_email}`, 20, yPosSeller);
-      yPosSeller += 5;
-    }
-    
-    // Nabywca
-    let yPosBuyer = 70;
-    doc.setFont('helvetica', 'bold');
-    doc.text(transaction.buyer_name || 'Klient indywidualny', 110, yPosBuyer);
-    doc.setFont('helvetica', 'normal');
-    yPosBuyer += 6;
-    
-    if (transaction.buyer_address) {
-      doc.text(transaction.buyer_address, 110, yPosBuyer);
-      yPosBuyer += 5;
-    }
-    
-    if (transaction.buyer_tax_id) {
-      doc.text(`NIP: ${transaction.buyer_tax_id}`, 110, yPosBuyer);
-      yPosBuyer += 5;
-    }
-    
-    if (transaction.buyer_phone) {
-      doc.text(`Tel: ${transaction.buyer_phone}`, 110, yPosBuyer);
-      yPosBuyer += 5;
-    }
-    
-    if (transaction.buyer_email) {
-      doc.text(`Email: ${transaction.buyer_email}`, 110, yPosBuyer);
-      yPosBuyer += 5;
-    }
-    
-    // Daty sprzedaży
-    const datesY = Math.max(yPosSeller, yPosBuyer) + 15;
-    doc.text(`Data wystawienia: ${dateStr}`, 20, datesY);
-    doc.text(`Data sprzedaży: ${dateStr}`, 20, datesY + 6);
-    
-    // Tabela produktów
-    const tableStartY = datesY + 20;
-    
-    // Nagłówek tabeli
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    
-    // Rysowanie tabeli
-    const tableHeaders = [
-      { text: 'Lp.', x: 22, width: 12 },
-      { text: 'Nazwa towaru/usługi', x: 34, width: 50 },
-      { text: 'Ilość', x: 84, width: 15 },
-      { text: 'Cena netto', x: 99, width: 22 },
-      { text: 'Wartość netto', x: 121, width: 25 },
-      { text: 'VAT', x: 146, width: 15 },
-      { text: 'Wartość brutto', x: 161, width: 28 }
-    ];
-    
-    // Nagłówek tabeli
-    doc.rect(20, tableStartY, 170, 8);
-    tableHeaders.forEach(header => {
-      doc.text(header.text, header.x, tableStartY + 5.5);
-    });
-    
-    // Obliczenia VAT
-    const vatRate = 0.23;
-    const grossValue = transaction.total_price;
-    const netValue = grossValue / (1 + vatRate);
-    const vatValue = grossValue - netValue;
-    
-    // Wiersz z produktem
-    doc.setFont('helvetica', 'normal');
-    const rowY = tableStartY + 8;
-    doc.rect(20, rowY, 170, 8);
-    
-    doc.text('1', 22, rowY + 5.5);
-    doc.text(transaction.composition_name.length > 25 ? 
-             transaction.composition_name.substring(0, 25) + '...' : 
-             transaction.composition_name, 34, rowY + 5.5);
-    doc.text(`${transaction.quantity} szt.`, 84, rowY + 5.5);
-    doc.text(`${(netValue / transaction.quantity).toFixed(2)} zł`, 99, rowY + 5.5);
-    doc.text(`${netValue.toFixed(2)} zł`, 121, rowY + 5.5);
-    doc.text('23%', 146, rowY + 5.5);
-    doc.text(`${grossValue.toFixed(2)} zł`, 161, rowY + 5.5);
-    
-    // Podsumowanie
-    const summaryY = rowY + 20;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('PODSUMOWANIE:', 20, summaryY);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Wartość netto: ${netValue.toFixed(2)} zł`, 20, summaryY + 10);
-    doc.text(`VAT 23%: ${vatValue.toFixed(2)} zł`, 20, summaryY + 16);
-    
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Razem: ${grossValue.toFixed(2)} zł`, 20, summaryY + 22);
-    
-    // Dodatkowe informacje
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text('Sposób płatności: gotówka', 20, summaryY + 32);
-    doc.text(`Termin płatności: ${dateStr}`, 20, summaryY + 38);
-    
-    // Dane bankowe (jeśli dostępne)
-    if (companySettings?.bank_account) {
-      doc.text('Dane do przelewu:', 20, summaryY + 48);
-      doc.text(`Bank: ${companySettings.bank_name || 'PKO BP'}`, 20, summaryY + 54);
-      doc.text(`Numer konta: ${companySettings.bank_account}`, 20, summaryY + 60);
-    }
-    
-    // Stopka
-    const footerY = summaryY + 75;
-    doc.line(20, footerY, 190, footerY);
-    doc.setFontSize(8);
-    doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, footerY + 8);
-    
-    // Zapisz PDF
-    doc.save(`faktura_${transactionNumber}.pdf`);
   };
 
   return (
