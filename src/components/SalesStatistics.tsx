@@ -1,12 +1,112 @@
-import React from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { TrendingUp, DollarSign, Package, BarChart3, TrendingDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TrendingUp, DollarSign, Package, BarChart3, TrendingDown, FileText, Download } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useIngredients } from '@/hooks/useIngredients';
 
 const SalesStatistics: React.FC = () => {
   const { transactions, loading } = useSales();
   const { ingredients, prices } = useIngredients();
+  
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [reportType, setReportType] = useState<'monthly' | 'yearly'>('monthly');
+
+  const months = [
+    { value: 1, label: 'Styczeń' },
+    { value: 2, label: 'Luty' },
+    { value: 3, label: 'Marzec' },
+    { value: 4, label: 'Kwiecień' },
+    { value: 5, label: 'Maj' },
+    { value: 6, label: 'Czerwiec' },
+    { value: 7, label: 'Lipiec' },
+    { value: 8, label: 'Sierpień' },
+    { value: 9, label: 'Wrzesień' },
+    { value: 10, label: 'Październik' },
+    { value: 11, label: 'Listopad' },
+    { value: 12, label: 'Grudzień' }
+  ];
+
+  // Generate available years from transactions
+  const availableYears = useMemo(() => {
+    if (!transactions.length) return [currentDate.getFullYear()];
+    
+    const years = new Set<number>();
+    transactions.forEach(transaction => {
+      const year = new Date(transaction.created_at).getFullYear();
+      years.add(year);
+    });
+    
+    // Add current year if not present
+    years.add(currentDate.getFullYear());
+    
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactions, currentDate]);
+
+  // Filter transactions based on selected period
+  const filteredTransactions = useMemo(() => {
+    if (!transactions.length) return [];
+
+    const activeTransactions = transactions.filter(t => !t.is_reversed);
+    
+    if (reportType === 'yearly') {
+      return activeTransactions.filter(transaction => {
+        const transactionDate = new Date(transaction.created_at);
+        return transactionDate.getFullYear() === selectedYear;
+      });
+    } else {
+      return activeTransactions.filter(transaction => {
+        const transactionDate = new Date(transaction.created_at);
+        return transactionDate.getFullYear() === selectedYear && 
+               transactionDate.getMonth() + 1 === selectedMonth;
+      });
+    }
+  }, [transactions, selectedMonth, selectedYear, reportType]);
+
+  const generateReport = () => {
+    const reportData = {
+      period: reportType === 'monthly' 
+        ? `${months.find(m => m.value === selectedMonth)?.label} ${selectedYear}`
+        : `Rok ${selectedYear}`,
+      totalSales: filteredTransactions.length,
+      totalRevenue: filteredTransactions.reduce((sum, t) => sum + t.total_price, 0),
+      totalQuantity: filteredTransactions.reduce((sum, t) => sum + t.quantity, 0),
+      transactions: filteredTransactions
+    };
+
+    // Create downloadable report
+    const reportContent = `
+RAPORT SPRZEDAŻY - ${reportData.period}
+=============================================
+
+PODSUMOWANIE:
+- Liczba transakcji: ${reportData.totalSales}
+- Łączny przychód: ${reportData.totalRevenue.toFixed(2)} zł
+- Łączna ilość: ${reportData.totalQuantity} szt.
+- Średnia wartość transakcji: ${reportData.totalSales > 0 ? (reportData.totalRevenue / reportData.totalSales).toFixed(2) : 0} zł
+
+SZCZEGÓŁOWE TRANSAKCJE:
+${reportData.transactions.map(t => 
+  `${new Date(t.created_at).toLocaleDateString('pl-PL')} - ${t.composition_name} (${t.quantity} szt.) - ${t.total_price.toFixed(2)} zł`
+).join('\n')}
+
+Wygenerowano: ${new Date().toLocaleString('pl-PL')}
+    `;
+
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `raport_sprzedazy_${reportType}_${selectedYear}${reportType === 'monthly' ? `_${selectedMonth.toString().padStart(2, '0')}` : ''}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   if (loading) {
     return (
@@ -16,16 +116,14 @@ const SalesStatistics: React.FC = () => {
     );
   }
 
-  // Calculate statistics for active (non-reversed) transactions
-  const activeTransactions = transactions.filter(t => !t.is_reversed);
-  
-  const totalSales = activeTransactions.length;
-  const totalRevenue = activeTransactions.reduce((sum, t) => sum + t.total_price, 0);
-  const totalQuantity = activeTransactions.reduce((sum, t) => sum + t.quantity, 0);
+  // Calculate statistics for filtered transactions
+  const totalSales = filteredTransactions.length;
+  const totalRevenue = filteredTransactions.reduce((sum, t) => sum + t.total_price, 0);
+  const totalQuantity = filteredTransactions.reduce((sum, t) => sum + t.quantity, 0);
   const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
   // Calculate total costs (ingredients used in sold compositions)
-  const totalCosts = activeTransactions.reduce((sum, transaction) => {
+  const totalCosts = filteredTransactions.reduce((sum, transaction) => {
     // For simplicity, we'll estimate cost as 30% of revenue
     // In a real scenario, you'd calculate actual ingredient costs used
     return sum + (transaction.total_price * 0.3);
@@ -34,7 +132,7 @@ const SalesStatistics: React.FC = () => {
   const totalProfit = totalRevenue - totalCosts;
 
   // Get composition sales breakdown
-  const compositionSales = activeTransactions.reduce((acc, transaction) => {
+  const compositionSales = filteredTransactions.reduce((acc, transaction) => {
     const existing = acc.find(item => item.name === transaction.composition_name);
     if (existing) {
       existing.quantity += transaction.quantity;
@@ -55,17 +153,78 @@ const SalesStatistics: React.FC = () => {
   compositionSales.sort((a, b) => b.revenue - a.revenue);
   const topCompositions = compositionSales.slice(0, 5);
 
-  // Recent transactions (last 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  
-  const recentTransactions = activeTransactions.filter(
-    t => new Date(t.created_at) >= sevenDaysAgo
-  );
-  const recentRevenue = recentTransactions.reduce((sum, t) => sum + t.total_price, 0);
-
   return (
     <div className="space-y-6">
+      {/* Filters and Report Generation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Filtry i Raport</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium mb-2">Typ raportu</label>
+              <Select value={reportType} onValueChange={(value: 'monthly' | 'yearly') => setReportType(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Miesięczny</SelectItem>
+                  <SelectItem value="yearly">Roczny</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {reportType === 'monthly' && (
+              <div>
+                <label className="block text-sm font-medium mb-2">Miesiąc</label>
+                <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map(month => (
+                      <SelectItem key={month.value} value={month.value.toString()}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">Rok</label>
+              <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map(year => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <Button onClick={generateReport} className="flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              Generuj Raport
+            </Button>
+          </div>
+          
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              Wyświetlane statystyki: {reportType === 'monthly' 
+                ? `${months.find(m => m.value === selectedMonth)?.label} ${selectedYear}`
+                : `Rok ${selectedYear}`}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Main Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
@@ -87,7 +246,7 @@ const SalesStatistics: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Łączny przychód</p>
                 <p className="text-2xl font-bold text-green-600">{totalRevenue.toFixed(2)} zł</p>
-                <p className="text-xs text-gray-500">wszystkie transakcje</p>
+                <p className="text-xs text-gray-500">w okresie</p>
               </div>
               <DollarSign className="w-8 h-8 text-green-500" />
             </div>
@@ -134,26 +293,32 @@ const SalesStatistics: React.FC = () => {
         </Card>
       </div>
 
-      {/* Recent Performance */}
+      {/* Performance and Top Compositions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Ostatnie 7 dni</CardTitle>
+            <CardTitle className="text-lg">Podsumowanie Okresu</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600">Transakcje:</span>
-                <span className="font-semibold">{recentTransactions.length}</span>
+                <span className="font-semibold">{totalSales}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Przychód:</span>
-                <span className="font-semibold text-green-600">{recentRevenue.toFixed(2)} zł</span>
+                <span className="font-semibold text-green-600">{totalRevenue.toFixed(2)} zł</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Średnia dzienna:</span>
-                <span className="font-semibold">{(recentRevenue / 7).toFixed(2)} zł</span>
+                <span className="text-gray-600">Łączna ilość:</span>
+                <span className="font-semibold">{totalQuantity} szt.</span>
               </div>
+              {reportType === 'monthly' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Średnia dzienna:</span>
+                  <span className="font-semibold">{(totalRevenue / new Date(selectedYear, selectedMonth, 0).getDate()).toFixed(2)} zł</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -181,7 +346,7 @@ const SalesStatistics: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-4">Brak danych sprzedaży</p>
+              <p className="text-gray-500 text-center py-4">Brak danych sprzedaży w wybranym okresie</p>
             )}
           </CardContent>
         </Card>
