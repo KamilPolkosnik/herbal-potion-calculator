@@ -167,26 +167,25 @@ const SalesStatistics: React.FC = () => {
       
       // Dodaj przestrzeń przed stopką
       yPos += 10;
+      
+      // Stopka - check if we need new page
+      if (yPos > doc.internal.pageSize.height - 20) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.line(20, yPos, 190, yPos);
+      doc.setFontSize(8);
+      doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, yPos + 8);
     } else {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text('Brak transakcji w wybranym okresie.', 20, 100);
-      // Set yPos for footer positioning
-      let yPos = 110;
-    }
-    
-    // Stopka - check if we need new page
-    const currentYPos = reportData.transactions.length > 0 ? yPos : 110;
-    if (currentYPos > doc.internal.pageSize.height - 20) {
-      doc.addPage();
-      const finalYPos = 20;
-      doc.line(20, finalYPos, 190, finalYPos);
+      
+      // Add footer for no transactions case
+      const footerY = 110;
+      doc.line(20, footerY, 190, footerY);
       doc.setFontSize(8);
-      doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, finalYPos + 8);
-    } else {
-      doc.line(20, currentYPos, 190, currentYPos);
-      doc.setFontSize(8);
-      doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, currentYPos + 8);
+      doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, footerY + 8);
     }
     
     // Zapisz PDF
