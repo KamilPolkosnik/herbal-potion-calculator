@@ -6,6 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TrendingUp, DollarSign, Package, BarChart3, TrendingDown, FileText, Download } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useIngredients } from '@/hooks/useIngredients';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
+import jsPDF from 'jspdf';
 
 const SalesStatistics: React.FC = () => {
   const { transactions, loading } = useSales();
@@ -78,34 +81,58 @@ const SalesStatistics: React.FC = () => {
       transactions: filteredTransactions
     };
 
-    // Create downloadable report
-    const reportContent = `
-RAPORT SPRZEDAŻY - ${reportData.period}
-=============================================
-
-PODSUMOWANIE:
-- Liczba transakcji: ${reportData.totalSales}
-- Łączny przychód: ${reportData.totalRevenue.toFixed(2)} zł
-- Łączna ilość: ${reportData.totalQuantity} szt.
-- Średnia wartość transakcji: ${reportData.totalSales > 0 ? (reportData.totalRevenue / reportData.totalSales).toFixed(2) : 0} zł
-
-SZCZEGÓŁOWE TRANSAKCJE:
-${reportData.transactions.map(t => 
-  `${new Date(t.created_at).toLocaleDateString('pl-PL')} - ${t.composition_name} (${t.quantity} szt.) - ${t.total_price.toFixed(2)} zł`
-).join('\n')}
-
-Wygenerowano: ${new Date().toLocaleString('pl-PL')}
-    `;
-
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `raport_sprzedazy_${reportType}_${selectedYear}${reportType === 'monthly' ? `_${selectedMonth.toString().padStart(2, '0')}` : ''}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Utwórz PDF
+    const doc = new jsPDF();
+    
+    // Nagłówek
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text(`RAPORT SPRZEDAŻY - ${reportData.period}`, 105, 20, { align: 'center' });
+    
+    // Podsumowanie
+    doc.setFontSize(12);
+    doc.text('PODSUMOWANIE:', 20, 40);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Liczba transakcji: ${reportData.totalSales}`, 20, 50);
+    doc.text(`Łączny przychód: ${reportData.totalRevenue.toFixed(2)} zł`, 20, 57);
+    doc.text(`Łączna ilość: ${reportData.totalQuantity} szt.`, 20, 64);
+    doc.text(`Średnia wartość transakcji: ${reportData.totalSales > 0 ? (reportData.totalRevenue / reportData.totalSales).toFixed(2) : 0} zł`, 20, 71);
+    
+    // Szczegółowe transakcje
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('SZCZEGÓŁOWE TRANSAKCJE:', 20, 90);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    
+    let yPos = 100;
+    const pageHeight = doc.internal.pageSize.height;
+    
+    reportData.transactions.forEach((transaction, index) => {
+      if (yPos > pageHeight - 30) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      const dateStr = format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl });
+      const line = `${dateStr} - ${transaction.composition_name} (${transaction.quantity} szt.) - ${transaction.total_price.toFixed(2)} zł`;
+      doc.text(line, 20, yPos);
+      yPos += 5;
+    });
+    
+    // Stopka
+    if (yPos > pageHeight - 20) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, yPos + 10);
+    
+    // Zapisz PDF
+    doc.save(`raport_sprzedazy_${reportType}_${selectedYear}${reportType === 'monthly' ? `_${selectedMonth.toString().padStart(2, '0')}` : ''}.pdf`);
   };
 
   if (loading) {
@@ -211,7 +238,7 @@ Wygenerowano: ${new Date().toLocaleString('pl-PL')}
             
             <Button onClick={generateReport} className="flex items-center gap-2">
               <Download className="w-4 h-4" />
-              Generuj Raport
+              Generuj Raport PDF
             </Button>
           </div>
           
