@@ -33,6 +33,7 @@ export const useIngredients = () => {
 
       setIngredients(ingredientsData);
       setPrices(pricesData);
+      console.log('useIngredients - loaded prices:', pricesData);
     } catch (error) {
       console.error('Error loading ingredients:', error);
     } finally {
@@ -99,7 +100,7 @@ export const useIngredients = () => {
 
   const updatePrice = async (name: string, price: number) => {
     try {
-      console.log('Updating price:', name, price);
+      console.log('useIngredients - updating price:', name, price);
       
       // Najpierw sprawdź czy składnik już istnieje w bazie
       const { data: existingIngredient, error: fetchError } = await supabase
@@ -133,8 +134,12 @@ export const useIngredients = () => {
         throw error;
       }
 
+      // Aktualizuj lokalny stan
       setPrices(prev => ({ ...prev, [name]: price }));
-      console.log('Price updated successfully');
+      console.log('useIngredients - price updated successfully, new prices state:', { ...prices, [name]: price });
+      
+      // Przeładuj wszystkie dane, aby upewnić się że są zsynchronizowane
+      await loadIngredients();
     } catch (error) {
       console.error('Error updating price:', error);
     }

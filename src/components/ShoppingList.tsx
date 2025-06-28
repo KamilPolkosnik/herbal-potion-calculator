@@ -36,7 +36,6 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
   const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
-  const [localPrices, setLocalPrices] = useState<Record<string, number>>({});
 
   // Load shopping list state from sessionStorage
   useEffect(() => {
@@ -59,14 +58,6 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
         console.error('Error parsing saved checked ingredients:', error);
       }
     }
-
-    if (savedLocalPrices) {
-      try {
-        setLocalPrices(JSON.parse(savedLocalPrices));
-      } catch (error) {
-        console.error('Error parsing saved local prices:', error);
-      }
-    }
   }, []);
 
   // Save shopping list state to sessionStorage
@@ -77,23 +68,6 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
   useEffect(() => {
     sessionStorage.setItem('shopping-list-checked', JSON.stringify(checkedIngredients));
   }, [checkedIngredients]);
-
-  useEffect(() => {
-    sessionStorage.setItem('shopping-list-prices', JSON.stringify(localPrices));
-  }, [localPrices]);
-
-  // Initialize local prices with global prices
-  useEffect(() => {
-    setLocalPrices(prevLocalPrices => {
-      const updatedPrices = { ...prevLocalPrices };
-      Object.keys(prices).forEach(ingredient => {
-        if (!(ingredient in updatedPrices)) {
-          updatedPrices[ingredient] = prices[ingredient];
-        }
-      });
-      return updatedPrices;
-    });
-  }, [prices]);
 
   const loadCompositions = async () => {
     try {
@@ -162,13 +136,10 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     }));
   };
 
-  const updateLocalPrice = async (ingredientName: string, newPrice: number) => {
-    setLocalPrices(prev => ({
-      ...prev,
-      [ingredientName]: newPrice
-    }));
-
-    // Update global price if onPriceUpdate is provided
+  const updatePrice = async (ingredientName: string, newPrice: number) => {
+    console.log('ShoppingList - updating price:', ingredientName, newPrice);
+    
+    // Always update global price through parent component
     if (onPriceUpdate) {
       await onPriceUpdate(ingredientName, newPrice);
     }
@@ -177,14 +148,13 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
   const clearShoppingList = () => {
     setQuantities({});
     setCheckedIngredients({});
-    setLocalPrices({});
     sessionStorage.removeItem('shopping-list-quantities');
     sessionStorage.removeItem('shopping-list-checked');
-    sessionStorage.removeItem('shopping-list-prices');
   };
 
+  // Use prices directly from props (no local state for prices)
   const getIngredientPrice = (ingredientName: string) => {
-    return localPrices[ingredientName] ?? prices[ingredientName] ?? 0;
+    return prices[ingredientName] ?? 0;
   };
 
   // Obliczanie potrzebnych składników
@@ -423,7 +393,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
   const neededIngredients = calculateNeededIngredients();
   const { herbs, oils, others } = categorizeIngredients(neededIngredients);
   
-  // Oblicz całkowity koszt using local prices
+  // Oblicz całkowity koszt using global prices
   const totalCost = Object.entries(neededIngredients).reduce((sum, [ingredient, amount]) => {
     const price = getIngredientPrice(ingredient);
     const unit = ingredientUnits[ingredient] || 'g';
@@ -545,7 +515,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                             type="number"
                             step="0.01"
                             value={getIngredientPrice(ingredient)}
-                            onChange={(e) => updateLocalPrice(ingredient, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
                             className="w-20 h-7 text-xs"
                             placeholder="0.00"
                           />
@@ -584,7 +554,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                             type="number"
                             step="0.01"
                             value={getIngredientPrice(ingredient)}
-                            onChange={(e) => updateLocalPrice(ingredient, parseFloat(e.target.value) || 0)}
+                            onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
                             className="w-20 h-7 text-xs"
                             placeholder="0.00"
                           />
@@ -627,7 +597,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                               type="number"
                               step="0.01"
                               value={getIngredientPrice(ingredient)}
-                              onChange={(e) => updateLocalPrice(ingredient, parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
                               className="w-20 h-7 text-xs"
                               placeholder="0.00"
                             />
