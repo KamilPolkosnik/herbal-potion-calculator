@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import IngredientManager from '@/components/IngredientManager';
 import ProductCalculator from '@/components/ProductCalculator';
-import ShoppingList from '@/components/ShoppingList';
+import ShoppingListWrapper from '@/components/ShoppingListWrapper';
 import CompositionManager from '@/components/CompositionManager';
 import LoginPage from '@/components/LoginPage';
 import AppSidebar from '@/components/AppSidebar';
@@ -94,7 +93,7 @@ const Index = () => {
         );
 
       case 'shopping':
-        return <ShoppingList prices={prices} />;
+        return <ShoppingListWrapper />;
 
       case 'sales':
         return (
