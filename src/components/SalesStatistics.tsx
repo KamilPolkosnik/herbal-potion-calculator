@@ -1,20 +1,15 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TrendingUp, DollarSign, Package, BarChart3, TrendingDown, Download } from 'lucide-react';
+import { TrendingDown, DollarSign, Package, BarChart3, TrendingUp, Download } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useIngredients } from '@/hooks/useIngredients';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 
-interface SalesStatisticsProps {
-  onRefresh?: () => void;
-}
-
-const SalesStatistics: React.FC<SalesStatisticsProps> = ({ onRefresh }) => {
+const SalesStatistics: React.FC = () => {
   const { transactions, loading } = useSales();
   const { ingredients, prices } = useIngredients();
   
@@ -125,6 +120,7 @@ const SalesStatistics: React.FC<SalesStatisticsProps> = ({ onRefresh }) => {
       doc.text('Łącznie', 145, 100);
       doc.text('Kupujący', 165, 100);
       
+      // Initialize variables for pagination
       let yPos = 103;
       const pageHeight = doc.internal.pageSize.height;
       
@@ -175,29 +171,28 @@ const SalesStatistics: React.FC<SalesStatisticsProps> = ({ onRefresh }) => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text('Brak transakcji w wybranym okresie.', 20, 100);
+      // Set yPos for footer positioning
+      let yPos = 110;
     }
     
-    // Stopka
-    if (yPos > pageHeight - 20) {
+    // Stopka - check if we need new page
+    const currentYPos = reportData.transactions.length > 0 ? yPos : 110;
+    if (currentYPos > doc.internal.pageSize.height - 20) {
       doc.addPage();
-      yPos = 20;
+      const finalYPos = 20;
+      doc.line(20, finalYPos, 190, finalYPos);
+      doc.setFontSize(8);
+      doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, finalYPos + 8);
+    } else {
+      doc.line(20, currentYPos, 190, currentYPos);
+      doc.setFontSize(8);
+      doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, currentYPos + 8);
     }
-    
-    doc.line(20, yPos, 190, yPos);
-    doc.setFontSize(8);
-    doc.text(`Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}`, 20, yPos + 8);
     
     // Zapisz PDF
     const fileName = `raport_sprzedazy_${reportType}_${selectedYear}${reportType === 'monthly' ? `_${selectedMonth.toString().padStart(2, '0')}` : ''}.pdf`;
     doc.save(fileName);
   };
-
-  // React.useEffect do odświeżania danych po zmianie
-  React.useEffect(() => {
-    if (onRefresh) {
-      onRefresh();
-    }
-  }, [onRefresh]);
 
   if (loading) {
     return (

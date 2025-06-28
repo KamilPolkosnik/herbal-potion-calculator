@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingCart, TrendingUp, History, Plus } from 'lucide-react';
-import { useCompositions } from '@/hooks/useIngredientCompositions';
+import { useIngredientCompositions } from '@/hooks/useIngredientCompositions';
 import { useSales } from '@/hooks/useSales';
 import { useToast } from '@/hooks/use-toast';
 import SalesStatistics from './SalesStatistics';
@@ -15,6 +14,38 @@ import TransactionsList from './TransactionsList';
 import { BuyerData } from '@/hooks/useSales';
 
 const SalesManager: React.FC = () => {
+  // Create a hook to get compositions data
+  const useCompositions = () => {
+    const { compositionUsage, loading } = useIngredientCompositions();
+    
+    // Transform the data to match expected format
+    const compositions = React.useMemo(() => {
+      const compositionMap = new Map();
+      
+      Object.entries(compositionUsage).forEach(([ingredientName, usages]) => {
+        usages.forEach(usage => {
+          if (!compositionMap.has(usage.id)) {
+            compositionMap.set(usage.id, {
+              id: usage.id,
+              name: usage.name,
+              price: 0, // Default price, should be set from compositions table
+              ingredients: []
+            });
+          }
+          compositionMap.get(usage.id).ingredients.push({
+            name: ingredientName,
+            amount: usage.amount,
+            unit: usage.unit
+          });
+        });
+      });
+      
+      return Array.from(compositionMap.values());
+    }, [compositionUsage]);
+    
+    return { compositions, loading };
+  };
+
   const { compositions, loading: compositionsLoading } = useCompositions();
   const { processSale, loading: salesLoading, refreshTransactions } = useSales();
   const { toast } = useToast();
@@ -277,7 +308,7 @@ const SalesManager: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="statistics">
-          <SalesStatistics onRefresh={handleDataChange} />
+          <SalesStatistics />
         </TabsContent>
 
         <TabsContent value="history">
