@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +38,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       if (onDataChange) {
         await onDataChange();
       }
+      
+      // Odśwież zakładkę podsumowanie poprzez emitowanie zdarzenia
+      window.dispatchEvent(new CustomEvent('refreshSummary'));
     } catch (error) {
       console.error('Error reversing transaction:', error);
       toast({
@@ -61,6 +63,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       if (onDataChange) {
         await onDataChange();
       }
+      
+      // Odśwież zakładkę podsumowanie poprzez emitowanie zdarzenia
+      window.dispatchEvent(new CustomEvent('refreshSummary'));
     } catch (error) {
       console.error('Error deleting transaction:', error);
       toast({

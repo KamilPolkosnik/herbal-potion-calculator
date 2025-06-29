@@ -18,7 +18,79 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   companySettings, 
   transactionNumber 
 }) => {
+  const convertToWords = (amount: number): string => {
+    const units = ['', 'jeden', 'dwa', 'trzy', 'cztery', 'pięć', 'sześć', 'siedem', 'osiem', 'dziewięć'];
+    const teens = ['dziesięć', 'jedenaście', 'dwanaście', 'trzynaście', 'czternaście', 'piętnaście', 'szesnaście', 'siedemnaście', 'osiemnaście', 'dziewiętnaście'];
+    const tens = ['', '', 'dwadzieścia', 'trzydzieści', 'czterdzieści', 'pięćdziesiąt', 'sześćdziesiąt', 'siedemdziesiąt', 'osiemdziesiąt', 'dziewięćdziesiąt'];
+    const hundreds = ['', 'sto', 'dwieście', 'trzysta', 'czterysta', 'pięćset', 'sześćset', 'siedemset', 'osiemset', 'dziewięćset'];
+    
+    if (amount === 0) return 'zero złotych';
+    
+    const wholePart = Math.floor(amount);
+    const fractionalPart = Math.round((amount - wholePart) * 100);
+    
+    let result = '';
+    
+    if (wholePart >= 1000) {
+      const thousands = Math.floor(wholePart / 1000);
+      if (thousands === 1) {
+        result += 'tysiąc ';
+      } else {
+        result += convertHundreds(thousands) + ' tysięcy ';
+      }
+    }
+    
+    const remainder = wholePart % 1000;
+    if (remainder > 0) {
+      result += convertHundreds(remainder) + ' ';
+    }
+    
+    // Dodaj złotych
+    if (wholePart === 1) {
+      result += 'złoty';
+    } else if (wholePart % 10 >= 2 && wholePart % 10 <= 4 && (wholePart % 100 < 10 || wholePart % 100 >= 20)) {
+      result += 'złote';
+    } else {
+      result += 'złotych';
+    }
+    
+    // Dodaj grosze jeśli są
+    if (fractionalPart > 0) {
+      result += ' ' + fractionalPart.toString().padStart(2, '0') + '/100';
+    }
+    
+    return result.trim();
+    
+    function convertHundreds(num: number): string {
+      let str = '';
+      
+      if (num >= 100) {
+        str += hundreds[Math.floor(num / 100)] + ' ';
+        num %= 100;
+      }
+      
+      if (num >= 20) {
+        str += tens[Math.floor(num / 10)] + ' ';
+        num %= 10;
+      } else if (num >= 10) {
+        str += teens[num - 10] + ' ';
+        num = 0;
+      }
+      
+      if (num > 0) {
+        str += units[num] + ' ';
+      }
+      
+      return str.trim();
+    }
+  };
+
   const generatePDF = () => {
+    const vatRate = 0.23;
+    const netAmount = transaction.total_price / (1 + vatRate);
+    const vatAmount = transaction.total_price - netAmount;
+    const amountInWords = convertToWords(transaction.total_price);
+
     const invoiceContent = `
 <!DOCTYPE html>
 <html>
@@ -30,11 +102,14 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
         .company-info, .buyer-info { width: 45%; }
         .invoice-title { text-align: center; font-size: 24px; font-weight: bold; margin: 30px 0; }
+        .original-mark { text-align: center; font-size: 14px; margin-bottom: 20px; }
         .invoice-details { margin: 20px 0; }
         .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
         .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .items-table th { background-color: #f2f2f2; }
+        .items-table .number-cell { text-align: right; }
         .total { text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px; }
+        .amount-in-words { margin-top: 15px; font-size: 14px; }
         .footer { margin-top: 40px; font-size: 12px; color: #666; }
     </style>
 </head>
@@ -59,6 +134,7 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
     </div>
     
     <div class="invoice-title">FAKTURA ${transactionNumber}</div>
+    <div class="original-mark">ORYGINAŁ</div>
     
     <div class="invoice-details">
         <p><strong>Data wystawienia:</strong> ${format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl })}</p>
@@ -74,6 +150,7 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
                 <th>Cena netto</th>
                 <th>Wartość netto</th>
                 <th>VAT</th>
+                <th>Kwota podatku</th>
                 <th>Wartość brutto</th>
             </tr>
         </thead>
@@ -82,16 +159,29 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
                 <td>1</td>
                 <td>${transaction.composition_name}</td>
                 <td>${transaction.quantity} szt.</td>
-                <td>${transaction.unit_price.toFixed(2)} zł</td>
-                <td>${transaction.total_price.toFixed(2)} zł</td>
-                <td>zw.</td>
-                <td>${transaction.total_price.toFixed(2)} zł</td>
+                <td class="number-cell">${(netAmount / transaction.quantity).toFixed(2)} zł</td>
+                <td class="number-cell">${netAmount.toFixed(2)} zł</td>
+                <td class="number-cell">23%</td>
+                <td class="number-cell">${vatAmount.toFixed(2)} zł</td>
+                <td class="number-cell">${transaction.total_price.toFixed(2)} zł</td>
             </tr>
         </tbody>
+        <tfoot>
+            <tr style="font-weight: bold;">
+                <td colspan="4">RAZEM:</td>
+                <td class="number-cell">${netAmount.toFixed(2)} zł</td>
+                <td></td>
+                <td class="number-cell">${vatAmount.toFixed(2)} zł</td>
+                <td class="number-cell">${transaction.total_price.toFixed(2)} zł</td>
+            </tr>
+        </tfoot>
     </table>
     
     <div class="total">
         <p>Razem do zapłaty: <strong>${transaction.total_price.toFixed(2)} zł</strong></p>
+        <div class="amount-in-words">
+            <p><strong>Słownie:</strong> ${amountInWords}</p>
+        </div>
     </div>
     
     ${companySettings?.bank_account ? `

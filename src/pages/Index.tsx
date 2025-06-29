@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import IngredientManager from '@/components/IngredientManager';
@@ -21,6 +21,19 @@ const Index = () => {
   const { ingredients, prices, loading, refreshData } = useIngredients();
   const { user, loading: authLoading } = useAuth();
   const { rawMaterialsValue, oilsValue, totalValue, loading: summaryLoading, refreshSummary } = useSummaryData();
+
+  // Nasłuchuj zdarzenia odświeżania podsumowania
+  useEffect(() => {
+    const handleRefreshSummary = () => {
+      refreshSummary();
+    };
+
+    window.addEventListener('refreshSummary', handleRefreshSummary);
+    
+    return () => {
+      window.removeEventListener('refreshSummary', handleRefreshSummary);
+    };
+  }, [refreshSummary]);
 
   if (authLoading) {
     return (
