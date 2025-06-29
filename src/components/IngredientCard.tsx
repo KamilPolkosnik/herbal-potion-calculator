@@ -3,7 +3,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { Info } from 'lucide-react';
+import { Info, circle-alert } from 'lucide-react';
 
 interface IngredientCardProps {
   ingredient: string;
@@ -18,6 +18,7 @@ interface IngredientCardProps {
     amount: number;
     unit: string;
   }>;
+  warningThreshold?: number;
 }
 
 const IngredientCard: React.FC<IngredientCardProps> = ({
@@ -27,7 +28,8 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
   price,
   onAmountUpdate,
   onPriceUpdate,
-  compositionUsage = []
+  compositionUsage = [],
+  warningThreshold = 0
 }) => {
   // Określ odpowiednią jednostkę ceny na podstawie jednostki produktu
   const getPriceUnit = (unit: string) => {
@@ -56,13 +58,19 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
   };
 
   const actualPriceUnit = getPriceUnit(unit);
+  const isLowStock = warningThreshold > 0 && amount < warningThreshold;
 
   return (
-    <div className="space-y-2 p-4 border rounded-lg bg-white">
+    <div className={`space-y-2 p-4 border rounded-lg ${isLowStock ? 'bg-red-50 border-red-300' : 'bg-white'}`}>
       <div className="flex items-center justify-between">
-        <Label htmlFor={ingredient} className="text-sm font-medium capitalize">
-          {ingredient}
-        </Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor={ingredient} className="text-sm font-medium capitalize">
+            {ingredient}
+          </Label>
+          {isLowStock && (
+            <circle-alert className="h-4 w-4 text-red-600" title={`Niski stan! Poniżej ${warningThreshold} ${unit}`} />
+          )}
+        </div>
         {compositionUsage.length > 0 && (
           <HoverCard>
             <HoverCardTrigger asChild>
@@ -96,7 +104,7 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
             value={amount || ''}
             onChange={(e) => onAmountUpdate(ingredient, parseFloat(e.target.value) || 0)}
             placeholder={`0 ${unit}`}
-            className="h-8"
+            className={`h-8 ${isLowStock ? 'border-red-400 focus:border-red-500' : ''}`}
           />
         </div>
         <div>
@@ -113,6 +121,11 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
       </div>
       <div className="text-xs text-gray-600 text-center mt-2">
         Wartość: {calculateValue()} zł
+        {isLowStock && (
+          <div className="text-red-600 font-medium mt-1">
+            ⚠️ Niski stan! (poniżej {warningThreshold} {unit})
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useIngredientCategories } from '@/hooks/useIngredientCategories';
 import { useIngredientCompositions } from '@/hooks/useIngredientCompositions';
+import { useWarningThresholds } from '@/hooks/useWarningThresholds';
 import IngredientFilters from './IngredientFilters';
 import IngredientInfoBox from './IngredientInfoBox';
 import IngredientSection from './IngredientSection';
@@ -16,6 +17,7 @@ interface IngredientManagerProps {
 const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) => {
   const { ingredients, prices, loading, updateIngredient, updatePrice, refreshData } = useIngredients();
   const { compositionUsage, loading: compositionLoading, refreshCompositionUsage } = useIngredientCompositions();
+  const { thresholds, loading: thresholdsLoading } = useWarningThresholds();
   const [usedIngredients, setUsedIngredients] = useState<string[]>([]);
   const [filteredIngredients, setFilteredIngredients] = useState<string[]>([]);
   const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
@@ -154,7 +156,13 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
 
   const { herbs, oils, others } = useIngredientCategories(filteredIngredients, ingredientUnits);
 
-  if (loading || loadingIngredients || compositionLoading) {
+  const warningThresholds = thresholds ? {
+    herbs: thresholds.herbs_threshold,
+    oils: thresholds.oils_threshold,
+    others: thresholds.others_threshold
+  } : undefined;
+
+  if (loading || loadingIngredients || compositionLoading || thresholdsLoading) {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="text-lg">Ładowanie danych...</div>
@@ -181,6 +189,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         onAmountUpdate={handleIngredientUpdate}
         onPriceUpdate={handlePriceUpdate}
         compositionUsage={compositionUsage}
+        warningThresholds={warningThresholds}
       />
       
       <IngredientSection
@@ -192,6 +201,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         onAmountUpdate={handleIngredientUpdate}
         onPriceUpdate={handlePriceUpdate}
         compositionUsage={compositionUsage}
+        warningThresholds={warningThresholds}
       />
       
       <IngredientSection
@@ -203,6 +213,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         onAmountUpdate={handleIngredientUpdate}
         onPriceUpdate={handlePriceUpdate}
         compositionUsage={compositionUsage}
+        warningThresholds={warningThresholds}
       />
     </div>
   );
