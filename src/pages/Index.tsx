@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -20,7 +21,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('ingredients');
   const { ingredients, prices, loading, refreshData } = useIngredients();
   const { user, loading: authLoading } = useAuth();
-  const { rawMaterialsValue, oilsValue, totalValue, loading: summaryLoading, refreshSummary } = useSummaryData();
+  const { rawMaterialsValue, oilsValue, othersValue, totalValue, loading: summaryLoading, refreshSummary } = useSummaryData();
 
   // Nasłuchuj zdarzenia odświeżania podsumowania
   useEffect(() => {
@@ -167,7 +168,7 @@ const Index = () => {
                       <div className="text-lg">Ładowanie podsumowania...</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       <div className="bg-green-100 p-6 rounded-lg text-center">
                         <h3 className="text-lg font-semibold text-green-800 mb-2">
                           Wartość Surowców
@@ -183,6 +184,15 @@ const Index = () => {
                         </h3>
                         <p className="text-2xl font-bold text-blue-600">
                           {oilsValue.toFixed(2)} zł
+                        </p>
+                      </div>
+                      
+                      <div className="bg-orange-100 p-6 rounded-lg text-center">
+                        <h3 className="text-lg font-semibold text-orange-800 mb-2">
+                          Wartość Innych
+                        </h3>
+                        <p className="text-2xl font-bold text-orange-600">
+                          {othersValue.toFixed(2)} zł
                         </p>
                       </div>
                       

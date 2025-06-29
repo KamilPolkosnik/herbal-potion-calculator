@@ -19,7 +19,7 @@ interface TransactionsListProps {
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => {
-  const { transactions, loading, reverseTransaction, deleteTransaction } = useSales();
+  const { transactions, loading, reverseTransaction, deleteTransaction, refreshTransactions } = useSales();
   const { settings: companySettings } = useCompanySettings();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,6 +41,8 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       
       // Odśwież zakładkę podsumowanie poprzez emitowanie zdarzenia
       window.dispatchEvent(new CustomEvent('refreshSummary'));
+      // Odśwież statystyki sprzedaży
+      window.dispatchEvent(new CustomEvent('refreshSalesStatistics'));
     } catch (error) {
       console.error('Error reversing transaction:', error);
       toast({
@@ -66,6 +68,8 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       
       // Odśwież zakładkę podsumowanie poprzez emitowanie zdarzenia
       window.dispatchEvent(new CustomEvent('refreshSummary'));
+      // Odśwież statystyki sprzedaży
+      window.dispatchEvent(new CustomEvent('refreshSalesStatistics'));
     } catch (error) {
       console.error('Error deleting transaction:', error);
       toast({

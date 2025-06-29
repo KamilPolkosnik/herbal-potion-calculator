@@ -1,20 +1,35 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendingUp, DollarSign, Package, BarChart3, TrendingDown, FileText, Download } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useIngredients } from '@/hooks/useIngredients';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
 
 const SalesStatistics: React.FC = () => {
-  const { transactions, loading } = useSales();
+  const { transactions, loading, refreshTransactions } = useSales();
   const { ingredients, prices } = useIngredients();
   
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [reportType, setReportType] = useState<'monthly' | 'yearly'>('monthly');
+
+  // Nasłuchuj zdarzenia odświeżania statystyk sprzedaży
+  useEffect(() => {
+    const handleRefreshSalesStatistics = () => {
+      refreshTransactions();
+    };
+
+    window.addEventListener('refreshSalesStatistics', handleRefreshSalesStatistics);
+    
+    return () => {
+      window.removeEventListener('refreshSalesStatistics', handleRefreshSalesStatistics);
+    };
+  }, [refreshTransactions]);
 
   const months = [
     { value: 1, label: 'Styczeń' },
@@ -78,34 +93,148 @@ const SalesStatistics: React.FC = () => {
       transactions: filteredTransactions
     };
 
-    // Create downloadable report
+    // Get composition sales breakdown
+    const compositionSales = filteredTransactions.reduce((acc, transaction) => {
+      const existing = acc.find(item => item.name === transaction.composition_name);
+      if (existing) {
+        existing.quantity += transaction.quantity;
+        existing.revenue += transaction.total_price;
+        existing.count += 1;
+      } else {
+        acc.push({
+          name: transaction.composition_name,
+          quantity: transaction.quantity,
+          revenue: transaction.total_price,
+          count: 1
+        });
+      }
+      return acc;
+    }, [] as Array<{ name: string; quantity: number; revenue: number; count: number }>);
+
+    compositionSales.sort((a, b) => b.revenue - a.revenue);
+
+    // Generate PDF report
     const reportContent = `
-RAPORT SPRZEDAŻY - ${reportData.period}
-=============================================
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Raport Sprzedaży - ${reportData.period}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .period { font-size: 16px; color: #666; }
+        .summary { margin: 20px 0; }
+        .summary-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .summary-table th { background-color: #f2f2f2; }
+        .number-cell { text-align: right; }
+        .transactions-section { margin-top: 30px; }
+        .transactions-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .transactions-table th, .transactions-table td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+        .transactions-table th { background-color: #f2f2f2; }
+        .compositions-section { margin-top: 30px; }
+        .footer { margin-top: 40px; font-size: 12px; color: #666; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">RAPORT SPRZEDAŻY</div>
+        <div class="period">${reportData.period}</div>
+    </div>
+    
+    <div class="summary">
+        <h3>Podsumowanie</h3>
+        <table class="summary-table">
+            <tr>
+                <td><strong>Liczba transakcji:</strong></td>
+                <td class="number-cell">${reportData.totalSales}</td>
+            </tr>
+            <tr>
+                <td><strong>Łączny przychód:</strong></td>
+                <td class="number-cell">${reportData.totalRevenue.toFixed(2)} zł</td>
+            </tr>
+            <tr>
+                <td><strong>Łączna ilość:</strong></td>
+                <td class="number-cell">${reportData.totalQuantity} szt.</td>
+            </tr>
+            <tr>
+                <td><strong>Średnia wartość transakcji:</strong></td>
+                <td class="number-cell">${reportData.totalSales > 0 ? (reportData.totalRevenue / reportData.totalSales).toFixed(2) : 0} zł</td>
+            </tr>
+        </table>
+    </div>
 
-PODSUMOWANIE:
-- Liczba transakcji: ${reportData.totalSales}
-- Łączny przychód: ${reportData.totalRevenue.toFixed(2)} zł
-- Łączna ilość: ${reportData.totalQuantity} szt.
-- Średnia wartość transakcji: ${reportData.totalSales > 0 ? (reportData.totalRevenue / reportData.totalSales).toFixed(2) : 0} zł
+    ${compositionSales.length > 0 ? `
+    <div class="compositions-section">
+        <h3>Top Zestawy</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Lp.</th>
+                    <th>Nazwa Zestawu</th>
+                    <th>Ilość</th>
+                    <th>Przychód</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${compositionSales.map((comp, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${comp.name}</td>
+                    <td class="number-cell">${comp.quantity} szt.</td>
+                    <td class="number-cell">${comp.revenue.toFixed(2)} zł</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+    ` : ''}
 
-SZCZEGÓŁOWE TRANSAKCJE:
-${reportData.transactions.map(t => 
-  `${new Date(t.created_at).toLocaleDateString('pl-PL')} - ${t.composition_name} (${t.quantity} szt.) - ${t.total_price.toFixed(2)} zł`
-).join('\n')}
-
-Wygenerowano: ${new Date().toLocaleString('pl-PL')}
+    ${reportData.transactions.length > 0 ? `
+    <div class="transactions-section">
+        <h3>Szczegółowe Transakcje</h3>
+        <table class="transactions-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Zestaw</th>
+                    <th>Kupujący</th>
+                    <th>Ilość</th>
+                    <th>Cena jedn.</th>
+                    <th>Łącznie</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reportData.transactions.map(t => `
+                <tr>
+                    <td>${format(new Date(t.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}</td>
+                    <td>${t.composition_name}</td>
+                    <td>${t.buyer_name || 'Klient indywidualny'}</td>
+                    <td class="number-cell">${t.quantity} szt.</td>
+                    <td class="number-cell">${t.unit_price.toFixed(2)} zł</td>
+                    <td class="number-cell">${t.total_price.toFixed(2)} zł</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+    ` : ''}
+    
+    <div class="footer">
+        <p>Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}</p>
+    </div>
+</body>
+</html>
     `;
 
-    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `raport_sprzedazy_${reportType}_${selectedYear}${reportType === 'monthly' ? `_${selectedMonth.toString().padStart(2, '0')}` : ''}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(reportContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
   };
 
   if (loading) {
@@ -211,7 +340,7 @@ Wygenerowano: ${new Date().toLocaleString('pl-PL')}
             
             <Button onClick={generateReport} className="flex items-center gap-2">
               <Download className="w-4 h-4" />
-              Generuj Raport
+              Generuj Raport PDF
             </Button>
           </div>
           
