@@ -11,14 +11,14 @@ export const useSummaryData = () => {
 
   const calculateSummaryValues = async () => {
     try {
-      // Pobierz tylko składniki używane w zestawach
-      const { data: usedIngredients, error: ingredientsError } = await supabase
-        .from('composition_ingredients')
-        .select('ingredient_name');
+      // Pobierz wszystkie składniki z tabeli ingredients
+      const { data: ingredientsData, error: dataError } = await supabase
+        .from('ingredients')
+        .select('*');
 
-      if (ingredientsError) throw ingredientsError;
+      if (dataError) throw dataError;
 
-      if (!usedIngredients || usedIngredients.length === 0) {
+      if (!ingredientsData || ingredientsData.length === 0) {
         setRawMaterialsValue(0);
         setOilsValue(0);
         setOthersValue(0);
@@ -26,22 +26,11 @@ export const useSummaryData = () => {
         return;
       }
 
-      // Pobierz unikalne nazwy składników
-      const uniqueIngredientNames = [...new Set(usedIngredients.map(item => item.ingredient_name))];
-
-      // Pobierz dane składników tylko dla tych używanych w zestawach
-      const { data: ingredientsData, error: dataError } = await supabase
-        .from('ingredients')
-        .select('*')
-        .in('name', uniqueIngredientNames);
-
-      if (dataError) throw dataError;
-
       let rawMaterialsVal = 0;
       let oilsVal = 0;
       let othersVal = 0;
 
-      ingredientsData?.forEach((ingredient) => {
+      ingredientsData.forEach((ingredient) => {
         const amount = Number(ingredient.amount) || 0;
         const price = Number(ingredient.price) || 0;
         const totalValue = amount * price;
