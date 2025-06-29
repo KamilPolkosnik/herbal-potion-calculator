@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Save, circle-alert } from 'lucide-react';
+import { Save, AlertCircle } from 'lucide-react';
 import { useWarningThresholds } from '@/hooks/useWarningThresholds';
 import { useToast } from '@/hooks/use-toast';
 
@@ -65,7 +65,7 @@ const WarningThresholdSettings: React.FC = () => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <circle-alert className="w-5 h-5 text-red-600" />
+          <AlertCircle className="w-5 h-5 text-red-600" />
           Progi Ostrzeżeń Składników
         </CardTitle>
       </CardHeader>

@@ -3,7 +3,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { Info, circle-alert } from 'lucide-react';
+import { Info, AlertCircle } from 'lucide-react';
 
 interface IngredientCardProps {
   ingredient: string;
@@ -68,7 +68,7 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
             {ingredient}
           </Label>
           {isLowStock && (
-            <circle-alert className="h-4 w-4 text-red-600" title={`Niski stan! Poniżej ${warningThreshold} ${unit}`} />
+            <AlertCircle className="h-4 w-4 text-red-600" title={`Niski stan! Poniżej ${warningThreshold} ${unit}`} />
           )}
         </div>
         {compositionUsage.length > 0 && (
