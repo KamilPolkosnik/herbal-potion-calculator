@@ -33,24 +33,32 @@ export const useSummaryData = () => {
       ingredientsData.forEach((ingredient) => {
         const amount = Number(ingredient.amount) || 0;
         const price = Number(ingredient.price) || 0;
-        const totalValue = amount * price;
+        let totalValue = 0;
 
-        console.log(`Ingredient: ${ingredient.name}, Amount: ${amount}, Price: ${price}, Total: ${totalValue}`);
+        console.log(`Ingredient: ${ingredient.name}, Amount: ${amount}, Price: ${price}, Unit: ${ingredient.unit}`);
 
         if (ingredient.name.toLowerCase().includes('olejek')) {
-          // Olejki
+          // Olejki eteryczne: cena za 10ml, więc wartość = (ilość/10) * cena
+          totalValue = (amount / 10) * price;
           oilsVal += totalValue;
         } else if (ingredient.name.toLowerCase().includes('surowiec') || 
                    ingredient.name.toLowerCase().includes('glinka') ||
                    ingredient.name.toLowerCase().includes('soda') ||
                    ingredient.name.toLowerCase().includes('kwas') ||
-                   ingredient.name.toLowerCase().includes('olej')) {
-          // Surowce
+                   ingredient.name.toLowerCase().includes('olej') ||
+                   ingredient.name.toLowerCase().includes('nagietek') ||
+                   ingredient.name.toLowerCase().includes('róż') ||
+                   ingredient.name.toLowerCase().includes('kwiat')) {
+          // Surowce ziołowe: cena za 100g, więc wartość = (ilość/100) * cena
+          totalValue = (amount / 100) * price;
           rawMaterialsVal += totalValue;
         } else {
-          // Inne
+          // Inne (szt/kpl): wartość = ilość * cena
+          totalValue = amount * price;
           othersVal += totalValue;
         }
+
+        console.log(`Calculated value for ${ingredient.name}: ${totalValue.toFixed(2)} zł`);
       });
 
       console.log('Summary values calculated:', { rawMaterialsVal, oilsVal, othersVal });
