@@ -6,12 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 
 interface IngredientFiltersProps {
-  onFilterChange: (filters: { searchTerm: string; selectedComposition: string }) => void;
+  onFilterChange: (filters: { searchTerm: string; selectedComposition: string; lowStock: boolean }) => void;
 }
 
 const IngredientFilters: React.FC<IngredientFiltersProps> = ({ onFilterChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedComposition, setSelectedComposition] = useState('');
+  const [lowStock, setLowStock] = useState(false);
   const [compositions, setCompositions] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
@@ -37,8 +38,8 @@ const IngredientFilters: React.FC<IngredientFiltersProps> = ({ onFilterChange })
   }, []);
 
   useEffect(() => {
-    onFilterChange({ searchTerm, selectedComposition });
-  }, [searchTerm, selectedComposition, onFilterChange]);
+    onFilterChange({ searchTerm, selectedComposition, lowStock });
+  }, [searchTerm, selectedComposition, lowStock, onFilterChange]);
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
@@ -48,9 +49,14 @@ const IngredientFilters: React.FC<IngredientFiltersProps> = ({ onFilterChange })
     setSelectedComposition(value);
   };
 
+  const handleLowStockChange = (value: string) => {
+    setLowStock(value === 'low-stock');
+  };
+
   const clearFilters = () => {
     setSearchTerm('');
     setSelectedComposition('');
+    setLowStock(false);
   };
 
   return (
@@ -65,7 +71,7 @@ const IngredientFilters: React.FC<IngredientFiltersProps> = ({ onFilterChange })
         </button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <Label htmlFor="search" className="text-sm font-medium text-gray-700">
             Szukaj składnika
@@ -95,6 +101,21 @@ const IngredientFilters: React.FC<IngredientFiltersProps> = ({ onFilterChange })
                   {composition.name}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="stock-filter" className="text-sm font-medium text-gray-700">
+            Filtruj według stanu
+          </Label>
+          <Select value={lowStock ? 'low-stock' : 'all'} onValueChange={handleLowStockChange}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Wybierz stan..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Wszystkie składniki</SelectItem>
+              <SelectItem value="low-stock">Niski stan</SelectItem>
             </SelectContent>
           </Select>
         </div>

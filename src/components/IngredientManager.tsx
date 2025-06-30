@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
@@ -22,7 +21,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
   const [filteredIngredients, setFilteredIngredients] = useState<string[]>([]);
   const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
   const [loadingIngredients, setLoadingIngredients] = useState(true);
-  const [filters, setFilters] = useState({ searchTerm: '', selectedComposition: '' });
+  const [filters, setFilters] = useState({ searchTerm: '', selectedComposition: '', lowStock: false });
 
   const loadUsedIngredients = async () => {
     setLoadingIngredients(true);
@@ -126,11 +125,31 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         }
       }
 
+      // Filtruj według niskiego stanu
+      if (filters.lowStock && thresholds) {
+        filtered = filtered.filter(ingredient => {
+          const currentAmount = ingredients[ingredient] || 0;
+          const unit = ingredientUnits[ingredient] || 'g';
+          
+          // Określ próg ostrzeżenia na podstawie jednostki
+          let threshold = 0;
+          if (unit === 'ml') {
+            threshold = thresholds.oils_threshold;
+          } else if (unit === 'szt' || unit === 'kpl') {
+            threshold = thresholds.others_threshold;
+          } else {
+            threshold = thresholds.herbs_threshold;
+          }
+          
+          return currentAmount < threshold;
+        });
+      }
+
       setFilteredIngredients(filtered);
     };
 
     applyFiltersSync();
-  }, [usedIngredients, filters.searchTerm, filters.selectedComposition]);
+  }, [usedIngredients, filters.searchTerm, filters.selectedComposition, filters.lowStock, ingredients, thresholds, ingredientUnits]);
 
   const handleRefresh = async () => {
     await Promise.all([loadUsedIngredients(), refreshData(), refreshCompositionUsage()]);
@@ -150,7 +169,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     }
   };
 
-  const handleFilterChange = (newFilters: { searchTerm: string; selectedComposition: string }) => {
+  const handleFilterChange = (newFilters: { searchTerm: string; selectedComposition: string; lowStock: boolean }) => {
     setFilters(newFilters);
   };
 
