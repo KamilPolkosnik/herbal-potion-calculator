@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingCart, Package, User, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Package, User, AlertTriangle, Trash2, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSales, BuyerData } from '@/hooks/useSales';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +14,17 @@ interface Composition {
   id: string;
   name: string;
   sale_price: number;
+}
+
+interface CartItem {
+  id: string;
+  compositionId: string;
+  compositionName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  ingredients: Array<{ name: string; amount: number; unit: string }>;
+  availabilityCheck: { available: boolean; missingIngredients: string[] } | null;
 }
 
 interface SalesManagerProps {
@@ -27,7 +38,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   const [customPrice, setCustomPrice] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [availabilityCheck, setAvailabilityCheck] = useState<{available: boolean; missingIngredients: string[]} | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [buyerData, setBuyerData] = useState<BuyerData>({});
   const { processSale, checkIngredientAvailability } = useSales();
   const { toast } = useToast();
@@ -64,26 +75,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     }
   }, [selectedComposition, compositions]);
 
-  // Check ingredient availability when composition or quantity changes
-  useEffect(() => {
-    const checkAvailability = async () => {
-      if (selectedComposition && quantity > 0) {
-        try {
-          const result = await checkIngredientAvailability(selectedComposition, quantity);
-          setAvailabilityCheck(result);
-        } catch (error) {
-          console.error('Error checking availability:', error);
-          setAvailabilityCheck({ available: false, missingIngredients: ['Błąd sprawdzania dostępności'] });
-        }
-      } else {
-        setAvailabilityCheck(null);
-      }
-    };
-
-    checkAvailability();
-  }, [selectedComposition, quantity, checkIngredientAvailability]);
-
-  const handleSale = async () => {
+  const addToCart = async () => {
     if (!selectedComposition || quantity <= 0 || customPrice < 0) {
       toast({
         title: "Błąd",
@@ -93,16 +85,6 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
       return;
     }
 
-    if (!availabilityCheck?.available) {
-      toast({
-        title: "Błąd",
-        description: "Niewystarczające składniki do realizacji sprzedaży",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setProcessing(true);
     try {
       // Get composition details
       const composition = compositions.find(c => c.id === selectedComposition);
@@ -125,31 +107,103 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         return;
       }
 
-      // Process the sale with custom price and buyer data
-      await processSale(
-        selectedComposition,
-        composition.name,
+      // Check ingredient availability
+      const availabilityCheck = await checkIngredientAvailability(selectedComposition, quantity);
+
+      // Create cart item
+      const cartItem: CartItem = {
+        id: Date.now().toString(), // Simple ID for cart management
+        compositionId: selectedComposition,
+        compositionName: composition.name,
         quantity,
-        customPrice,
-        ingredients.map(ing => ({
+        unitPrice: customPrice,
+        totalPrice: customPrice * quantity,
+        ingredients: ingredients.map(ing => ({
           name: ing.ingredient_name,
           amount: ing.amount,
           unit: ing.unit
         })),
-        buyerData
-      );
+        availabilityCheck
+      };
 
-      toast({
-        title: "Sukces",
-        description: `Sprzedaż ${quantity}x ${composition.name} została zarejestrowana`,
-      });
+      setCart(prev => [...prev, cartItem]);
 
       // Reset form
       setSelectedComposition('');
       setQuantity(1);
       setCustomPrice(0);
+
+      toast({
+        title: "Dodano do koszyka",
+        description: `${cartItem.quantity}x ${cartItem.compositionName} dodano do koszyka`,
+      });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: "Błąd",
+        description: error instanceof Error ? error.message : "Nie udało się dodać do koszyka",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeFromCart = (cartItemId: string) => {
+    setCart(prev => prev.filter(item => item.id !== cartItemId));
+    toast({
+      title: "Usunięto z koszyka",
+      description: "Produkt został usunięty z koszyka",
+    });
+  };
+
+  const getTotalCartValue = () => {
+    return cart.reduce((total, item) => total + item.totalPrice, 0);
+  };
+
+  const hasUnavailableItems = () => {
+    return cart.some(item => !item.availabilityCheck?.available);
+  };
+
+  const processSaleFromCart = async () => {
+    if (cart.length === 0) {
+      toast({
+        title: "Błąd",
+        description: "Koszyk jest pusty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (hasUnavailableItems()) {
+      toast({
+        title: "Błąd",
+        description: "W koszyku są produkty z niewystarczającymi składnikami",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      // Process each item in the cart as separate transactions
+      for (const item of cart) {
+        await processSale(
+          item.compositionId,
+          item.compositionName,
+          item.quantity,
+          item.unitPrice,
+          item.ingredients,
+          buyerData
+        );
+      }
+
+      toast({
+        title: "Sukces",
+        description: `Sprzedaż ${cart.length} pozycji została zarejestrowana`,
+      });
+
+      // Clear cart and buyer data
+      setCart([]);
       setBuyerData({});
-      setAvailabilityCheck(null);
 
       // Notify parent component of data change
       if (onDataChange) {
@@ -179,7 +233,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
 
   return (
     <div className="space-y-6">
-      {/* Dane kupującego - przeniesione na górę */}
+      {/* Dane kupującego */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -290,12 +344,12 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         </CardContent>
       </Card>
 
-      {/* Sprzedaż zestawów */}
+      {/* Dodawanie zestawów do koszyka */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5" />
-            Sprzedaż Zestawów
+            <Plus className="w-5 h-5" />
+            Dodaj Zestaw do Koszyka
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -304,7 +358,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
               <Label htmlFor="composition">Wybierz zestaw</Label>
               <Select value={selectedComposition} onValueChange={setSelectedComposition}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Wybierz zestaw do sprzedaży" />
+                  <SelectValue placeholder="Wybierz zestaw do dodania" />
                 </SelectTrigger>
                 <SelectContent>
                   {compositions.map((composition) => (
@@ -343,63 +397,123 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
               </div>
             </div>
 
-            {/* Sprawdzenie dostępności składników */}
-            {availabilityCheck && (
-              <div className={`p-4 rounded-lg ${availabilityCheck.available ? 'bg-green-50' : 'bg-red-50'}`}>
-                <div className={`flex items-center gap-2 ${availabilityCheck.available ? 'text-green-800' : 'text-red-800'}`}>
-                  {availabilityCheck.available ? (
-                    <>
-                      <Package className="w-4 h-4" />
-                      <span className="font-medium">Składniki dostępne</span>
-                    </>
-                  ) : (
-                    <>
-                      <AlertTriangle className="w-4 h-4" />
-                      <span className="font-medium">Niewystarczające składniki:</span>
-                    </>
-                  )}
-                </div>
-                {!availabilityCheck.available && (
-                  <ul className="mt-2 text-red-700 text-sm list-disc list-inside">
-                    {availabilityCheck.missingIngredients.map((ingredient, index) => (
-                      <li key={index}>{ingredient}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-
             {selectedComp && (
               <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-blue-800 mb-2">Podsumowanie sprzedaży:</h4>
+                <h4 className="font-semibold text-blue-800 mb-2">Podgląd pozycji:</h4>
                 <div className="text-blue-700">
                   <p>Zestaw: {selectedComp.name}</p>
                   <p>Cena katalogowa: {selectedComp.sale_price?.toFixed(2) || '0.00'} zł</p>
                   <p>Cena sprzedaży: {customPrice.toFixed(2)} zł</p>
                   <p>Ilość: {quantity} szt.</p>
                   <p className="font-semibold">
-                    Łączna wartość: {(customPrice * quantity).toFixed(2)} zł
+                    Wartość pozycji: {(customPrice * quantity).toFixed(2)} zł
                   </p>
-                  {customPrice !== (selectedComp.sale_price || 0) && (
-                    <p className="text-orange-600 font-medium">
-                      {customPrice > (selectedComp.sale_price || 0) ? '↑ Cena wyższa' : '↓ Promocja'}
-                    </p>
-                  )}
                 </div>
               </div>
             )}
 
             <Button 
-              onClick={handleSale} 
-              disabled={!selectedComposition || quantity <= 0 || processing || customPrice < 0 || !availabilityCheck?.available}
+              onClick={addToCart} 
+              disabled={!selectedComposition || quantity <= 0 || customPrice < 0}
               className="w-full"
             >
-              <Package className="w-4 h-4 mr-2" />
-              {processing ? 'Przetwarzanie...' : 'Zarejestruj Sprzedaż'}
+              <Plus className="w-4 h-4 mr-2" />
+              Dodaj do Koszyka
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Koszyk */}
+      {cart.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" />
+              Koszyk ({cart.length} pozycji)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {cart.map((item) => (
+                <div key={item.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-semibold">{item.compositionName}</h4>
+                      <p className="text-sm text-gray-600">
+                        {item.quantity} szt. × {item.unitPrice.toFixed(2)} zł = {item.totalPrice.toFixed(2)} zł
+                      </p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeFromCart(item.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {/* Status dostępności składników */}
+                  {item.availabilityCheck && (
+                    <div className={`p-2 rounded text-sm ${
+                      item.availabilityCheck.available 
+                        ? 'bg-green-50 text-green-800' 
+                        : 'bg-red-50 text-red-800'
+                    }`}>
+                      {item.availabilityCheck.available ? (
+                        <div className="flex items-center gap-1">
+                          <Package className="w-3 h-3" />
+                          <span>Składniki dostępne</span>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex items-center gap-1 mb-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            <span className="font-medium">Niewystarczające składniki:</span>
+                          </div>
+                          <ul className="text-xs list-disc list-inside">
+                            {item.availabilityCheck.missingIngredients.map((ingredient, index) => (
+                              <li key={index}>{ingredient}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span>Łączna wartość:</span>
+                  <span>{getTotalCartValue().toFixed(2)} zł</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={processSaleFromCart} 
+                disabled={cart.length === 0 || processing || hasUnavailableItems()}
+                className="w-full"
+                size="lg"
+              >
+                <Package className="w-4 h-4 mr-2" />
+                {processing ? 'Przetwarzanie...' : 'Zarejestruj Sprzedaż'}
+              </Button>
+
+              {hasUnavailableItems() && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-red-800">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="font-medium">
+                      Niektóre produkty w koszyku mają niewystarczające składniki
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
