@@ -8,6 +8,7 @@ import { ShoppingCart, Package, User, AlertTriangle, Trash2, Plus } from 'lucide
 import { supabase } from '@/integrations/supabase/client';
 import { useSales, BuyerData } from '@/hooks/useSales';
 import { useToast } from '@/hooks/use-toast';
+import { convertToBaseUnit, areUnitsCompatible } from '@/utils/unitConverter';
 
 interface Composition {
   id: string;
@@ -74,7 +75,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     }
   }, [selectedComposition, compositions]);
 
-  // Enhanced availability check that considers current cart contents
+  // Enhanced availability check that considers current cart contents with proper unit conversion
   const checkAvailabilityWithCart = async (compositionId: string, newQuantity: number) => {
     try {
       console.log('Sprawdzanie dostępności dla:', compositionId, 'ilość:', newQuantity);
@@ -107,14 +108,15 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         };
       });
 
-      // Calculate total usage from cart (including existing items)
+      // Calculate total usage from cart (including existing items) in base units
       const totalUsageFromCart: Record<string, number> = {};
       
-      // Sum up usage from existing cart items
+      // Sum up usage from existing cart items, converting to base units
       cart.forEach(cartItem => {
         cartItem.ingredients.forEach(ingredient => {
-          const totalUsed = ingredient.amount * cartItem.quantity;
-          totalUsageFromCart[ingredient.name] = (totalUsageFromCart[ingredient.name] || 0) + totalUsed;
+          const amountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
+          const totalUsedInBaseUnit = amountInBaseUnit * cartItem.quantity;
+          totalUsageFromCart[ingredient.name] = (totalUsageFromCart[ingredient.name] || 0) + totalUsedInBaseUnit;
         });
       });
 
@@ -122,9 +124,11 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
       const missingIngredients: string[] = [];
 
       for (const ingredient of compositionIngredients) {
-        const requiredForNewItem = ingredient.amount * newQuantity;
-        const currentUsageFromCart = totalUsageFromCart[ingredient.ingredient_name] || 0;
-        const totalRequired = currentUsageFromCart + requiredForNewItem;
+        const requiredAmountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
+        const requiredForNewItemInBaseUnit = requiredAmountInBaseUnit * newQuantity;
+        const currentUsageFromCartInBaseUnit = totalUsageFromCart[ingredient.ingredient_name] || 0;
+        const totalRequiredInBaseUnit = currentUsageFromCartInBaseUnit + requiredForNewItemInBaseUnit;
+        
         const availableData = availableAmounts[ingredient.ingredient_name];
         
         if (!availableData) {
@@ -132,36 +136,33 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
           continue;
         }
 
-        const available = availableData.amount;
-        const availableUnit = availableData.unit;
-        const requiredUnit = ingredient.unit;
+        const availableAmountInBaseUnit = convertToBaseUnit(availableData.amount, availableData.unit);
 
         console.log(`Sprawdzanie składnika ${ingredient.ingredient_name}:`, {
-          available,
-          availableUnit,
-          requiredUnit,
-          currentUsageFromCart,
-          requiredForNewItem,
-          totalRequired
+          availableAmount: availableData.amount,
+          availableUnit: availableData.unit,
+          availableInBaseUnit: availableAmountInBaseUnit,
+          requiredAmount: ingredient.amount,
+          requiredUnit: ingredient.unit,
+          requiredInBaseUnit: requiredAmountInBaseUnit,
+          currentUsageFromCart: currentUsageFromCartInBaseUnit,
+          requiredForNewItem: requiredForNewItemInBaseUnit,
+          totalRequired: totalRequiredInBaseUnit
         });
 
-        // Normalize units for comparison - treat similar units as equal
-        const normalizeUnit = (unit: string) => {
-          return unit.toLowerCase().replace('.', '').trim();
-        };
-
-        const normalizedAvailableUnit = normalizeUnit(availableUnit);
-        const normalizedRequiredUnit = normalizeUnit(requiredUnit);
-
-        if (normalizedAvailableUnit !== normalizedRequiredUnit) {
-          console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${availableUnit}, wymagane w ${requiredUnit}`);
-          // For now, we'll assume units are compatible but show warning
+        // Check if units are compatible
+        if (!areUnitsCompatible(availableData.unit, ingredient.unit)) {
+          console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${availableData.unit}, wymagane w ${ingredient.unit}`);
+          missingIngredients.push(
+            `${ingredient.ingredient_name} (niezgodność jednostek: ${availableData.unit} vs ${ingredient.unit})`
+          );
+          continue;
         }
 
-        if (totalRequired > available) {
-          const shortage = totalRequired - available;
+        if (totalRequiredInBaseUnit > availableAmountInBaseUnit) {
+          const shortageInBaseUnit = totalRequiredInBaseUnit - availableAmountInBaseUnit;
           missingIngredients.push(
-            `${ingredient.ingredient_name} (dostępne: ${available}${availableUnit}, w koszyku: ${currentUsageFromCart}${requiredUnit}, potrzebne dodatkowo: ${requiredForNewItem}${requiredUnit}, brakuje: ${shortage}${requiredUnit})`
+            `${ingredient.ingredient_name} (dostępne: ${availableData.amount}${availableData.unit}, w koszyku: ${currentUsageFromCartInBaseUnit.toFixed(2)}ml, potrzebne dodatkowo: ${requiredForNewItemInBaseUnit.toFixed(2)}ml, brakuje: ${shortageInBaseUnit.toFixed(2)}ml)`
           );
         }
       }
