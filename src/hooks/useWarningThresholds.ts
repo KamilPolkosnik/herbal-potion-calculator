@@ -20,10 +20,11 @@ export const useWarningThresholds = () => {
       const { data, error } = await supabase
         .from('warning_thresholds')
         .select('*')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (error) {
+        console.error('Error loading warning thresholds:', error);
+        return;
       }
       
       setThresholds(data);
@@ -34,16 +35,16 @@ export const useWarningThresholds = () => {
     }
   };
 
-  const updateThresholds = async (updatedThresholds: Partial<WarningThresholds>) => {
+  const updateThresholds = async (updatedThresholds: { herbs_threshold: number; oils_threshold: number; others_threshold: number }) => {
     try {
       if (!thresholds) {
         // Create new record if none exists
         const { data, error } = await supabase
           .from('warning_thresholds')
           .insert({
-            herbs_threshold: updatedThresholds.herbs_threshold || 0,
-            oils_threshold: updatedThresholds.oils_threshold || 0,
-            others_threshold: updatedThresholds.others_threshold || 0
+            herbs_threshold: updatedThresholds.herbs_threshold,
+            oils_threshold: updatedThresholds.oils_threshold,
+            others_threshold: updatedThresholds.others_threshold
           })
           .select()
           .single();

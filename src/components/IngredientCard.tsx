@@ -68,7 +68,9 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
             {ingredient}
           </Label>
           {isLowStock && (
-            <AlertCircle className="h-4 w-4 text-red-600" title={`Niski stan! Poniżej ${warningThreshold} ${unit}`} />
+            <div className="flex items-center" title={`Niski stan! Poniżej ${warningThreshold} ${unit}`}>
+              <AlertCircle className="h-4 w-4 text-red-600" />
+            </div>
           )}
         </div>
         {compositionUsage.length > 0 && (
