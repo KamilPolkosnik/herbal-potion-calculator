@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -145,9 +146,17 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
           totalRequired
         });
 
-        // Check if units match - if not, show warning but allow (assuming user knows what they're doing)
-        if (availableUnit !== requiredUnit) {
+        // Normalize units for comparison - treat similar units as equal
+        const normalizeUnit = (unit: string) => {
+          return unit.toLowerCase().replace('.', '').trim();
+        };
+
+        const normalizedAvailableUnit = normalizeUnit(availableUnit);
+        const normalizedRequiredUnit = normalizeUnit(requiredUnit);
+
+        if (normalizedAvailableUnit !== normalizedRequiredUnit) {
           console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${availableUnit}, wymagane w ${requiredUnit}`);
+          // For now, we'll assume units are compatible but show warning
         }
 
         if (totalRequired > available) {
@@ -262,12 +271,14 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     // After removing item, recheck availability for all remaining items
     if (updatedCart.length > 0) {
       const recheckPromises = updatedCart.map(async (item) => {
-        // Temporarily set cart to empty to check availability without this item
+        // Create temporary cart without the removed item for availability check
         const tempCart = cart.filter(cartItem => cartItem.id !== cartItemId);
-        const originalCart = cart;
         
         // Temporarily update cart for availability check
-        const tempThis = { ...this, cart: tempCart };
+        const originalCart = cart;
+        const tempThis = { ...this };
+        tempThis.cart = tempCart;
+        
         const availability = await checkAvailabilityWithCart(item.compositionId, item.quantity);
         
         return { ...item, availabilityCheck: availability };
