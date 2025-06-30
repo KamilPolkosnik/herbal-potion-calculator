@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -271,16 +270,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     // After removing item, recheck availability for all remaining items
     if (updatedCart.length > 0) {
       const recheckPromises = updatedCart.map(async (item) => {
-        // Create temporary cart without the removed item for availability check
-        const tempCart = cart.filter(cartItem => cartItem.id !== cartItemId);
-        
-        // Temporarily update cart for availability check
-        const originalCart = cart;
-        const tempThis = { ...this };
-        tempThis.cart = tempCart;
-        
         const availability = await checkAvailabilityWithCart(item.compositionId, item.quantity);
-        
         return { ...item, availabilityCheck: availability };
       });
 
