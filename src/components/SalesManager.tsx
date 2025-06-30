@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -75,6 +74,79 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     }
   }, [selectedComposition, compositions]);
 
+  // Enhanced availability check that considers current cart contents
+  const checkAvailabilityWithCart = async (compositionId: string, newQuantity: number) => {
+    try {
+      // Get current ingredient amounts from database
+      const { data: currentIngredients, error: ingredientsError } = await supabase
+        .from('ingredients')
+        .select('name, amount');
+
+      if (ingredientsError) throw ingredientsError;
+
+      // Get composition ingredients
+      const { data: compositionIngredients, error: compositionError } = await supabase
+        .from('composition_ingredients')
+        .select('ingredient_name, amount, unit')
+        .eq('composition_id', compositionId);
+
+      if (compositionError) throw compositionError;
+
+      if (!compositionIngredients || compositionIngredients.length === 0) {
+        return { available: false, missingIngredients: ['Brak składników w zestawie'] };
+      }
+
+      // Create a map of current ingredient amounts
+      const availableAmounts: Record<string, number> = {};
+      currentIngredients?.forEach(ingredient => {
+        availableAmounts[ingredient.name] = ingredient.amount;
+      });
+
+      // Calculate total usage from cart (including existing items)
+      const totalUsageFromCart: Record<string, number> = {};
+      
+      // Sum up usage from existing cart items
+      cart.forEach(cartItem => {
+        cartItem.ingredients.forEach(ingredient => {
+          const totalUsed = ingredient.amount * cartItem.quantity;
+          totalUsageFromCart[ingredient.name] = (totalUsageFromCart[ingredient.name] || 0) + totalUsed;
+        });
+      });
+
+      // Check if adding the new composition would exceed available amounts
+      const missingIngredients: string[] = [];
+
+      for (const ingredient of compositionIngredients) {
+        const requiredForNewItem = ingredient.amount * newQuantity;
+        const currentUsageFromCart = totalUsageFromCart[ingredient.ingredient_name] || 0;
+        const totalRequired = currentUsageFromCart + requiredForNewItem;
+        const available = availableAmounts[ingredient.ingredient_name] || 0;
+
+        console.log(`Sprawdzanie składnika ${ingredient.ingredient_name}:`, {
+          available,
+          currentUsageFromCart,
+          requiredForNewItem,
+          totalRequired
+        });
+
+        if (totalRequired > available) {
+          const shortage = totalRequired - available;
+          missingIngredients.push(
+            `${ingredient.ingredient_name} (dostępne: ${available}${ingredient.unit}, w koszyku: ${currentUsageFromCart}${ingredient.unit}, potrzebne dodatkowo: ${requiredForNewItem}${ingredient.unit}, brakuje: ${shortage}${ingredient.unit})`
+          );
+        }
+      }
+
+      return {
+        available: missingIngredients.length === 0,
+        missingIngredients
+      };
+    } catch (error) {
+      console.error('Error checking availability with cart:', error);
+      return { available: false, missingIngredients: ['Błąd sprawdzania dostępności'] };
+    }
+  };
+
   const addToCart = async () => {
     if (!selectedComposition || quantity <= 0 || customPrice < 0) {
       toast({
@@ -107,8 +179,20 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         return;
       }
 
-      // Check ingredient availability
-      const availabilityCheck = await checkIngredientAvailability(selectedComposition, quantity);
+      // Check ingredient availability considering current cart
+      const availabilityCheck = await checkAvailabilityWithCart(selectedComposition, quantity);
+
+      if (!availabilityCheck.available) {
+        toast({
+          title: "Niewystarczające składniki",
+          description: "Nie można dodać zestawu do koszyka z powodu braku składników",
+          variant: "destructive",
+        });
+        
+        // Show detailed information about missing ingredients
+        console.log('Brakujące składniki:', availabilityCheck.missingIngredients);
+        return;
+      }
 
       // Create cart item
       const cartItem: CartItem = {
@@ -147,11 +231,22 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     }
   };
 
-  const removeFromCart = (cartItemId: string) => {
+  const removeFromCart = async (cartItemId: string) => {
     setCart(prev => prev.filter(item => item.id !== cartItemId));
+    
+    // After removing item, recheck availability for all remaining items
+    const updatedCart = cart.filter(item => item.id !== cartItemId);
+    const recheckPromises = updatedCart.map(async (item) => {
+      const availability = await checkAvailabilityWithCart(item.compositionId, item.quantity);
+      return { ...item, availabilityCheck: availability };
+    });
+
+    const updatedCartWithAvailability = await Promise.all(recheckPromises);
+    setCart(updatedCartWithAvailability);
+
     toast({
       title: "Usunięto z koszyka",
-      description: "Produkt został usunięty z koszyka",
+      description: "Produkt został usunięty z koszyka i dostępność składników została zaktualizowana",
     });
   };
 
@@ -163,6 +258,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     return cart.some(item => !item.availabilityCheck?.available);
   };
 
+  // Process sale from cart
   const processSaleFromCart = async () => {
     if (cart.length === 0) {
       toast({
