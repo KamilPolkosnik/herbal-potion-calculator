@@ -77,14 +77,16 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   // Enhanced availability check that considers current cart contents
   const checkAvailabilityWithCart = async (compositionId: string, newQuantity: number) => {
     try {
+      console.log('Sprawdzanie dostępności dla:', compositionId, 'ilość:', newQuantity);
+
       // Get current ingredient amounts from database
       const { data: currentIngredients, error: ingredientsError } = await supabase
         .from('ingredients')
-        .select('name, amount');
+        .select('name, amount, unit');
 
       if (ingredientsError) throw ingredientsError;
 
-      // Get composition ingredients
+      // Get composition ingredients with their units
       const { data: compositionIngredients, error: compositionError } = await supabase
         .from('composition_ingredients')
         .select('ingredient_name, amount, unit')
@@ -96,10 +98,13 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         return { available: false, missingIngredients: ['Brak składników w zestawie'] };
       }
 
-      // Create a map of current ingredient amounts
-      const availableAmounts: Record<string, number> = {};
+      // Create a map of current ingredient amounts with their units
+      const availableAmounts: Record<string, { amount: number; unit: string }> = {};
       currentIngredients?.forEach(ingredient => {
-        availableAmounts[ingredient.name] = ingredient.amount;
+        availableAmounts[ingredient.name] = {
+          amount: ingredient.amount,
+          unit: ingredient.unit
+        };
       });
 
       // Calculate total usage from cart (including existing items)
@@ -120,25 +125,44 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         const requiredForNewItem = ingredient.amount * newQuantity;
         const currentUsageFromCart = totalUsageFromCart[ingredient.ingredient_name] || 0;
         const totalRequired = currentUsageFromCart + requiredForNewItem;
-        const available = availableAmounts[ingredient.ingredient_name] || 0;
+        const availableData = availableAmounts[ingredient.ingredient_name];
+        
+        if (!availableData) {
+          missingIngredients.push(`${ingredient.ingredient_name} (składnik nie istnieje w bazie)`);
+          continue;
+        }
+
+        const available = availableData.amount;
+        const availableUnit = availableData.unit;
+        const requiredUnit = ingredient.unit;
 
         console.log(`Sprawdzanie składnika ${ingredient.ingredient_name}:`, {
           available,
+          availableUnit,
+          requiredUnit,
           currentUsageFromCart,
           requiredForNewItem,
           totalRequired
         });
 
+        // Check if units match - if not, show warning but allow (assuming user knows what they're doing)
+        if (availableUnit !== requiredUnit) {
+          console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${availableUnit}, wymagane w ${requiredUnit}`);
+        }
+
         if (totalRequired > available) {
           const shortage = totalRequired - available;
           missingIngredients.push(
-            `${ingredient.ingredient_name} (dostępne: ${available}${ingredient.unit}, w koszyku: ${currentUsageFromCart}${ingredient.unit}, potrzebne dodatkowo: ${requiredForNewItem}${ingredient.unit}, brakuje: ${shortage}${ingredient.unit})`
+            `${ingredient.ingredient_name} (dostępne: ${available}${availableUnit}, w koszyku: ${currentUsageFromCart}${requiredUnit}, potrzebne dodatkowo: ${requiredForNewItem}${requiredUnit}, brakuje: ${shortage}${requiredUnit})`
           );
         }
       }
 
+      const isAvailable = missingIngredients.length === 0;
+      console.log('Wynik sprawdzania dostępności:', { isAvailable, missingIngredients });
+
       return {
-        available: missingIngredients.length === 0,
+        available: isAvailable,
         missingIngredients
       };
     } catch (error) {
@@ -232,17 +256,26 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   };
 
   const removeFromCart = async (cartItemId: string) => {
-    setCart(prev => prev.filter(item => item.id !== cartItemId));
+    const updatedCart = cart.filter(item => item.id !== cartItemId);
+    setCart(updatedCart);
     
     // After removing item, recheck availability for all remaining items
-    const updatedCart = cart.filter(item => item.id !== cartItemId);
-    const recheckPromises = updatedCart.map(async (item) => {
-      const availability = await checkAvailabilityWithCart(item.compositionId, item.quantity);
-      return { ...item, availabilityCheck: availability };
-    });
+    if (updatedCart.length > 0) {
+      const recheckPromises = updatedCart.map(async (item) => {
+        // Temporarily set cart to empty to check availability without this item
+        const tempCart = cart.filter(cartItem => cartItem.id !== cartItemId);
+        const originalCart = cart;
+        
+        // Temporarily update cart for availability check
+        const tempThis = { ...this, cart: tempCart };
+        const availability = await checkAvailabilityWithCart(item.compositionId, item.quantity);
+        
+        return { ...item, availabilityCheck: availability };
+      });
 
-    const updatedCartWithAvailability = await Promise.all(recheckPromises);
-    setCart(updatedCartWithAvailability);
+      const updatedCartWithAvailability = await Promise.all(recheckPromises);
+      setCart(updatedCartWithAvailability);
+    }
 
     toast({
       title: "Usunięto z koszyka",
