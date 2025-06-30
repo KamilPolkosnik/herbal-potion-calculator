@@ -91,6 +91,20 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
     const vatAmount = transaction.total_price - netAmount;
     const amountInWords = convertToWords(transaction.total_price);
 
+    // Parse composition names to handle multiple items
+    const isMultipleItems = transaction.composition_name.includes(',');
+    const items = isMultipleItems 
+      ? transaction.composition_name.split(', ').map(item => {
+          const match = item.match(/^(\d+)x (.+)$/);
+          if (match) {
+            const quantity = parseInt(match[1]);
+            const name = match[2];
+            return { name, quantity };
+          }
+          return { name: item, quantity: 1 };
+        })
+      : [{ name: transaction.composition_name, quantity: transaction.quantity }];
+
     const invoiceContent = `
 <!DOCTYPE html>
 <html>
@@ -155,16 +169,25 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>1</td>
-                <td>${transaction.composition_name}</td>
-                <td>${transaction.quantity} szt.</td>
-                <td class="number-cell">${(netAmount / transaction.quantity).toFixed(2)} zł</td>
-                <td class="number-cell">${netAmount.toFixed(2)} zł</td>
-                <td class="number-cell">23%</td>
-                <td class="number-cell">${vatAmount.toFixed(2)} zł</td>
-                <td class="number-cell">${transaction.total_price.toFixed(2)} zł</td>
-            </tr>
+            ${items.map((item, index) => {
+              const itemNetAmount = (netAmount / items.length);
+              const itemVatAmount = (vatAmount / items.length);
+              const itemGrossAmount = (transaction.total_price / items.length);
+              const unitNetPrice = itemNetAmount / item.quantity;
+              
+              return `
+              <tr>
+                  <td>${index + 1}</td>
+                  <td>${item.name}</td>
+                  <td>${item.quantity} szt.</td>
+                  <td class="number-cell">${unitNetPrice.toFixed(2)} zł</td>
+                  <td class="number-cell">${itemNetAmount.toFixed(2)} zł</td>
+                  <td class="number-cell">23%</td>
+                  <td class="number-cell">${itemVatAmount.toFixed(2)} zł</td>
+                  <td class="number-cell">${itemGrossAmount.toFixed(2)} zł</td>
+              </tr>
+              `;
+            }).join('')}
         </tbody>
         <tfoot>
             <tr style="font-weight: bold;">

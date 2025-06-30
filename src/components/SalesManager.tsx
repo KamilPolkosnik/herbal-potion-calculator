@@ -40,7 +40,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   const [processing, setProcessing] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [buyerData, setBuyerData] = useState<BuyerData>({});
-  const { processSale, checkIngredientAvailability } = useSales();
+  const { processSale, processCartSale, checkIngredientAvailability } = useSales();
   const { toast } = useToast();
 
   const loadCompositions = async () => {
@@ -161,19 +161,28 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
 
         if (totalRequiredInBaseUnit > availableAmountInBaseUnit) {
           const shortageInBaseUnit = totalRequiredInBaseUnit - availableAmountInBaseUnit;
+          const reservedInBaseUnit = currentUsageFromCartInBaseUnit;
           
-          // Format shortage information more clearly
-          let shortageText = '';
-          if (ingredient.unit.toLowerCase().includes('krople') || ingredient.unit.toLowerCase().includes('kropli')) {
-            const shortageInDrops = Math.ceil(shortageInBaseUnit * 20);
-            shortageText = `${shortageInDrops} kropli`;
-          } else {
-            shortageText = `${shortageInBaseUnit.toFixed(2)}${availableData.unit}`;
+          // Format shortage information more clearly, including reservation info
+          let messageText = `${ingredient.ingredient_name}: dostępne ${availableData.amount}${availableData.unit}`;
+          
+          if (reservedInBaseUnit > 0) {
+            if (ingredient.unit.toLowerCase().includes('krople') || ingredient.unit.toLowerCase().includes('kropli')) {
+              const reservedInDrops = Math.ceil(reservedInBaseUnit * 20);
+              messageText += `, w rezerwacji ${reservedInDrops} kropli`;
+            } else {
+              messageText += `, w rezerwacji ${reservedInBaseUnit.toFixed(2)}${availableData.unit}`;
+            }
           }
           
-          missingIngredients.push(
-            `${ingredient.ingredient_name}: dostępne ${availableData.amount}${availableData.unit}, potrzebne jeszcze ${shortageText}`
-          );
+          if (ingredient.unit.toLowerCase().includes('krople') || ingredient.unit.toLowerCase().includes('kropli')) {
+            const shortageInDrops = Math.ceil(shortageInBaseUnit * 20);
+            messageText += `, brakuje jeszcze ${shortageInDrops} kropli`;
+          } else {
+            messageText += `, brakuje jeszcze ${shortageInBaseUnit.toFixed(2)}${availableData.unit}`;
+          }
+          
+          missingIngredients.push(messageText);
         }
       }
 
@@ -305,7 +314,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     return cart.some(item => !item.availabilityCheck?.available);
   };
 
-  // Process sale from cart
+  // Process sale from cart using the new processCartSale function
   const processSaleFromCart = async () => {
     if (cart.length === 0) {
       toast({
@@ -327,21 +336,21 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
 
     setProcessing(true);
     try {
-      // Process each item in the cart as separate transactions
-      for (const item of cart) {
-        await processSale(
-          item.compositionId,
-          item.compositionName,
-          item.quantity,
-          item.unitPrice,
-          item.ingredients,
-          buyerData
-        );
-      }
+      // Process entire cart as single transaction
+      await processCartSale(
+        cart.map(item => ({
+          compositionId: item.compositionId,
+          compositionName: item.compositionName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          ingredients: item.ingredients
+        })),
+        buyerData
+      );
 
       toast({
         title: "Sukces",
-        description: `Sprzedaż ${cart.length} pozycji została zarejestrowana`,
+        description: `Sprzedaż koszyka z ${cart.length} pozycjami została zarejestrowana jako jedna transakcja`,
       });
 
       // Clear cart and buyer data
@@ -353,7 +362,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         await onDataChange();
       }
     } catch (error) {
-      console.error('Error processing sale:', error);
+      console.error('Error processing cart sale:', error);
       toast({
         title: "Błąd",
         description: error instanceof Error ? error.message : "Nie udało się zarejestrować sprzedaży",

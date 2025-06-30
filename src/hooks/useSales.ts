@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToBaseUnit, areUnitsCompatible } from '@/utils/unitConverter';
@@ -296,6 +295,213 @@ export const useSales = () => {
     }
   };
 
+  const processCartSale = async (
+    cartItems: Array<{
+      compositionId: string;
+      compositionName: string;
+      quantity: number;
+      unitPrice: number;
+      ingredients: Array<{ name: string; amount: number; unit: string }>;
+    }>,
+    buyerData?: BuyerData
+  ) => {
+    try {
+      console.log('Processing cart sale:', { cartItems, buyerData });
+
+      // Sprawdź dostępność składników dla całego koszyka
+      const totalIngredientUsage: Record<string, { amount: number; unit: string }> = {};
+      
+      // Zsumuj użycie składników z całego koszyka
+      cartItems.forEach(item => {
+        item.ingredients.forEach(ingredient => {
+          const amountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
+          const totalUsedInBaseUnit = amountInBaseUnit * item.quantity;
+          
+          if (!totalIngredientUsage[ingredient.name]) {
+            totalIngredientUsage[ingredient.name] = { amount: 0, unit: 'ml' };
+          }
+          totalIngredientUsage[ingredient.name].amount += totalUsedInBaseUnit;
+        });
+      });
+
+      // Sprawdź dostępność dla zsumowanych składników
+      const { data: currentIngredients, error: ingredientsError } = await supabase
+        .from('ingredients')
+        .select('name, amount, unit');
+
+      if (ingredientsError) throw ingredientsError;
+
+      const availableAmounts: Record<string, { amount: number; unit: string }> = {};
+      currentIngredients?.forEach(ingredient => {
+        availableAmounts[ingredient.name] = {
+          amount: ingredient.amount,
+          unit: ingredient.unit
+        };
+      });
+
+      const missingIngredients: string[] = [];
+      
+      Object.entries(totalIngredientUsage).forEach(([ingredientName, usage]) => {
+        const availableData = availableAmounts[ingredientName];
+        
+        if (!availableData) {
+          missingIngredients.push(`${ingredientName} (składnik nie istnieje w bazie)`);
+          return;
+        }
+
+        const availableInBaseUnit = convertToBaseUnit(availableData.amount, availableData.unit);
+        
+        if (usage.amount > availableInBaseUnit) {
+          const shortageInBaseUnit = usage.amount - availableInBaseUnit;
+          missingIngredients.push(
+            `${ingredientName} (dostępne: ${availableData.amount}${availableData.unit}, potrzebne: ${usage.amount.toFixed(2)}ml, brakuje: ${shortageInBaseUnit.toFixed(2)}ml)`
+          );
+        }
+      });
+
+      if (missingIngredients.length > 0) {
+        throw new Error(`Niewystarczające składniki: ${missingIngredients.join(', ')}`);
+      }
+
+      // Build full address from components
+      let fullAddress = '';
+      if (buyerData?.street || buyerData?.house_number || buyerData?.city) {
+        const addressParts = [];
+        if (buyerData?.street) {
+          let streetPart = buyerData.street;
+          if (buyerData?.house_number) {
+            streetPart += ` ${buyerData.house_number}`;
+            if (buyerData?.apartment_number) {
+              streetPart += `/${buyerData.apartment_number}`;
+            }
+          }
+          addressParts.push(streetPart);
+        }
+        if (buyerData?.postal_code && buyerData?.city) {
+          addressParts.push(`${buyerData.postal_code} ${buyerData.city}`);
+        } else if (buyerData?.city) {
+          addressParts.push(buyerData.city);
+        }
+        fullAddress = addressParts.join(', ');
+      }
+
+      // Oblicz łączną wartość koszyka
+      const totalCartValue = cartItems.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
+
+      // Utwórz jedną transakcję dla całego koszyka
+      const compositionNames = cartItems.map(item => `${item.quantity}x ${item.compositionName}`).join(', ');
+      
+      const { data: transaction, error: transactionError } = await supabase
+        .from('sales_transactions')
+        .insert({
+          composition_id: cartItems[0].compositionId, // Używamy ID pierwszego produktu jako referencję
+          composition_name: compositionNames, // Łączymy nazwy wszystkich produktów
+          quantity: cartItems.reduce((total, item) => total + item.quantity, 0), // Suma wszystkich ilości
+          unit_price: totalCartValue / cartItems.reduce((total, item) => total + item.quantity, 0), // Średnia cena jednostkowa
+          total_price: totalCartValue,
+          buyer_name: buyerData?.name || null,
+          buyer_email: buyerData?.email || null,
+          buyer_phone: buyerData?.phone || null,
+          buyer_address: fullAddress || null,
+          buyer_tax_id: buyerData?.tax_id || null,
+        })
+        .select()
+        .single();
+
+      if (transactionError) throw transactionError;
+
+      console.log('Cart transaction created:', transaction);
+
+      // Przetwórz wszystkie składniki z koszyka
+      const allIngredientUsages = [];
+      const ingredientUpdates = [];
+
+      cartItems.forEach(item => {
+        item.ingredients.forEach(ingredient => {
+          const amountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
+          const totalUsedInBaseUnit = amountInBaseUnit * item.quantity;
+          
+          // Zapisz użycie składnika w oryginalnych jednostkach
+          allIngredientUsages.push({
+            transaction_id: transaction.id,
+            ingredient_name: ingredient.name,
+            quantity_used: ingredient.amount * item.quantity,
+            unit: ingredient.unit,
+          });
+
+          // Znajdź istniejący update dla tego składnika lub utwórz nowy
+          let existingUpdate = ingredientUpdates.find(update => update.name === ingredient.name);
+          if (!existingUpdate) {
+            existingUpdate = {
+              name: ingredient.name,
+              totalUsedInBaseUnit: 0
+            };
+            ingredientUpdates.push(existingUpdate);
+          }
+          existingUpdate.totalUsedInBaseUnit += totalUsedInBaseUnit;
+        });
+      });
+
+      // Wstaw rekordy użycia składników
+      if (allIngredientUsages.length > 0) {
+        const { error: usageError } = await supabase
+          .from('transaction_ingredient_usage')
+          .insert(allIngredientUsages);
+
+        if (usageError) throw usageError;
+      }
+
+      // Aktualizuj ilości składników
+      for (const update of ingredientUpdates) {
+        const { data: currentIngredient, error: fetchError } = await supabase
+          .from('ingredients')
+          .select('amount, unit')
+          .eq('name', update.name)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching ingredient:', fetchError);
+          continue;
+        }
+
+        const currentAmountInBaseUnit = convertToBaseUnit(currentIngredient.amount, currentIngredient.unit);
+        const newAmountInBaseUnit = Math.max(0, currentAmountInBaseUnit - update.totalUsedInBaseUnit);
+        
+        let newAmountInStorageUnit;
+        if (currentIngredient.unit.toLowerCase().includes('krople') || currentIngredient.unit.toLowerCase().includes('kropli')) {
+          newAmountInStorageUnit = newAmountInBaseUnit * 20;
+        } else {
+          newAmountInStorageUnit = newAmountInBaseUnit;
+        }
+
+        console.log(`Aktualizacja składnika ${update.name}:`, {
+          currentAmount: currentIngredient.amount,
+          currentUnit: currentIngredient.unit,
+          currentInBaseUnit: currentAmountInBaseUnit,
+          usedInBaseUnit: update.totalUsedInBaseUnit,
+          newInBaseUnit: newAmountInBaseUnit,
+          newInStorageUnit: newAmountInStorageUnit
+        });
+
+        const { error: updateError } = await supabase
+          .from('ingredients')
+          .update({ amount: newAmountInStorageUnit })
+          .eq('name', update.name);
+
+        if (updateError) {
+          console.error('Error updating ingredient:', updateError);
+        }
+      }
+
+      console.log('Cart sale processed successfully');
+      await loadTransactions();
+      return transaction;
+    } catch (error) {
+      console.error('Error processing cart sale:', error);
+      throw error;
+    }
+  };
+
   const reverseTransaction = async (transactionId: string) => {
     try {
       console.log('Reversing transaction:', transactionId);
@@ -333,7 +539,6 @@ export const useSales = () => {
         // Convert back to storage unit
         let restoredAmountInStorageUnit;
         if (currentIngredient.unit.toLowerCase().includes('krople') || currentIngredient.unit.toLowerCase().includes('kropli')) {
-          // If stored in drops, convert ml back to drops
           restoredAmountInStorageUnit = restoredAmountInBaseUnit * 20;
         } else {
           restoredAmountInStorageUnit = restoredAmountInBaseUnit;
@@ -404,6 +609,7 @@ export const useSales = () => {
     transactions,
     loading,
     processSale,
+    processCartSale,
     reverseTransaction,
     deleteTransaction,
     checkIngredientAvailability,
