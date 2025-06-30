@@ -1,5 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { convertToBaseUnit, areUnitsCompatible } from '@/utils/unitConverter';
 
 export interface SalesTransaction {
   id: string;
@@ -64,38 +66,73 @@ export const useSales = () => {
     quantity: number
   ): Promise<{ available: boolean; missingIngredients: string[] }> => {
     try {
-      // Get composition ingredients
-      const { data: compositionIngredients, error: ingredientsError } = await supabase
-        .from('composition_ingredients')
-        .select('ingredient_name, amount')
-        .eq('composition_id', compositionId);
+      // Get current ingredient amounts from database
+      const { data: currentIngredients, error: ingredientsError } = await supabase
+        .from('ingredients')
+        .select('name, amount, unit');
 
       if (ingredientsError) throw ingredientsError;
+
+      // Get composition ingredients with their units
+      const { data: compositionIngredients, error: compositionError } = await supabase
+        .from('composition_ingredients')
+        .select('ingredient_name, amount, unit')
+        .eq('composition_id', compositionId);
+
+      if (compositionError) throw compositionError;
 
       if (!compositionIngredients || compositionIngredients.length === 0) {
         return { available: false, missingIngredients: ['Brak składników w zestawie'] };
       }
 
+      // Create a map of current ingredient amounts with their units
+      const availableAmounts: Record<string, { amount: number; unit: string }> = {};
+      currentIngredients?.forEach(ingredient => {
+        availableAmounts[ingredient.name] = {
+          amount: ingredient.amount,
+          unit: ingredient.unit
+        };
+      });
+
       const missingIngredients: string[] = [];
 
-      // Check each ingredient availability
       for (const ingredient of compositionIngredients) {
-        const requiredAmount = ingredient.amount * quantity;
+        const availableData = availableAmounts[ingredient.ingredient_name];
         
-        const { data: currentIngredient, error: fetchError } = await supabase
-          .from('ingredients')
-          .select('amount')
-          .eq('name', ingredient.ingredient_name)
-          .single();
-
-        if (fetchError || !currentIngredient) {
-          missingIngredients.push(`${ingredient.ingredient_name} (nie znaleziono)`);
+        if (!availableData) {
+          missingIngredients.push(`${ingredient.ingredient_name} (składnik nie istnieje w bazie)`);
           continue;
         }
 
-        if (currentIngredient.amount < requiredAmount) {
+        // Check if units are compatible
+        if (!areUnitsCompatible(availableData.unit, ingredient.unit)) {
+          console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${availableData.unit}, wymagane w ${ingredient.unit}`);
           missingIngredients.push(
-            `${ingredient.ingredient_name} (dostępne: ${currentIngredient.amount}, potrzebne: ${requiredAmount})`
+            `${ingredient.ingredient_name} (niezgodność jednostek: ${availableData.unit} vs ${ingredient.unit})`
+          );
+          continue;
+        }
+
+        // Convert both amounts to base units for comparison
+        const availableInBaseUnit = convertToBaseUnit(availableData.amount, availableData.unit);
+        const requiredPerUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
+        const totalRequiredInBaseUnit = requiredPerUnit * quantity;
+
+        console.log(`Sprawdzanie składnika ${ingredient.ingredient_name}:`, {
+          availableAmount: availableData.amount,
+          availableUnit: availableData.unit,
+          availableInBaseUnit,
+          requiredPerUnit: ingredient.amount,
+          requiredUnit: ingredient.unit,
+          requiredPerUnitInBaseUnit: requiredPerUnit,
+          totalRequiredInBaseUnit,
+          quantity
+        });
+
+        if (totalRequiredInBaseUnit > availableInBaseUnit) {
+          const shortageInBaseUnit = totalRequiredInBaseUnit - availableInBaseUnit;
+          missingIngredients.push(
+            `${ingredient.ingredient_name} (dostępne: ${availableData.amount}${availableData.unit}, potrzebne: ${(requiredPerUnit * quantity).toFixed(2)}ml, brakuje: ${shortageInBaseUnit.toFixed(2)}ml)`
           );
         }
       }
@@ -172,25 +209,27 @@ export const useSales = () => {
 
       console.log('Transaction created:', transaction);
 
-      // Process each ingredient
+      // Process each ingredient with proper unit conversion
       const ingredientUsages = [];
       const ingredientUpdates = [];
 
       for (const ingredient of ingredients) {
-        const totalUsed = ingredient.amount * quantity;
+        // Convert ingredient amount to base unit for calculation
+        const amountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
+        const totalUsedInBaseUnit = amountInBaseUnit * quantity;
         
-        // Record ingredient usage
+        // Record ingredient usage in original units
         ingredientUsages.push({
           transaction_id: transaction.id,
           ingredient_name: ingredient.name,
-          quantity_used: totalUsed,
+          quantity_used: ingredient.amount * quantity, // Store in original units
           unit: ingredient.unit,
         });
 
-        // Prepare ingredient update
+        // Get current ingredient data
         const { data: currentIngredient, error: fetchError } = await supabase
           .from('ingredients')
-          .select('amount')
+          .select('amount, unit')
           .eq('name', ingredient.name)
           .single();
 
@@ -199,10 +238,31 @@ export const useSales = () => {
           continue;
         }
 
-        const newAmount = Math.max(0, (currentIngredient?.amount || 0) - totalUsed);
+        // Convert current amount to base unit
+        const currentAmountInBaseUnit = convertToBaseUnit(currentIngredient.amount, currentIngredient.unit);
+        const newAmountInBaseUnit = Math.max(0, currentAmountInBaseUnit - totalUsedInBaseUnit);
+        
+        // Convert back to storage unit
+        let newAmountInStorageUnit;
+        if (currentIngredient.unit.toLowerCase().includes('krople') || currentIngredient.unit.toLowerCase().includes('kropli')) {
+          // If stored in drops, convert ml back to drops
+          newAmountInStorageUnit = newAmountInBaseUnit * 20;
+        } else {
+          newAmountInStorageUnit = newAmountInBaseUnit;
+        }
+
+        console.log(`Aktualizacja składnika ${ingredient.name}:`, {
+          currentAmount: currentIngredient.amount,
+          currentUnit: currentIngredient.unit,
+          currentInBaseUnit: currentAmountInBaseUnit,
+          usedInBaseUnit: totalUsedInBaseUnit,
+          newInBaseUnit: newAmountInBaseUnit,
+          newInStorageUnit: newAmountInStorageUnit
+        });
+
         ingredientUpdates.push({
           name: ingredient.name,
-          newAmount
+          newAmount: newAmountInStorageUnit
         });
       }
 
@@ -248,11 +308,11 @@ export const useSales = () => {
 
       if (usagesError) throw usagesError;
 
-      // Restore ingredient amounts
+      // Restore ingredient amounts with proper unit conversion
       for (const usage of usages || []) {
         const { data: currentIngredient, error: fetchError } = await supabase
           .from('ingredients')
-          .select('amount')
+          .select('amount, unit')
           .eq('name', usage.ingredient_name)
           .single();
 
@@ -261,11 +321,27 @@ export const useSales = () => {
           continue;
         }
 
-        const restoredAmount = (currentIngredient?.amount || 0) + usage.quantity_used;
+        // Convert usage amount to base unit
+        const usageInBaseUnit = convertToBaseUnit(usage.quantity_used, usage.unit);
+        
+        // Convert current amount to base unit
+        const currentAmountInBaseUnit = convertToBaseUnit(currentIngredient.amount, currentIngredient.unit);
+        
+        // Add back the used amount
+        const restoredAmountInBaseUnit = currentAmountInBaseUnit + usageInBaseUnit;
+        
+        // Convert back to storage unit
+        let restoredAmountInStorageUnit;
+        if (currentIngredient.unit.toLowerCase().includes('krople') || currentIngredient.unit.toLowerCase().includes('kropli')) {
+          // If stored in drops, convert ml back to drops
+          restoredAmountInStorageUnit = restoredAmountInBaseUnit * 20;
+        } else {
+          restoredAmountInStorageUnit = restoredAmountInBaseUnit;
+        }
 
         const { error: restoreError } = await supabase
           .from('ingredients')
-          .update({ amount: restoredAmount })
+          .update({ amount: restoredAmountInStorageUnit })
           .eq('name', usage.ingredient_name);
 
         if (restoreError) {

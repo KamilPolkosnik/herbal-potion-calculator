@@ -161,8 +161,18 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
 
         if (totalRequiredInBaseUnit > availableAmountInBaseUnit) {
           const shortageInBaseUnit = totalRequiredInBaseUnit - availableAmountInBaseUnit;
+          
+          // Format shortage information more clearly
+          let shortageText = '';
+          if (ingredient.unit.toLowerCase().includes('krople') || ingredient.unit.toLowerCase().includes('kropli')) {
+            const shortageInDrops = Math.ceil(shortageInBaseUnit * 20);
+            shortageText = `${shortageInDrops} kropli`;
+          } else {
+            shortageText = `${shortageInBaseUnit.toFixed(2)}${availableData.unit}`;
+          }
+          
           missingIngredients.push(
-            `${ingredient.ingredient_name} (dostępne: ${availableData.amount}${availableData.unit}, w koszyku: ${currentUsageFromCartInBaseUnit.toFixed(2)}ml, potrzebne dodatkowo: ${requiredForNewItemInBaseUnit.toFixed(2)}ml, brakuje: ${shortageInBaseUnit.toFixed(2)}ml)`
+            `${ingredient.ingredient_name}: dostępne ${availableData.amount}${availableData.unit}, potrzebne jeszcze ${shortageText}`
           );
         }
       }
@@ -216,13 +226,15 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
       const availabilityCheck = await checkAvailabilityWithCart(selectedComposition, quantity);
 
       if (!availabilityCheck.available) {
+        // Show detailed missing ingredients information
+        const missingIngredientsText = availabilityCheck.missingIngredients.join('\n');
+        
         toast({
           title: "Niewystarczające składniki",
-          description: "Nie można dodać zestawu do koszyka z powodu braku składników",
+          description: `Brakujące składniki:\n${missingIngredientsText}`,
           variant: "destructive",
         });
         
-        // Show detailed information about missing ingredients
         console.log('Brakujące składniki:', availabilityCheck.missingIngredients);
         return;
       }

@@ -51,3 +51,15 @@ export const getBaseUnit = (unit: string): string => {
 export const areUnitsCompatible = (unit1: string, unit2: string): boolean => {
   return getBaseUnit(unit1) === getBaseUnit(unit2);
 };
+
+export const formatUnitDisplay = (amount: number, unit: string): string => {
+  const normalizedUnit = unit.toLowerCase().trim().replace('.', '');
+  
+  // Jeśli jednostka bazowa to ml, ale oryginalna to krople, pokaż w kroplach
+  if (normalizedUnit === 'ml' && amount < 1) {
+    const drops = Math.round(amount * 20);
+    return `${drops} kropli`;
+  }
+  
+  return `${amount}${unit}`;
+};
