@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToBaseUnit, areUnitsCompatible } from '@/utils/unitConverter';
@@ -62,7 +63,12 @@ export const useSales = () => {
 
   const checkIngredientAvailability = async (
     compositionId: string,
-    quantity: number
+    quantity: number,
+    cartItems: Array<{
+      compositionId: string;
+      quantity: number;
+      ingredients: Array<{ name: string; amount: number; unit: string }>;
+    }> = []
   ): Promise<{ available: boolean; missingIngredients: string[] }> => {
     try {
       // Get current ingredient amounts from database
@@ -93,6 +99,20 @@ export const useSales = () => {
         };
       });
 
+      // Calculate total reserved amounts from cart
+      const reservedAmounts: Record<string, number> = {};
+      cartItems.forEach(cartItem => {
+        cartItem.ingredients.forEach(ingredient => {
+          const amountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
+          const totalUsedInBaseUnit = amountInBaseUnit * cartItem.quantity;
+          
+          if (!reservedAmounts[ingredient.name]) {
+            reservedAmounts[ingredient.name] = 0;
+          }
+          reservedAmounts[ingredient.name] += totalUsedInBaseUnit;
+        });
+      });
+
       const missingIngredients: string[] = [];
 
       for (const ingredient of compositionIngredients) {
@@ -116,11 +136,15 @@ export const useSales = () => {
         const availableInBaseUnit = convertToBaseUnit(availableData.amount, availableData.unit);
         const requiredPerUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
         const totalRequiredInBaseUnit = requiredPerUnit * quantity;
+        const reservedForThisIngredient = reservedAmounts[ingredient.ingredient_name] || 0;
+        const effectiveAvailable = availableInBaseUnit - reservedForThisIngredient;
 
         console.log(`Sprawdzanie składnika ${ingredient.ingredient_name}:`, {
           availableAmount: availableData.amount,
           availableUnit: availableData.unit,
           availableInBaseUnit,
+          reservedInBaseUnit: reservedForThisIngredient,
+          effectiveAvailable,
           requiredPerUnit: ingredient.amount,
           requiredUnit: ingredient.unit,
           requiredPerUnitInBaseUnit: requiredPerUnit,
@@ -128,10 +152,14 @@ export const useSales = () => {
           quantity
         });
 
-        if (totalRequiredInBaseUnit > availableInBaseUnit) {
-          const shortageInBaseUnit = totalRequiredInBaseUnit - availableInBaseUnit;
+        if (totalRequiredInBaseUnit > effectiveAvailable) {
+          const shortageInBaseUnit = totalRequiredInBaseUnit - effectiveAvailable;
+          const statusText = reservedForThisIngredient > 0 ? 
+            `dostępne: ${effectiveAvailable.toFixed(2)}ml, w rezerwacji: ${reservedForThisIngredient.toFixed(2)}ml` : 
+            `dostępne: ${availableData.amount}${availableData.unit}`;
+          
           missingIngredients.push(
-            `${ingredient.ingredient_name} (dostępne: ${availableData.amount}${availableData.unit}, potrzebne: ${(requiredPerUnit * quantity).toFixed(2)}ml, brakuje: ${shortageInBaseUnit.toFixed(2)}ml)`
+            `${ingredient.ingredient_name} (${statusText}, potrzebne: ${(requiredPerUnit * quantity).toFixed(2)}ml, brakuje: ${shortageInBaseUnit.toFixed(2)}ml)`
           );
         }
       }
@@ -527,22 +555,35 @@ export const useSales = () => {
           continue;
         }
 
-        // Convert usage amount to base unit
+        // NAPRAWKA: Konwertuj ilość użytą do jednostki bazowej
         const usageInBaseUnit = convertToBaseUnit(usage.quantity_used, usage.unit);
         
-        // Convert current amount to base unit
+        // Konwertuj obecną ilość do jednostki bazowej
         const currentAmountInBaseUnit = convertToBaseUnit(currentIngredient.amount, currentIngredient.unit);
         
-        // Add back the used amount
+        // Dodaj z powrotem użytą ilość
         const restoredAmountInBaseUnit = currentAmountInBaseUnit + usageInBaseUnit;
         
-        // Convert back to storage unit
+        // Konwertuj z powrotem do jednostki przechowywania
         let restoredAmountInStorageUnit;
         if (currentIngredient.unit.toLowerCase().includes('krople') || currentIngredient.unit.toLowerCase().includes('kropli')) {
+          // Jeśli przechowywane w kroplach, konwertuj ml z powrotem na krople
           restoredAmountInStorageUnit = restoredAmountInBaseUnit * 20;
         } else {
+          // Jeśli przechowywane w ml lub innych jednostkach
           restoredAmountInStorageUnit = restoredAmountInBaseUnit;
         }
+
+        console.log(`Cofanie dla składnika ${usage.ingredient_name}:`, {
+          usageAmount: usage.quantity_used,
+          usageUnit: usage.unit,
+          usageInBaseUnit,
+          currentAmount: currentIngredient.amount,
+          currentUnit: currentIngredient.unit,
+          currentInBaseUnit: currentAmountInBaseUnit,
+          restoredInBaseUnit: restoredAmountInBaseUnit,
+          restoredInStorageUnit: restoredAmountInStorageUnit
+        });
 
         const { error: restoreError } = await supabase
           .from('ingredients')

@@ -87,9 +87,10 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
 
   const generatePDF = () => {
     const vatRate = 0.23;
-    const netAmount = transaction.total_price / (1 + vatRate);
-    const vatAmount = transaction.total_price - netAmount;
-    const amountInWords = convertToWords(transaction.total_price);
+    const totalGrossAmount = transaction.total_price;
+    const totalNetAmount = totalGrossAmount / (1 + vatRate);
+    const totalVatAmount = totalGrossAmount - totalNetAmount;
+    const amountInWords = convertToWords(totalGrossAmount);
 
     // Parse composition names to handle multiple items
     const isMultipleItems = transaction.composition_name.includes(',');
@@ -104,6 +105,19 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
           return { name: item, quantity: 1 };
         })
       : [{ name: transaction.composition_name, quantity: transaction.quantity }];
+
+    // NAPRAWKA: Poprawne obliczenia dla każdej pozycji
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    const averageUnitPrice = transaction.unit_price;
+    
+    console.log('Invoice calculations:', {
+      totalGrossAmount,
+      totalNetAmount,
+      totalVatAmount,
+      totalQuantity,
+      averageUnitPrice,
+      items
+    });
 
     const invoiceContent = `
 <!DOCTYPE html>
@@ -170,9 +184,11 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         </thead>
         <tbody>
             ${items.map((item, index) => {
-              const itemNetAmount = (netAmount / items.length);
-              const itemVatAmount = (vatAmount / items.length);
-              const itemGrossAmount = (transaction.total_price / items.length);
+              // NAPRAWKA: Proporcjonalne obliczenie dla każdej pozycji
+              const itemProportion = item.quantity / totalQuantity;
+              const itemGrossAmount = totalGrossAmount * itemProportion;
+              const itemNetAmount = itemGrossAmount / (1 + vatRate);
+              const itemVatAmount = itemGrossAmount - itemNetAmount;
               const unitNetPrice = itemNetAmount / item.quantity;
               
               return `
@@ -192,16 +208,16 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         <tfoot>
             <tr style="font-weight: bold;">
                 <td colspan="4">RAZEM:</td>
-                <td class="number-cell">${netAmount.toFixed(2)} zł</td>
+                <td class="number-cell">${totalNetAmount.toFixed(2)} zł</td>
                 <td></td>
-                <td class="number-cell">${vatAmount.toFixed(2)} zł</td>
-                <td class="number-cell">${transaction.total_price.toFixed(2)} zł</td>
+                <td class="number-cell">${totalVatAmount.toFixed(2)} zł</td>
+                <td class="number-cell">${totalGrossAmount.toFixed(2)} zł</td>
             </tr>
         </tfoot>
     </table>
     
     <div class="total">
-        <p>Razem do zapłaty: <strong>${transaction.total_price.toFixed(2)} zł</strong></p>
+        <p>Razem do zapłaty: <strong>${totalGrossAmount.toFixed(2)} zł</strong></p>
         <div class="amount-in-words">
             <p><strong>Słownie:</strong> ${amountInWords}</p>
         </div>
