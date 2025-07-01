@@ -94,30 +94,51 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
 
     // Parse composition names to handle multiple items
     const isMultipleItems = transaction.composition_name.includes(',');
-    const items = isMultipleItems 
-      ? transaction.composition_name.split(', ').map(item => {
-          const match = item.match(/^(\d+)x (.+)$/);
-          if (match) {
-            const quantity = parseInt(match[1]);
-            const name = match[2];
-            return { name, quantity };
-          }
-          return { name: item, quantity: 1 };
-        })
-      : [{ name: transaction.composition_name, quantity: transaction.quantity }];
-
-    // NAPRAWKA: Poprawne obliczenia dla każdej pozycji
-    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-    const averageUnitPrice = transaction.unit_price;
     
-    console.log('Invoice calculations:', {
-      totalGrossAmount,
-      totalNetAmount,
-      totalVatAmount,
-      totalQuantity,
-      averageUnitPrice,
-      items
-    });
+    let items = [];
+    
+    if (isMultipleItems) {
+      // NAPRAWKA: Dla sprzedaży koszyka, ekstraktuj rzeczywiste ceny z composition_name
+      const compositionParts = transaction.composition_name.split(', ');
+      
+      // Sprawdź, czy w nazwie kompozycji są ukryte ceny (format: "1x Nazwa [29.99zł]")
+      const itemsWithPrices = compositionParts.map(part => {
+        const matchWithPrice = part.match(/^(\d+)x (.+) \[(\d+(?:\.\d{2})?)zł\]$/);
+        if (matchWithPrice) {
+          return {
+            name: matchWithPrice[2],
+            quantity: parseInt(matchWithPrice[1]),
+            unitPrice: parseFloat(matchWithPrice[3])
+          };
+        }
+        
+        // Fallback do starego formatu
+        const match = part.match(/^(\d+)x (.+)$/);
+        if (match) {
+          return {
+            name: match[2],
+            quantity: parseInt(match[1]),
+            unitPrice: transaction.unit_price // Użyj średniej ceny jako fallback
+          };
+        }
+        
+        return {
+          name: part,
+          quantity: 1,
+          unitPrice: transaction.unit_price
+        };
+      });
+      
+      items = itemsWithPrices;
+    } else {
+      items = [{
+        name: transaction.composition_name,
+        quantity: transaction.quantity,
+        unitPrice: transaction.unit_price
+      }];
+    }
+
+    console.log('Invoice calculations for items:', items);
 
     const invoiceContent = `
 <!DOCTYPE html>
@@ -184,12 +205,20 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         </thead>
         <tbody>
             ${items.map((item, index) => {
-              // NAPRAWKA: Proporcjonalne obliczenie dla każdej pozycji
-              const itemProportion = item.quantity / totalQuantity;
-              const itemGrossAmount = totalGrossAmount * itemProportion;
+              // NAPRAWKA: Użyj rzeczywistej ceny jednostkowej każdego produktu
+              const itemGrossAmount = item.unitPrice * item.quantity;
               const itemNetAmount = itemGrossAmount / (1 + vatRate);
               const itemVatAmount = itemGrossAmount - itemNetAmount;
               const unitNetPrice = itemNetAmount / item.quantity;
+              
+              console.log(`Item ${item.name}:`, {
+                unitPrice: item.unitPrice,
+                quantity: item.quantity,
+                itemGrossAmount,
+                itemNetAmount,
+                itemVatAmount,
+                unitNetPrice
+              });
               
               return `
               <tr>

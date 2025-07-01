@@ -416,14 +416,16 @@ export const useSales = () => {
       // Oblicz łączną wartość koszyka
       const totalCartValue = cartItems.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
 
-      // Utwórz jedną transakcję dla całego koszyka
-      const compositionNames = cartItems.map(item => `${item.quantity}x ${item.compositionName}`).join(', ');
+      // NAPRAWKA: Dodaj ceny do nazw produktów dla poprawnych obliczeń VAT na fakturze
+      const compositionNames = cartItems.map(item => 
+        `${item.quantity}x ${item.compositionName} [${item.unitPrice.toFixed(2)}zł]`
+      ).join(', ');
       
       const { data: transaction, error: transactionError } = await supabase
         .from('sales_transactions')
         .insert({
           composition_id: cartItems[0].compositionId, // Używamy ID pierwszego produktu jako referencję
-          composition_name: compositionNames, // Łączymy nazwy wszystkich produktów
+          composition_name: compositionNames, // Łączymy nazwy wszystkich produktów z cenami
           quantity: cartItems.reduce((total, item) => total + item.quantity, 0), // Suma wszystkich ilości
           unit_price: totalCartValue / cartItems.reduce((total, item) => total + item.quantity, 0), // Średnia cena jednostkowa
           total_price: totalCartValue,
