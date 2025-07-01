@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText } from 'lucide-react';
+import { FileText, Copy } from 'lucide-react';
 import { SalesTransaction } from '@/hooks/useSales';
 import { CompanySettings } from '@/hooks/useCompanySettings';
 import { format } from 'date-fns';
@@ -85,7 +84,7 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
     }
   };
 
-  const generatePDF = () => {
+  const generatePDF = (isOriginal: boolean = true) => {
     const vatRate = 0.23;
     const totalGrossAmount = transaction.total_price;
     const totalNetAmount = totalGrossAmount / (1 + vatRate);
@@ -183,7 +182,7 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
     </div>
     
     <div class="invoice-title">FAKTURA ${transactionNumber}</div>
-    <div class="original-mark">ORYGINAŁ</div>
+    <div class="original-mark">${isOriginal ? 'ORYGINAŁ' : 'KOPIA'}</div>
     
     <div class="invoice-details">
         <p><strong>Data wystawienia:</strong> ${format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl })}</p>
@@ -272,10 +271,16 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={generatePDF}>
-      <FileText className="w-4 h-4 mr-1" />
-      Faktura PDF
-    </Button>
+    <div className="flex gap-2">
+      <Button variant="outline" size="sm" onClick={() => generatePDF(true)}>
+        <FileText className="w-4 h-4 mr-1" />
+        Faktura PDF
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => generatePDF(false)}>
+        <Copy className="w-4 h-4 mr-1" />
+        Kopia PDF
+      </Button>
+    </div>
   );
 };
 

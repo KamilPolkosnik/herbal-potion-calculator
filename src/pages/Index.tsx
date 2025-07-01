@@ -13,6 +13,7 @@ import TransactionsList from '@/components/TransactionsList';
 import SalesStatistics from '@/components/SalesStatistics';
 import CompanySettings from '@/components/CompanySettings';
 import UserManagement from '@/components/UserManagement';
+import UESReportGenerator from '@/components/UESReportGenerator';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useAuth } from '@/hooks/useAuth';
 import { useSummaryData } from '@/hooks/useSummaryData';
@@ -140,6 +141,20 @@ const Index = () => {
       case 'summary':
         return (
           <div className="space-y-6">
+            {/* UES Report Generator - tylko dla administratorów */}
+            {user?.role === 'admin' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl text-center text-purple-700">
+                    Generator UES
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <UESReportGenerator />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Sales Statistics - tylko dla administratorów */}
             {user?.role === 'admin' && (
               <Card>
