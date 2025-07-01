@@ -108,7 +108,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         };
       });
 
-      // Calculate total usage from cart (including existing items) in base units
+      // Calculate total usage from CURRENT cart items in base units
       const totalUsageFromCart: Record<string, number> = {};
       
       // Sum up usage from existing cart items, converting to base units
@@ -120,7 +120,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
         });
       });
 
-      // Check if adding the new composition would exceed available amounts
+      // NAPRAWKA: Sprawdź każdy składnik wymaganego zestawu
       const missingIngredients: string[] = [];
 
       for (const ingredient of compositionIngredients) {
@@ -136,6 +136,15 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
           continue;
         }
 
+        // Check if units are compatible
+        if (!areUnitsCompatible(availableData.unit, ingredient.unit)) {
+          console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${availableData.unit}, wymagane w ${ingredient.unit}`);
+          missingIngredients.push(
+            `${ingredient.ingredient_name} (niezgodność jednostek: ${availableData.unit} vs ${ingredient.unit})`
+          );
+          continue;
+        }
+
         const availableAmountInBaseUnit = convertToBaseUnit(availableData.amount, availableData.unit);
 
         console.log(`Sprawdzanie składnika ${ingredient.ingredient_name}:`, {
@@ -147,17 +156,9 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
           requiredInBaseUnit: requiredAmountInBaseUnit,
           currentUsageFromCart: currentUsageFromCartInBaseUnit,
           requiredForNewItem: requiredForNewItemInBaseUnit,
-          totalRequired: totalRequiredInBaseUnit
+          totalRequired: totalRequiredInBaseUnit,
+          willExceed: totalRequiredInBaseUnit > availableAmountInBaseUnit
         });
-
-        // Check if units are compatible
-        if (!areUnitsCompatible(availableData.unit, ingredient.unit)) {
-          console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${availableData.unit}, wymagane w ${ingredient.unit}`);
-          missingIngredients.push(
-            `${ingredient.ingredient_name} (niezgodność jednostek: ${availableData.unit} vs ${ingredient.unit})`
-          );
-          continue;
-        }
 
         if (totalRequiredInBaseUnit > availableAmountInBaseUnit) {
           const shortageInBaseUnit = totalRequiredInBaseUnit - availableAmountInBaseUnit;
@@ -292,7 +293,12 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
     // After removing item, recheck availability for all remaining items
     if (updatedCart.length > 0) {
       const recheckPromises = updatedCart.map(async (item) => {
+        // NAPRAWKA: Sprawdź dostępność dla tej pozycji bez siebie samej w koszyku
+        const cartWithoutThis = updatedCart.filter(cartItem => cartItem.id !== item.id);
+        const tempCart = cart;
+        setCart(cartWithoutThis);
         const availability = await checkAvailabilityWithCart(item.compositionId, item.quantity);
+        setCart(tempCart);
         return { ...item, availabilityCheck: availability };
       });
 
