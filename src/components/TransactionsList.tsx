@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -80,8 +81,18 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
     }
   };
 
-  const generateTransactionNumber = (index: number) => {
-    return (index + 1).toString().padStart(9, '0');
+  // Funkcja do generowania numeru transakcji na podstawie chronologicznej pozycji
+  const generateTransactionNumber = (transactionId: string) => {
+    // Sortuj wszystkie transakcje chronologicznie (od najstarszej do najnowszej)
+    const chronologicalTransactions = [...transactions].sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    
+    // Znajdź indeks tej transakcji w chronologicznej kolejności
+    const chronologicalIndex = chronologicalTransactions.findIndex(t => t.id === transactionId);
+    
+    // Zwróć numer transakcji (indeks + 1, wypadowany do 9 cyfr)
+    return (chronologicalIndex + 1).toString().padStart(9, '0');
   };
 
   const filteredTransactions = useMemo(() => {
@@ -177,10 +188,10 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTransactions.map((transaction, index) => (
+                {filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell className="font-mono text-sm">
-                      {generateTransactionNumber(transactions.findIndex(t => t.id === transaction.id))}
+                      {generateTransactionNumber(transaction.id)}
                     </TableCell>
                     <TableCell>
                       {format(new Date(transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
@@ -202,7 +213,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                         <InvoiceGenerator 
                           transaction={transaction}
                           companySettings={companySettings}
-                          transactionNumber={generateTransactionNumber(transactions.findIndex(t => t.id === transaction.id))}
+                          transactionNumber={generateTransactionNumber(transaction.id)}
                         />
                         {!transaction.is_reversed ? (
                           <Button

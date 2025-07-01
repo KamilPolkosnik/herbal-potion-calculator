@@ -41,10 +41,14 @@ const UESReportGenerator: React.FC = () => {
     let cumulativeAmount = 0;
     const reportData = yearTransactions.map((transaction, index) => {
       cumulativeAmount += transaction.total_price;
+      
+      // Generate chronological transaction number
+      const chronologicalNumber = (index + 1).toString().padStart(9, '0');
+      
       return {
         lp: index + 1,
         date: format(new Date(transaction.created_at), 'dd.MM.yyyy', { locale: pl }),
-        documentNumber: (index + 1).toString().padStart(9, '0'),
+        documentNumber: chronologicalNumber,
         grossAmount: transaction.total_price,
         cumulativeAmount: cumulativeAmount
       };
