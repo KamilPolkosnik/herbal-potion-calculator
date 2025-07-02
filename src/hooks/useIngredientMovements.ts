@@ -12,13 +12,14 @@ export interface IngredientMovement {
   reference_type?: string;
   notes?: string;
   created_at: string;
+  is_archived?: boolean;
 }
 
 export const useIngredientMovements = () => {
   const [movements, setMovements] = useState<IngredientMovement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadMovements = async (ingredientName?: string) => {
+  const loadMovements = async (ingredientName?: string, includeArchived: boolean = false) => {
     try {
       let query = supabase
         .from('ingredient_movements')
@@ -27,6 +28,10 @@ export const useIngredientMovements = () => {
 
       if (ingredientName) {
         query = query.eq('ingredient_name', ingredientName);
+      }
+
+      if (!includeArchived) {
+        query = query.or('is_archived.is.null,is_archived.eq.false');
       }
 
       const { data, error } = await query;
@@ -79,6 +84,34 @@ export const useIngredientMovements = () => {
     }
   };
 
+  const archiveMovement = async (movementId: string) => {
+    try {
+      const { error } = await supabase
+        .from('ingredient_movements')
+        .update({ is_archived: true })
+        .eq('id', movementId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error archiving movement:', error);
+      throw error;
+    }
+  };
+
+  const unarchiveMovement = async (movementId: string) => {
+    try {
+      const { error } = await supabase
+        .from('ingredient_movements')
+        .update({ is_archived: false })
+        .eq('id', movementId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error unarchiving movement:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     loadMovements();
   }, []);
@@ -88,6 +121,8 @@ export const useIngredientMovements = () => {
     loading,
     loadMovements,
     recordMovement,
+    archiveMovement,
+    unarchiveMovement,
     refreshMovements: loadMovements
   };
 };

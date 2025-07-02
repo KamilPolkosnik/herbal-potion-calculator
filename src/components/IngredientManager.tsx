@@ -25,6 +25,16 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
   const [loadingIngredients, setLoadingIngredients] = useState(true);
   const [filters, setFilters] = useState({ searchTerm: '', selectedComposition: '', lowStock: false });
 
+  // Convert compositionUsage to the format expected by IngredientSection
+  const convertCompositionUsage = (usage: typeof compositionUsage): Record<string, number> => {
+    const converted: Record<string, number> = {};
+    Object.entries(usage).forEach(([ingredientName, compositions]) => {
+      const totalUsage = compositions.reduce((sum, comp) => sum + comp.amount, 0);
+      converted[ingredientName] = totalUsage;
+    });
+    return converted;
+  };
+
   const loadUsedIngredients = async () => {
     setLoadingIngredients(true);
     try {
@@ -174,6 +184,8 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     others: thresholds.others_threshold
   } : undefined;
 
+  const convertedCompositionUsage = convertCompositionUsage(compositionUsage);
+
   if (loading || loadingIngredients || compositionLoading || thresholdsLoading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -207,7 +219,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handleIngredientUpdate}
             onPriceUpdate={handlePriceUpdate}
-            compositionUsage={compositionUsage}
+            compositionUsage={convertedCompositionUsage}
             warningThresholds={warningThresholds}
           />
           
@@ -219,7 +231,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handleIngredientUpdate}
             onPriceUpdate={handlePriceUpdate}
-            compositionUsage={compositionUsage}
+            compositionUsage={convertedCompositionUsage}
             warningThresholds={warningThresholds}
           />
           
@@ -231,7 +243,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handleIngredientUpdate}
             onPriceUpdate={handlePriceUpdate}
-            compositionUsage={compositionUsage}
+            compositionUsage={convertedCompositionUsage}
             warningThresholds={warningThresholds}
           />
         </TabsContent>
