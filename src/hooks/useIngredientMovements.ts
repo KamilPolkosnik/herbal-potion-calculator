@@ -88,7 +88,7 @@ export const useIngredientMovements = () => {
     try {
       const { error } = await supabase
         .from('ingredient_movements')
-        .update({ is_archived: true })
+        .update({ is_archived: true } as any)
         .eq('id', movementId);
 
       if (error) throw error;
@@ -102,7 +102,7 @@ export const useIngredientMovements = () => {
     try {
       const { error } = await supabase
         .from('ingredient_movements')
-        .update({ is_archived: false })
+        .update({ is_archived: false } as any)
         .eq('id', movementId);
 
       if (error) throw error;

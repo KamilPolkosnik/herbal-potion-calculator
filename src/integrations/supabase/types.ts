@@ -148,6 +148,7 @@ export type Database = {
           created_at: string
           id: string
           ingredient_name: string
+          is_archived: boolean | null
           movement_type: Database["public"]["Enums"]["movement_type"]
           notes: string | null
           quantity_change: number
@@ -159,6 +160,7 @@ export type Database = {
           created_at?: string
           id?: string
           ingredient_name: string
+          is_archived?: boolean | null
           movement_type: Database["public"]["Enums"]["movement_type"]
           notes?: string | null
           quantity_change: number
@@ -170,6 +172,7 @@ export type Database = {
           created_at?: string
           id?: string
           ingredient_name?: string
+          is_archived?: boolean | null
           movement_type?: Database["public"]["Enums"]["movement_type"]
           notes?: string | null
           quantity_change?: number
