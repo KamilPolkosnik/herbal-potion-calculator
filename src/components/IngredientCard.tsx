@@ -1,135 +1,153 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { Info, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, Save } from 'lucide-react';
 
 interface IngredientCardProps {
-  ingredient: string;
-  unit: string;
+  name: string;
   amount: number;
   price: number;
-  onAmountUpdate: (ingredient: string, value: number) => void;
-  onPriceUpdate: (ingredient: string, value: number) => void;
-  compositionUsage?: Array<{
-    id: string;
-    name: string;
-    amount: number;
-    unit: string;
-  }>;
-  warningThreshold?: number;
+  unit: string;
+  onAmountUpdate: (name: string, amount: number) => void;
+  onPriceUpdate: (name: string, price: number) => void;
+  compositionUsage?: Record<string, number>;
+  warningThresholds?: {
+    herbs: number;
+    oils: number;
+    others: number;
+  };
 }
 
 const IngredientCard: React.FC<IngredientCardProps> = ({
-  ingredient,
-  unit,
+  name,
   amount,
   price,
+  unit,
   onAmountUpdate,
   onPriceUpdate,
-  compositionUsage = [],
-  warningThreshold = 0
+  compositionUsage,
+  warningThresholds
 }) => {
-  // Określ odpowiednią jednostkę ceny na podstawie jednostki produktu
-  const getPriceUnit = (unit: string) => {
+  const [localAmount, setLocalAmount] = useState(amount.toString());
+  const [localPrice, setLocalPrice] = useState(price.toString());
+  const [amountChanged, setAmountChanged] = useState(false);
+  const [priceChanged, setPriceChanged] = useState(false);
+
+  useEffect(() => {
+    setLocalAmount(amount.toString());
+    setAmountChanged(false);
+  }, [amount]);
+
+  useEffect(() => {
+    setLocalPrice(price.toString());
+    setPriceChanged(false);
+  }, [price]);
+
+  const handleAmountChange = (value: string) => {
+    setLocalAmount(value);
+    setAmountChanged(parseFloat(value) !== amount);
+  };
+
+  const handlePriceChange = (value: string) => {
+    setLocalPrice(value);
+    setPriceChanged(parseFloat(value) !== price);
+  };
+
+  const handleSaveAmount = () => {
+    const newAmount = parseFloat(localAmount) || 0;
+    onAmountUpdate(name, newAmount);
+    setAmountChanged(false);
+  };
+
+  const handleSavePrice = () => {
+    const newPrice = parseFloat(localPrice) || 0;
+    onPriceUpdate(name, newPrice);
+    setPriceChanged(false);
+  };
+
+  const getWarningThreshold = () => {
+    if (!warningThresholds) return 0;
+    
     if (unit === 'ml') {
-      return 'zł/10ml';
-    } else if (unit === 'szt.' || unit === 'szt') {
-      return 'zł/szt';
-    } else if (unit === 'kpl.' || unit === 'kpl') {
-      return 'zł/kpl';
+      return warningThresholds.oils;
+    } else if (unit === 'szt' || unit === 'kpl') {
+      return warningThresholds.others;
     } else {
-      return 'zł/100g';
+      return warningThresholds.herbs;
     }
   };
 
-  const calculateValue = () => {
-    if (unit === 'ml') {
-      // Dla olejków: cena za 10ml, więc wartość = (ilość/10) * cena
-      return (amount * price / 10).toFixed(2);
-    } else if (unit === 'szt.' || unit === 'kpl.' || unit === 'szt' || unit === 'kpl') {
-      // Dla sztuk/kompletów: wartość = ilość * cena
-      return (amount * price).toFixed(2);
-    } else {
-      // Dla gramów: cena za 100g, więc wartość = (ilość/100) * cena
-      return (amount * price / 100).toFixed(2);
-    }
-  };
-
-  const actualPriceUnit = getPriceUnit(unit);
-  const isLowStock = warningThreshold > 0 && amount < warningThreshold;
+  const isLowStock = amount < getWarningThreshold();
+  const usage = compositionUsage?.[name] || 0;
 
   return (
-    <div className={`space-y-2 p-4 border rounded-lg ${isLowStock ? 'bg-red-50 border-red-300' : 'bg-white'}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Label htmlFor={ingredient} className="text-sm font-medium capitalize">
-            {ingredient}
-          </Label>
+    <Card className={`p-4 ${isLowStock ? 'border-red-300 bg-red-50' : ''}`}>
+      <CardContent className="p-0">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-medium text-sm">{name}</h3>
           {isLowStock && (
-            <div className="flex items-center" title={`Niski stan! Poniżej ${warningThreshold} ${unit}`}>
-              <AlertCircle className="h-4 w-4 text-red-600" />
-            </div>
+            <AlertTriangle className="h-4 w-4 text-red-500" />
           )}
         </div>
-        {compositionUsage.length > 0 && (
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <Info className="h-4 w-4 text-blue-500 cursor-help" />
-            </HoverCardTrigger>
-            <HoverCardContent className="w-80">
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Użyty w zestawach:</h4>
-                <div className="space-y-1">
-                  {compositionUsage.map((usage) => (
-                    <div key={usage.id} className="text-xs text-gray-600">
-                      <span className="font-medium">{usage.name}</span>
-                      <span className="ml-2 text-gray-500">
-                        ({usage.amount} {usage.unit})
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label className="text-xs text-gray-500">Stan ({unit})</Label>
-          <Input
-            id={ingredient}
-            type="number"
-            value={amount || ''}
-            onChange={(e) => onAmountUpdate(ingredient, parseFloat(e.target.value) || 0)}
-            placeholder={`0 ${unit}`}
-            className={`h-8 ${isLowStock ? 'border-red-400 focus:border-red-500' : ''}`}
-          />
+        
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <Input
+                type="number"
+                value={localAmount}
+                onChange={(e) => handleAmountChange(e.target.value)}
+                className="text-sm"
+                step="0.01"
+              />
+            </div>
+            <span className="text-xs text-gray-500 min-w-[30px]">{unit}</span>
+            <Button
+              size="sm"
+              variant={amountChanged ? "default" : "outline"}
+              onClick={handleSaveAmount}
+              disabled={!amountChanged}
+              className="px-2"
+            >
+              <Save className="h-3 w-3" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <Input
+                type="number"
+                value={localPrice}
+                onChange={(e) => handlePriceChange(e.target.value)}
+                className="text-sm"
+                step="0.01"
+              />
+            </div>
+            <span className="text-xs text-gray-500 min-w-[30px]">zł</span>
+            <Button
+              size="sm"
+              variant={priceChanged ? "default" : "outline"}
+              onClick={handleSavePrice}
+              disabled={!priceChanged}
+              className="px-2"
+            >
+              <Save className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
-        <div>
-          <Label className="text-xs text-gray-500">Cena ({actualPriceUnit})</Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={price || ''}
-            onChange={(e) => onPriceUpdate(ingredient, parseFloat(e.target.value) || 0)}
-            placeholder="0.00"
-            className="h-8"
-          />
-        </div>
-      </div>
-      <div className="text-xs text-gray-600 text-center mt-2">
-        Wartość: {calculateValue()} zł
-        {isLowStock && (
-          <div className="text-red-600 font-medium mt-1">
-            ⚠️ Niski stan! (poniżej {warningThreshold} {unit})
+
+        {usage > 0 && (
+          <div className="mt-2 pt-2 border-t">
+            <Badge variant="secondary" className="text-xs">
+              Użycie: {usage.toFixed(2)} {unit}
+            </Badge>
           </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
