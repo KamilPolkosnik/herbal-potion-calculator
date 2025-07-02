@@ -19,7 +19,7 @@ interface IngredientMovementHistoryProps {
 
 interface GroupedTransaction {
   id: string;
-  type: 'transaction' | 'individual';
+  type: 'sale' | 'reversal' | 'individual';
   referenceId?: string;
   movements: Array<{
     id: string;
@@ -47,25 +47,29 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
   const [showArchived, setShowArchived] = useState(false);
   const [groupedMovements, setGroupedMovements] = useState<GroupedTransaction[]>([]);
 
+  // Load movements when component mounts or when showArchived changes
   useEffect(() => {
-    loadMovements(ingredientName, showArchived).then(() => {
-      console.log('Movements loaded:', movements.length);
-    });
-  }, [ingredientName, showArchived, loadMovements]);
+    loadMovements(ingredientName, showArchived);
+  }, [ingredientName, showArchived]);
 
-  // Group movements by transaction
+  // Group movements by transaction type and reference
   useEffect(() => {
+    if (!movements.length) {
+      setGroupedMovements([]);
+      return;
+    }
+
     const grouped: Record<string, GroupedTransaction> = {};
 
     movements.forEach(movement => {
-      // Group by reference_id for sales and reversals
       if (movement.reference_id && (movement.movement_type === 'sale' || movement.movement_type === 'reversal')) {
-        const key = movement.reference_id;
+        // Create separate groups for sales and reversals even if they share the same reference_id
+        const key = `${movement.reference_id}_${movement.movement_type}`;
         
         if (!grouped[key]) {
           grouped[key] = {
             id: key,
-            type: 'transaction',
+            type: movement.movement_type as 'sale' | 'reversal',
             referenceId: movement.reference_id,
             movements: [],
             created_at: movement.created_at,
@@ -75,6 +79,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
         }
         
         grouped[key].movements.push(movement);
+        
         // Update archived status - if any movement is archived, mark group as archived
         if (movement.is_archived) {
           grouped[key].is_archived = true;
@@ -159,6 +164,16 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
     }
   };
 
+  const getGroupTitle = (group: GroupedTransaction) => {
+    if (group.type === 'sale') {
+      return `Sprzedaż: ${group.movements.length} składników`;
+    } else if (group.type === 'reversal') {
+      return `Cofnięcie: ${group.movements.length} składników`;
+    } else {
+      return group.movements[0].ingredient_name;
+    }
+  };
+
   const handleArchiveToggle = async (group: GroupedTransaction) => {
     try {
       const promises = group.movements.map(movement => {
@@ -200,6 +215,10 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
     document.body.removeChild(link);
   };
 
+  const handleShowArchivedToggle = () => {
+    setShowArchived(prev => !prev);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -217,7 +236,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
             <Button
               variant={showArchived ? "default" : "outline"}
               size="sm"
-              onClick={() => setShowArchived(!showArchived)}
+              onClick={handleShowArchivedToggle}
             >
               {showArchived ? <ArchiveRestore className="h-4 w-4 mr-2" /> : <Archive className="h-4 w-4 mr-2" />}
               {showArchived ? 'Pokaż Aktywne' : 'Archiwum'}
@@ -352,13 +371,9 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      {group.type === 'transaction' ? (
-                        <span className="font-medium">
-                          Transakcja: {group.movements.length} składników
-                        </span>
-                      ) : (
-                        <span className="font-medium">{group.movements[0].ingredient_name}</span>
-                      )}
+                      <span className="font-medium">
+                        {getGroupTitle(group)}
+                      </span>
                       
                       {group.movements.map((movement, index) => (
                         <Badge key={index} className={getMovementTypeColor(movement.movement_type)}>
