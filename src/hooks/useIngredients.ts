@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useIngredientMovements } from './useIngredientMovements';
 
 export interface Ingredient {
   id: string;
@@ -14,6 +15,7 @@ export const useIngredients = () => {
   const [ingredients, setIngredients] = useState<Record<string, number>>({});
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const { recordMovement } = useIngredientMovements();
 
   const loadIngredients = async () => {
     try {
@@ -42,8 +44,6 @@ export const useIngredients = () => {
   };
 
   const determineUnit = (name: string) => {
-    // Sprawdź czy składnik już istnieje w bazie - jeśli tak, zachowaj jego jednostkę
-    // Jeśli nie, określ jednostkę na podstawie nazwy
     if (name.toLowerCase().includes('olejek')) {
       return 'ml';
     } else if (name.toLowerCase().includes('woreczek') || 
@@ -59,7 +59,10 @@ export const useIngredients = () => {
     try {
       console.log('Updating ingredient:', name, amount);
       
-      // Najpierw sprawdź czy składnik już istnieje w bazie
+      // Pobierz poprzednią wartość do obliczenia zmiany
+      const previousAmount = ingredients[name] || 0;
+      const quantityChange = amount - previousAmount;
+      
       const { data: existingIngredient, error: fetchError } = await supabase
         .from('ingredients')
         .select('unit')
@@ -68,10 +71,8 @@ export const useIngredients = () => {
 
       let unitToUse: string;
       if (existingIngredient && !fetchError) {
-        // Użyj istniejącej jednostki
         unitToUse = existingIngredient.unit;
       } else {
-        // Określ jednostkę na podstawie nazwy
         unitToUse = determineUnit(name);
       }
 
@@ -91,6 +92,19 @@ export const useIngredients = () => {
         throw error;
       }
 
+      // Zapisz ruch magazynowy jeśli była zmiana
+      if (quantityChange !== 0) {
+        await recordMovement(
+          name,
+          quantityChange > 0 ? 'purchase' : 'adjustment',
+          quantityChange,
+          unitToUse,
+          undefined,
+          'manual_update',
+          `Ręczna aktualizacja: ${previousAmount} → ${amount}`
+        );
+      }
+
       setIngredients(prev => ({ ...prev, [name]: amount }));
       console.log('Ingredient updated successfully');
     } catch (error) {
@@ -102,7 +116,6 @@ export const useIngredients = () => {
     try {
       console.log('useIngredients - updating price:', name, price);
       
-      // Najpierw sprawdź czy składnik już istnieje w bazie
       const { data: existingIngredient, error: fetchError } = await supabase
         .from('ingredients')
         .select('unit')
@@ -111,10 +124,8 @@ export const useIngredients = () => {
 
       let unitToUse: string;
       if (existingIngredient && !fetchError) {
-        // Użyj istniejącej jednostki
         unitToUse = existingIngredient.unit;
       } else {
-        // Określ jednostkę na podstawie nazwy
         unitToUse = determineUnit(name);
       }
 
@@ -134,11 +145,9 @@ export const useIngredients = () => {
         throw error;
       }
 
-      // Aktualizuj lokalny stan
       setPrices(prev => ({ ...prev, [name]: price }));
       console.log('useIngredients - price updated successfully, new prices state:', { ...prices, [name]: price });
       
-      // Przeładuj wszystkie dane, aby upewnić się że są zsynchronizowane
       await loadIngredients();
     } catch (error) {
       console.error('Error updating price:', error);

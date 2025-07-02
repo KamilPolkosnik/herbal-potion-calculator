@@ -143,6 +143,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ingredient_movements: {
+        Row: {
+          created_at: string
+          id: string
+          ingredient_name: string
+          movement_type: Database["public"]["Enums"]["movement_type"]
+          notes: string | null
+          quantity_change: number
+          reference_id: string | null
+          reference_type: string | null
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ingredient_name: string
+          movement_type: Database["public"]["Enums"]["movement_type"]
+          notes?: string | null
+          quantity_change: number
+          reference_id?: string | null
+          reference_type?: string | null
+          unit: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ingredient_name?: string
+          movement_type?: Database["public"]["Enums"]["movement_type"]
+          notes?: string | null
+          quantity_change?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          unit?: string
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           amount: number
@@ -302,7 +338,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      movement_type: "purchase" | "sale" | "reversal" | "adjustment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -417,6 +453,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      movement_type: ["purchase", "sale", "reversal", "adjustment"],
+    },
   },
 } as const

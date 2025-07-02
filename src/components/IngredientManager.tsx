@@ -4,10 +4,12 @@ import { useIngredients } from '@/hooks/useIngredients';
 import { useIngredientCategories } from '@/hooks/useIngredientCategories';
 import { useIngredientCompositions } from '@/hooks/useIngredientCompositions';
 import { useWarningThresholds } from '@/hooks/useWarningThresholds';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IngredientFilters from './IngredientFilters';
 import IngredientInfoBox from './IngredientInfoBox';
 import IngredientSection from './IngredientSection';
 import EmptyIngredientsState from './EmptyIngredientsState';
+import IngredientMovementHistory from './IngredientMovementHistory';
 
 interface IngredientManagerProps {
   onDataChange?: () => void | Promise<void>;
@@ -28,7 +30,6 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     try {
       console.log('Ładowanie używanych składników...');
       
-      // Pobierz wszystkie składniki używane w zestawach
       const { data: compositionIngredients, error } = await supabase
         .from('composition_ingredients')
         .select('ingredient_name');
@@ -42,7 +43,6 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       console.log('Znalezione składniki w zestawach:', uniqueIngredients);
       setUsedIngredients(uniqueIngredients);
 
-      // Pobierz jednostki dla każdego składnika z tabeli ingredients
       const { data: ingredientsData, error: ingredientsError } = await supabase
         .from('ingredients')
         .select('name, unit');
@@ -58,10 +58,8 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         console.log(`Składnik: ${item.name}, Jednostka: ${item.unit}`);
       });
 
-      // Dodaj jednostki dla składników, które mogą nie być jeszcze w tabeli ingredients
       uniqueIngredients.forEach(ingredientName => {
         if (!unitsMap[ingredientName]) {
-          // Określ jednostkę na podstawie nazwy składnika
           if (ingredientName.toLowerCase().includes('olejek')) {
             unitsMap[ingredientName] = 'ml';
           } else if (ingredientName.toLowerCase().includes('worek') || 
@@ -90,21 +88,18 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     refreshCompositionUsage();
   }, []);
 
-  // Separate useEffect for filtering logic
   useEffect(() => {
     if (usedIngredients.length === 0) return;
 
     const applyFiltersSync = async () => {
       let filtered = [...usedIngredients];
 
-      // Filtruj według nazwy składnika
       if (filters.searchTerm) {
         filtered = filtered.filter(ingredient =>
           ingredient.toLowerCase().includes(filters.searchTerm.toLowerCase())
         );
       }
 
-      // Filtruj według wybranego zestawu
       if (filters.selectedComposition && filters.selectedComposition !== 'all') {
         try {
           const { data: compositionIngredients, error } = await supabase
@@ -125,13 +120,11 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         }
       }
 
-      // Filtruj według niskiego stanu
       if (filters.lowStock && thresholds) {
         filtered = filtered.filter(ingredient => {
           const currentAmount = ingredients[ingredient] || 0;
           const unit = ingredientUnits[ingredient] || 'g';
           
-          // Określ próg ostrzeżenia na podstawie jednostki
           let threshold = 0;
           if (unit === 'ml') {
             threshold = thresholds.oils_threshold;
@@ -195,45 +188,58 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
 
   return (
     <div className="space-y-6">
-      <IngredientFilters onFilterChange={handleFilterChange} />
-      
-      <IngredientInfoBox onRefresh={handleRefresh} isLoading={loadingIngredients} />
-      
-      <IngredientSection
-        title="Surowce Ziołowe (g)"
-        items={herbs}
-        ingredients={ingredients}
-        prices={prices}
-        ingredientUnits={ingredientUnits}
-        onAmountUpdate={handleIngredientUpdate}
-        onPriceUpdate={handlePriceUpdate}
-        compositionUsage={compositionUsage}
-        warningThresholds={warningThresholds}
-      />
-      
-      <IngredientSection
-        title="Olejki Eteryczne (ml)"
-        items={oils}
-        ingredients={ingredients}
-        prices={prices}
-        ingredientUnits={ingredientUnits}
-        onAmountUpdate={handleIngredientUpdate}
-        onPriceUpdate={handlePriceUpdate}
-        compositionUsage={compositionUsage}
-        warningThresholds={warningThresholds}
-      />
-      
-      <IngredientSection
-        title="Inne (szt/kpl)"
-        items={others}
-        ingredients={ingredients}
-        prices={prices}
-        ingredientUnits={ingredientUnits}
-        onAmountUpdate={handleIngredientUpdate}
-        onPriceUpdate={handlePriceUpdate}
-        compositionUsage={compositionUsage}
-        warningThresholds={warningThresholds}
-      />
+      <Tabs defaultValue="ingredients" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="ingredients">Składniki</TabsTrigger>
+          <TabsTrigger value="history">Historia Ruchów</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="ingredients" className="space-y-6">
+          <IngredientFilters onFilterChange={handleFilterChange} />
+          
+          <IngredientInfoBox onRefresh={handleRefresh} isLoading={loadingIngredients} />
+          
+          <IngredientSection
+            title="Surowce Ziołowe (g)"
+            items={herbs}
+            ingredients={ingredients}
+            prices={prices}
+            ingredientUnits={ingredientUnits}
+            onAmountUpdate={handleIngredientUpdate}
+            onPriceUpdate={handlePriceUpdate}
+            compositionUsage={compositionUsage}
+            warningThresholds={warningThresholds}
+          />
+          
+          <IngredientSection
+            title="Olejki Eteryczne (ml)"
+            items={oils}
+            ingredients={ingredients}
+            prices={prices}
+            ingredientUnits={ingredientUnits}
+            onAmountUpdate={handleIngredientUpdate}
+            onPriceUpdate={handlePriceUpdate}
+            compositionUsage={compositionUsage}
+            warningThresholds={warningThresholds}
+          />
+          
+          <IngredientSection
+            title="Inne (szt/kpl)"
+            items={others}
+            ingredients={ingredients}
+            prices={prices}
+            ingredientUnits={ingredientUnits}
+            onAmountUpdate={handleIngredientUpdate}
+            onPriceUpdate={handlePriceUpdate}
+            compositionUsage={compositionUsage}
+            warningThresholds={warningThresholds}
+          />
+        </TabsContent>
+        
+        <TabsContent value="history">
+          <IngredientMovementHistory />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

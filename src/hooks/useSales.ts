@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToBaseUnit, areUnitsCompatible } from '@/utils/unitConverter';
+import { useIngredientMovements } from './useIngredientMovements';
 
 export interface SalesTransaction {
   id: string;
@@ -44,6 +45,7 @@ export interface BuyerData {
 export const useSales = () => {
   const [transactions, setTransactions] = useState<SalesTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const { recordMovement } = useIngredientMovements();
 
   const loadTransactions = async () => {
     try {
@@ -71,14 +73,12 @@ export const useSales = () => {
     }> = []
   ): Promise<{ available: boolean; missingIngredients: string[] }> => {
     try {
-      // Get current ingredient amounts from database
       const { data: currentIngredients, error: ingredientsError } = await supabase
         .from('ingredients')
         .select('name, amount, unit');
 
       if (ingredientsError) throw ingredientsError;
 
-      // Get composition ingredients with their units
       const { data: compositionIngredients, error: compositionError } = await supabase
         .from('composition_ingredients')
         .select('ingredient_name, amount, unit')
@@ -90,7 +90,6 @@ export const useSales = () => {
         return { available: false, missingIngredients: ['Brak składników w zestawie'] };
       }
 
-      // Create a map of current ingredient amounts with their units
       const availableAmounts: Record<string, { amount: number; unit: string }> = {};
       currentIngredients?.forEach(ingredient => {
         availableAmounts[ingredient.name] = {
@@ -99,7 +98,6 @@ export const useSales = () => {
         };
       });
 
-      // Calculate total reserved amounts from cart
       const reservedAmounts: Record<string, number> = {};
       cartItems.forEach(cartItem => {
         cartItem.ingredients.forEach(ingredient => {
@@ -123,7 +121,6 @@ export const useSales = () => {
           continue;
         }
 
-        // Check if units are compatible
         if (!areUnitsCompatible(availableData.unit, ingredient.unit)) {
           console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${availableData.unit}, wymagane w ${ingredient.unit}`);
           missingIngredients.push(
@@ -132,7 +129,6 @@ export const useSales = () => {
           continue;
         }
 
-        // Convert both amounts to base units for comparison
         const availableInBaseUnit = convertToBaseUnit(availableData.amount, availableData.unit);
         const requiredPerUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
         const totalRequiredInBaseUnit = requiredPerUnit * quantity;
@@ -185,14 +181,12 @@ export const useSales = () => {
     try {
       console.log('Processing sale:', { compositionId, compositionName, quantity, unitPrice, buyerData });
 
-      // Check ingredient availability first
       const { available, missingIngredients } = await checkIngredientAvailability(compositionId, quantity);
       
       if (!available) {
         throw new Error(`Niewystarczające składniki: ${missingIngredients.join(', ')}`);
       }
 
-      // Build full address from components
       let fullAddress = '';
       if (buyerData?.street || buyerData?.house_number || buyerData?.city) {
         const addressParts = [];
@@ -214,7 +208,6 @@ export const useSales = () => {
         fullAddress = addressParts.join(', ');
       }
 
-      // Start transaction
       const { data: transaction, error: transactionError } = await supabase
         .from('sales_transactions')
         .insert({
@@ -236,24 +229,23 @@ export const useSales = () => {
 
       console.log('Transaction created:', transaction);
 
-      // Process each ingredient with proper unit conversion
+      // NAPRAWKA: Ujednolicenie zapisu użycia składników
       const ingredientUsages = [];
       const ingredientUpdates = [];
 
       for (const ingredient of ingredients) {
-        // Convert ingredient amount to base unit for calculation
+        const totalUsedInOriginalUnit = ingredient.amount * quantity;
         const amountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
         const totalUsedInBaseUnit = amountInBaseUnit * quantity;
         
-        // Record ingredient usage in original units
+        // Zapisz użycie w oryginalnych jednostkach (jak w recepturze)
         ingredientUsages.push({
           transaction_id: transaction.id,
           ingredient_name: ingredient.name,
-          quantity_used: ingredient.amount * quantity, // Store in original units
+          quantity_used: totalUsedInOriginalUnit,
           unit: ingredient.unit,
         });
 
-        // Get current ingredient data
         const { data: currentIngredient, error: fetchError } = await supabase
           .from('ingredients')
           .select('amount, unit')
@@ -265,14 +257,11 @@ export const useSales = () => {
           continue;
         }
 
-        // Convert current amount to base unit
         const currentAmountInBaseUnit = convertToBaseUnit(currentIngredient.amount, currentIngredient.unit);
         const newAmountInBaseUnit = Math.max(0, currentAmountInBaseUnit - totalUsedInBaseUnit);
         
-        // Convert back to storage unit
         let newAmountInStorageUnit;
         if (currentIngredient.unit.toLowerCase().includes('krople') || currentIngredient.unit.toLowerCase().includes('kropli')) {
-          // If stored in drops, convert ml back to drops
           newAmountInStorageUnit = newAmountInBaseUnit * 20;
         } else {
           newAmountInStorageUnit = newAmountInBaseUnit;
@@ -289,11 +278,12 @@ export const useSales = () => {
 
         ingredientUpdates.push({
           name: ingredient.name,
-          newAmount: newAmountInStorageUnit
+          newAmount: newAmountInStorageUnit,
+          usedAmount: totalUsedInBaseUnit,
+          unit: currentIngredient.unit
         });
       }
 
-      // Insert ingredient usages
       if (ingredientUsages.length > 0) {
         const { error: usageError } = await supabase
           .from('transaction_ingredient_usage')
@@ -302,7 +292,7 @@ export const useSales = () => {
         if (usageError) throw usageError;
       }
 
-      // Update ingredient amounts
+      // Aktualizuj składniki i zapisz ruchy magazynowe
       for (const update of ingredientUpdates) {
         const { error: updateError } = await supabase
           .from('ingredients')
@@ -311,7 +301,19 @@ export const useSales = () => {
 
         if (updateError) {
           console.error('Error updating ingredient:', updateError);
+          continue;
         }
+
+        // Zapisz ruch magazynowy
+        await recordMovement(
+          update.name,
+          'sale',
+          -update.usedAmount, // Ujemna wartość dla sprzedaży
+          update.unit,
+          transaction.id,
+          'sales_transaction',
+          `Sprzedaż: ${compositionName} (${quantity} szt.)`
+        );
       }
 
       console.log('Sale processed successfully');
@@ -336,23 +338,28 @@ export const useSales = () => {
     try {
       console.log('Processing cart sale:', { cartItems, buyerData });
 
-      // Sprawdź dostępność składników dla całego koszyka
-      const totalIngredientUsage: Record<string, { amount: number; unit: string }> = {};
+      // NAPRAWKA: Zlikwiduj problem podwójnego zapisywania - zsumuj wszystkie składniki przed zapisaniem
+      const consolidatedIngredientUsage: Record<string, { amount: number; unit: string }> = {};
       
-      // Zsumuj użycie składników z całego koszyka
       cartItems.forEach(item => {
         item.ingredients.forEach(ingredient => {
-          const amountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
-          const totalUsedInBaseUnit = amountInBaseUnit * item.quantity;
+          const totalUsedInOriginalUnit = ingredient.amount * item.quantity;
           
-          if (!totalIngredientUsage[ingredient.name]) {
-            totalIngredientUsage[ingredient.name] = { amount: 0, unit: 'ml' };
+          if (!consolidatedIngredientUsage[ingredient.name]) {
+            consolidatedIngredientUsage[ingredient.name] = { amount: 0, unit: ingredient.unit };
           }
-          totalIngredientUsage[ingredient.name].amount += totalUsedInBaseUnit;
+          consolidatedIngredientUsage[ingredient.name].amount += totalUsedInOriginalUnit;
         });
       });
 
-      // Sprawdź dostępność dla zsumowanych składników
+      // Sprawdź dostępność dla całego koszyka
+      const totalIngredientUsage: Record<string, { amount: number; unit: string }> = {};
+      
+      Object.entries(consolidatedIngredientUsage).forEach(([ingredientName, usage]) => {
+        const amountInBaseUnit = convertToBaseUnit(usage.amount, usage.unit);
+        totalIngredientUsage[ingredientName] = { amount: amountInBaseUnit, unit: 'ml' };
+      });
+
       const { data: currentIngredients, error: ingredientsError } = await supabase
         .from('ingredients')
         .select('name, amount, unit');
@@ -391,7 +398,6 @@ export const useSales = () => {
         throw new Error(`Niewystarczające składniki: ${missingIngredients.join(', ')}`);
       }
 
-      // Build full address from components
       let fullAddress = '';
       if (buyerData?.street || buyerData?.house_number || buyerData?.city) {
         const addressParts = [];
@@ -413,10 +419,8 @@ export const useSales = () => {
         fullAddress = addressParts.join(', ');
       }
 
-      // Oblicz łączną wartość koszyka
       const totalCartValue = cartItems.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
 
-      // NAPRAWKA: Dodaj ceny do nazw produktów dla poprawnych obliczeń VAT na fakturze
       const compositionNames = cartItems.map(item => 
         `${item.quantity}x ${item.compositionName} [${item.unitPrice.toFixed(2)}zł]`
       ).join(', ');
@@ -424,10 +428,10 @@ export const useSales = () => {
       const { data: transaction, error: transactionError } = await supabase
         .from('sales_transactions')
         .insert({
-          composition_id: cartItems[0].compositionId, // Używamy ID pierwszego produktu jako referencję
-          composition_name: compositionNames, // Łączymy nazwy wszystkich produktów z cenami
-          quantity: cartItems.reduce((total, item) => total + item.quantity, 0), // Suma wszystkich ilości
-          unit_price: totalCartValue / cartItems.reduce((total, item) => total + item.quantity, 0), // Średnia cena jednostkowa
+          composition_id: cartItems[0].compositionId,
+          composition_name: compositionNames,
+          quantity: cartItems.reduce((total, item) => total + item.quantity, 0),
+          unit_price: totalCartValue / cartItems.reduce((total, item) => total + item.quantity, 0),
           total_price: totalCartValue,
           buyer_name: buyerData?.name || null,
           buyer_email: buyerData?.email || null,
@@ -442,51 +446,29 @@ export const useSales = () => {
 
       console.log('Cart transaction created:', transaction);
 
-      // Przetwórz wszystkie składniki z koszyka
-      const allIngredientUsages = [];
-      const ingredientUpdates = [];
+      // NAPRAWKA: Zapisz użycie składników zsumowane, nie osobno dla każdego produktu
+      const consolidatedUsages = Object.entries(consolidatedIngredientUsage).map(([ingredientName, usage]) => ({
+        transaction_id: transaction.id,
+        ingredient_name: ingredientName,
+        quantity_used: usage.amount,
+        unit: usage.unit,
+      }));
 
-      cartItems.forEach(item => {
-        item.ingredients.forEach(ingredient => {
-          const amountInBaseUnit = convertToBaseUnit(ingredient.amount, ingredient.unit);
-          const totalUsedInBaseUnit = amountInBaseUnit * item.quantity;
-          
-          // Zapisz użycie składnika w oryginalnych jednostkach
-          allIngredientUsages.push({
-            transaction_id: transaction.id,
-            ingredient_name: ingredient.name,
-            quantity_used: ingredient.amount * item.quantity,
-            unit: ingredient.unit,
-          });
-
-          // Znajdź istniejący update dla tego składnika lub utwórz nowy
-          let existingUpdate = ingredientUpdates.find(update => update.name === ingredient.name);
-          if (!existingUpdate) {
-            existingUpdate = {
-              name: ingredient.name,
-              totalUsedInBaseUnit: 0
-            };
-            ingredientUpdates.push(existingUpdate);
-          }
-          existingUpdate.totalUsedInBaseUnit += totalUsedInBaseUnit;
-        });
-      });
-
-      // Wstaw rekordy użycia składników
-      if (allIngredientUsages.length > 0) {
+      if (consolidatedUsages.length > 0) {
         const { error: usageError } = await supabase
           .from('transaction_ingredient_usage')
-          .insert(allIngredientUsages);
+          .insert(consolidatedUsages);
 
         if (usageError) throw usageError;
       }
 
-      // Aktualizuj ilości składników
-      for (const update of ingredientUpdates) {
+      // Aktualizuj składniki na podstawie zsumowanych użyć
+      const ingredientUpdates = [];
+      for (const [ingredientName, usage] of Object.entries(consolidatedIngredientUsage)) {
         const { data: currentIngredient, error: fetchError } = await supabase
           .from('ingredients')
           .select('amount, unit')
-          .eq('name', update.name)
+          .eq('name', ingredientName)
           .single();
 
         if (fetchError) {
@@ -494,8 +476,9 @@ export const useSales = () => {
           continue;
         }
 
+        const usageInBaseUnit = convertToBaseUnit(usage.amount, usage.unit);
         const currentAmountInBaseUnit = convertToBaseUnit(currentIngredient.amount, currentIngredient.unit);
-        const newAmountInBaseUnit = Math.max(0, currentAmountInBaseUnit - update.totalUsedInBaseUnit);
+        const newAmountInBaseUnit = Math.max(0, currentAmountInBaseUnit - usageInBaseUnit);
         
         let newAmountInStorageUnit;
         if (currentIngredient.unit.toLowerCase().includes('krople') || currentIngredient.unit.toLowerCase().includes('kropli')) {
@@ -504,23 +487,45 @@ export const useSales = () => {
           newAmountInStorageUnit = newAmountInBaseUnit;
         }
 
-        console.log(`Aktualizacja składnika ${update.name}:`, {
+        console.log(`Aktualizacja składnika ${ingredientName}:`, {
           currentAmount: currentIngredient.amount,
           currentUnit: currentIngredient.unit,
           currentInBaseUnit: currentAmountInBaseUnit,
-          usedInBaseUnit: update.totalUsedInBaseUnit,
+          usedInBaseUnit: usageInBaseUnit,
           newInBaseUnit: newAmountInBaseUnit,
           newInStorageUnit: newAmountInStorageUnit
         });
 
+        ingredientUpdates.push({
+          name: ingredientName,
+          newAmount: newAmountInStorageUnit,
+          usedAmount: usageInBaseUnit,
+          unit: currentIngredient.unit
+        });
+      }
+
+      // Aktualizuj składniki i zapisz ruchy magazynowe
+      for (const update of ingredientUpdates) {
         const { error: updateError } = await supabase
           .from('ingredients')
-          .update({ amount: newAmountInStorageUnit })
+          .update({ amount: update.newAmount })
           .eq('name', update.name);
 
         if (updateError) {
           console.error('Error updating ingredient:', updateError);
+          continue;
         }
+
+        // Zapisz ruch magazynowy
+        await recordMovement(
+          update.name,
+          'sale',
+          -update.usedAmount, // Ujemna wartość dla sprzedaży
+          update.unit,
+          transaction.id,
+          'cart_transaction',
+          `Sprzedaż koszyka: ${cartItems.length} produktów`
+        );
       }
 
       console.log('Cart sale processed successfully');
@@ -536,7 +541,7 @@ export const useSales = () => {
     try {
       console.log('Reversing transaction:', transactionId);
 
-      // Get ingredient usages for this transaction
+      // NAPRAWKA: Pobierz zapisane użycie składników (to co było faktycznie zapisane)
       const { data: usages, error: usagesError } = await supabase
         .from('transaction_ingredient_usage')
         .select('*')
@@ -544,7 +549,9 @@ export const useSales = () => {
 
       if (usagesError) throw usagesError;
 
-      // Restore ingredient amounts with proper unit conversion
+      console.log('Found usages to reverse:', usages);
+
+      // Przywróć składniki na podstawie zapisanych użyć
       for (const usage of usages || []) {
         const { data: currentIngredient, error: fetchError } = await supabase
           .from('ingredients')
@@ -557,7 +564,7 @@ export const useSales = () => {
           continue;
         }
 
-        // NAPRAWKA: Konwertuj ilość użytą do jednostki bazowej
+        // NAPRAWKA: Konwertuj użytą ilość do jednostki bazowej
         const usageInBaseUnit = convertToBaseUnit(usage.quantity_used, usage.unit);
         
         // Konwertuj obecną ilość do jednostki bazowej
@@ -569,10 +576,8 @@ export const useSales = () => {
         // Konwertuj z powrotem do jednostki przechowywania
         let restoredAmountInStorageUnit;
         if (currentIngredient.unit.toLowerCase().includes('krople') || currentIngredient.unit.toLowerCase().includes('kropli')) {
-          // Jeśli przechowywane w kroplach, konwertuj ml z powrotem na krople
           restoredAmountInStorageUnit = restoredAmountInBaseUnit * 20;
         } else {
-          // Jeśli przechowywane w ml lub innych jednostkach
           restoredAmountInStorageUnit = restoredAmountInBaseUnit;
         }
 
@@ -594,10 +599,22 @@ export const useSales = () => {
 
         if (restoreError) {
           console.error('Error restoring ingredient:', restoreError);
+          continue;
         }
+
+        // Zapisz ruch magazynowy dla cofnięcia
+        await recordMovement(
+          usage.ingredient_name,
+          'reversal',
+          usageInBaseUnit, // Dodatnia wartość dla cofnięcia
+          currentIngredient.unit,
+          transactionId,
+          'transaction_reversal',
+          `Cofnięcie transakcji: przywrócono ${usage.quantity_used} ${usage.unit}`
+        );
       }
 
-      // Mark transaction as reversed
+      // Oznacz transakcję jako cofniętą
       const { error: reverseError } = await supabase
         .from('sales_transactions')
         .update({ 
@@ -620,7 +637,6 @@ export const useSales = () => {
     try {
       console.log('Deleting transaction:', transactionId);
 
-      // Delete ingredient usages first (foreign key constraint)
       const { error: usageDeleteError } = await supabase
         .from('transaction_ingredient_usage')
         .delete()
@@ -628,7 +644,6 @@ export const useSales = () => {
 
       if (usageDeleteError) throw usageDeleteError;
 
-      // Delete the transaction
       const { error: transactionDeleteError } = await supabase
         .from('sales_transactions')
         .delete()
