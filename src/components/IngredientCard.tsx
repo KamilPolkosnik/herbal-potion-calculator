@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Save } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertTriangle, Save, Info } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface IngredientCardProps {
   name: string;
@@ -28,13 +29,13 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
   unit,
   onAmountUpdate,
   onPriceUpdate,
-  compositionUsage,
   warningThresholds
 }) => {
   const [localAmount, setLocalAmount] = useState(amount.toString());
   const [localPrice, setLocalPrice] = useState(price.toString());
   const [amountChanged, setAmountChanged] = useState(false);
   const [priceChanged, setPriceChanged] = useState(false);
+  const [compositions, setCompositions] = useState<Array<{ name: string; amount: number }>>([]);
 
   useEffect(() => {
     setLocalAmount(amount.toString());
@@ -45,6 +46,36 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
     setLocalPrice(price.toString());
     setPriceChanged(false);
   }, [price]);
+
+  useEffect(() => {
+    const loadCompositions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('composition_ingredients')
+          .select(`
+            amount,
+            unit,
+            compositions:composition_id (
+              name
+            )
+          `)
+          .eq('ingredient_name', name);
+
+        if (error) throw error;
+
+        const compositionData = data?.map(item => ({
+          name: (item.compositions as any)?.name || 'Unknown',
+          amount: item.amount
+        })) || [];
+
+        setCompositions(compositionData);
+      } catch (error) {
+        console.error('Error loading compositions:', error);
+      }
+    };
+
+    loadCompositions();
+  }, [name]);
 
   const handleAmountChange = (value: string) => {
     setLocalAmount(value);
@@ -81,13 +112,33 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
   };
 
   const isLowStock = amount < getWarningThreshold();
-  const usage = compositionUsage?.[name] || 0;
 
   return (
     <Card className={`p-4 ${isLowStock ? 'border-red-300 bg-red-50' : ''}`}>
       <CardContent className="p-0">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-medium text-sm">{name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-sm">{name}</h3>
+            {compositions.length > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-blue-500" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="space-y-1">
+                      <p className="font-medium">Używany w zestawach:</p>
+                      {compositions.map((comp, index) => (
+                        <p key={index} className="text-sm">
+                          {comp.name}: {comp.amount} {unit}
+                        </p>
+                      ))}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
           {isLowStock && (
             <AlertTriangle className="h-4 w-4 text-red-500" />
           )}
@@ -138,14 +189,6 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
             </Button>
           </div>
         </div>
-
-        {usage > 0 && (
-          <div className="mt-2 pt-2 border-t">
-            <Badge variant="secondary" className="text-xs">
-              Użycie: {usage.toFixed(2)} {unit}
-            </Badge>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

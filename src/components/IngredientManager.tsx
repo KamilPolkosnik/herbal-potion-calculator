@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
@@ -219,7 +220,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handleIngredientUpdate}
             onPriceUpdate={handlePriceUpdate}
-            compositionUsage={convertedCompositionUsage}
+            compositionUsage={{}} // Remove usage display
             warningThresholds={warningThresholds}
           />
           
@@ -231,7 +232,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handleIngredientUpdate}
             onPriceUpdate={handlePriceUpdate}
-            compositionUsage={convertedCompositionUsage}
+            compositionUsage={{}} // Remove usage display
             warningThresholds={warningThresholds}
           />
           
@@ -243,7 +244,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handleIngredientUpdate}
             onPriceUpdate={handlePriceUpdate}
-            compositionUsage={convertedCompositionUsage}
+            compositionUsage={{}} // Remove usage display
             warningThresholds={warningThresholds}
           />
         </TabsContent>

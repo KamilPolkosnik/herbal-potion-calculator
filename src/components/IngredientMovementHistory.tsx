@@ -17,6 +17,27 @@ interface IngredientMovementHistoryProps {
   ingredientName?: string;
 }
 
+interface GroupedTransaction {
+  id: string;
+  type: 'transaction' | 'individual';
+  referenceId?: string;
+  movements: Array<{
+    id: string;
+    ingredient_name: string;
+    movement_type: 'purchase' | 'sale' | 'reversal' | 'adjustment';
+    quantity_change: number;
+    unit: string;
+    reference_id?: string;
+    reference_type?: string;
+    notes?: string;
+    created_at: string;
+    is_archived?: boolean;
+  }>;
+  created_at: string;
+  is_archived: boolean;
+  notes?: string;
+}
+
 const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ ingredientName }) => {
   const { movements, loading, loadMovements, archiveMovement, unarchiveMovement } = useIngredientMovements();
   const [searchTerm, setSearchTerm] = useState(ingredientName || '');
@@ -24,44 +45,88 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
   const [showArchived, setShowArchived] = useState(false);
-  const [filteredMovements, setFilteredMovements] = useState(movements);
+  const [groupedMovements, setGroupedMovements] = useState<GroupedTransaction[]>([]);
 
   useEffect(() => {
-    if (ingredientName) {
-      loadMovements(ingredientName, showArchived);
-    } else {
-      loadMovements(undefined, showArchived);
-    }
-  }, [ingredientName, showArchived]);
+    loadMovements(ingredientName, showArchived).then(() => {
+      console.log('Movements loaded:', movements.length);
+    });
+  }, [ingredientName, showArchived, loadMovements]);
 
+  // Group movements by transaction
   useEffect(() => {
-    let filtered = movements;
+    const grouped: Record<string, GroupedTransaction> = {};
 
+    movements.forEach(movement => {
+      // Group by reference_id for sales and reversals
+      if (movement.reference_id && (movement.movement_type === 'sale' || movement.movement_type === 'reversal')) {
+        const key = movement.reference_id;
+        
+        if (!grouped[key]) {
+          grouped[key] = {
+            id: key,
+            type: 'transaction',
+            referenceId: movement.reference_id,
+            movements: [],
+            created_at: movement.created_at,
+            is_archived: movement.is_archived || false,
+            notes: movement.notes
+          };
+        }
+        
+        grouped[key].movements.push(movement);
+        // Update archived status - if any movement is archived, mark group as archived
+        if (movement.is_archived) {
+          grouped[key].is_archived = true;
+        }
+      } else {
+        // Individual movements (purchase, adjustment, etc.)
+        grouped[movement.id] = {
+          id: movement.id,
+          type: 'individual',
+          movements: [movement],
+          created_at: movement.created_at,
+          is_archived: movement.is_archived || false,
+          notes: movement.notes
+        };
+      }
+    });
+
+    let filteredGroups = Object.values(grouped);
+
+    // Apply filters
     if (searchTerm) {
-      filtered = filtered.filter(movement =>
-        movement.ingredient_name.toLowerCase().includes(searchTerm.toLowerCase())
+      filteredGroups = filteredGroups.filter(group =>
+        group.movements.some(movement =>
+          movement.ingredient_name.toLowerCase().includes(searchTerm.toLowerCase())
+        )
       );
     }
 
     if (movementTypeFilter !== 'all') {
-      filtered = filtered.filter(movement => movement.movement_type === movementTypeFilter);
+      filteredGroups = filteredGroups.filter(group =>
+        group.movements.some(movement => movement.movement_type === movementTypeFilter)
+      );
     }
 
     if (dateFrom) {
-      filtered = filtered.filter(movement => 
-        new Date(movement.created_at) >= dateFrom
+      filteredGroups = filteredGroups.filter(group =>
+        new Date(group.created_at) >= dateFrom
       );
     }
 
     if (dateTo) {
       const endOfDay = new Date(dateTo);
       endOfDay.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(movement => 
-        new Date(movement.created_at) <= endOfDay
+      filteredGroups = filteredGroups.filter(group =>
+        new Date(group.created_at) <= endOfDay
       );
     }
 
-    setFilteredMovements(filtered);
+    // Sort by date
+    filteredGroups.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    setGroupedMovements(filteredGroups);
   }, [movements, searchTerm, movementTypeFilter, dateFrom, dateTo]);
 
   const getMovementTypeColor = (type: string) => {
@@ -94,14 +159,18 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
     }
   };
 
-  const handleArchiveToggle = async (movementId: string, isArchived: boolean) => {
+  const handleArchiveToggle = async (group: GroupedTransaction) => {
     try {
-      if (isArchived) {
-        await unarchiveMovement(movementId);
-      } else {
-        await archiveMovement(movementId);
-      }
-      loadMovements(ingredientName, showArchived);
+      const promises = group.movements.map(movement => {
+        if (group.is_archived) {
+          return unarchiveMovement(movement.id);
+        } else {
+          return archiveMovement(movement.id);
+        }
+      });
+      
+      await Promise.all(promises);
+      await loadMovements(ingredientName, showArchived);
     } catch (error) {
       console.error('Error toggling archive status:', error);
     }
@@ -109,7 +178,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
 
   const exportToCSV = () => {
     const csvHeader = 'Data,Składnik,Typ,Zmiana,Jednostka,Notatki,Status\n';
-    const csvData = filteredMovements.map(movement => 
+    const csvData = movements.map(movement => 
       `${format(new Date(movement.created_at), 'yyyy-MM-dd HH:mm:ss')},` +
       `"${movement.ingredient_name}",` +
       `"${getMovementTypeLabel(movement.movement_type)}",` +
@@ -166,7 +235,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
               variant="outline"
               size="sm"
               onClick={exportToCSV}
-              disabled={filteredMovements.length === 0}
+              disabled={groupedMovements.length === 0}
             >
               <Download className="h-4 w-4 mr-2" />
               Eksportuj CSV
@@ -263,7 +332,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
           </div>
         </div>
 
-        {filteredMovements.length === 0 ? (
+        {groupedMovements.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             {showArchived 
               ? "Brak zarchiwizowanych ruchów magazynowych spełniających kryteria wyszukiwania."
@@ -272,45 +341,62 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredMovements.map((movement) => (
+            {groupedMovements.map((group) => (
               <div
-                key={movement.id}
+                key={group.id}
                 className={cn(
-                  "flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50",
-                  movement.is_archived && "bg-gray-100 opacity-75"
+                  "p-3 border rounded-lg hover:bg-gray-50",
+                  group.is_archived && "bg-gray-100 opacity-75"
                 )}
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">{movement.ingredient_name}</span>
-                    <Badge className={getMovementTypeColor(movement.movement_type)}>
-                      {getMovementTypeLabel(movement.movement_type)}
-                    </Badge>
-                    {movement.is_archived && (
-                      <Badge variant="secondary">Zarchiwizowany</Badge>
-                    )}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {movement.notes && (
-                      <div className="mb-1">{movement.notes}</div>
-                    )}
-                    <div>
-                      {format(new Date(movement.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      {group.type === 'transaction' ? (
+                        <span className="font-medium">
+                          Transakcja: {group.movements.length} składników
+                        </span>
+                      ) : (
+                        <span className="font-medium">{group.movements[0].ingredient_name}</span>
+                      )}
+                      
+                      {group.movements.map((movement, index) => (
+                        <Badge key={index} className={getMovementTypeColor(movement.movement_type)}>
+                          {getMovementTypeLabel(movement.movement_type)}
+                        </Badge>
+                      ))}
+                      
+                      {group.is_archived && (
+                        <Badge variant="secondary">Zarchiwizowany</Badge>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-1">
+                      {group.movements.map((movement, index) => (
+                        <div key={index} className="text-sm text-gray-600">
+                          <span className="font-medium">{movement.ingredient_name}:</span>
+                          <span className={`ml-2 ${movement.quantity_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {movement.quantity_change > 0 ? '+' : ''}{movement.quantity_change.toFixed(2)} {movement.unit}
+                          </span>
+                        </div>
+                      ))}
+                      
+                      {group.notes && (
+                        <div className="text-sm text-gray-600 mt-1">{group.notes}</div>
+                      )}
+                      
+                      <div className="text-xs text-gray-500">
+                        {format(new Date(group.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <div className={`font-medium ${movement.quantity_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {movement.quantity_change > 0 ? '+' : ''}{movement.quantity_change.toFixed(2)} {movement.unit}
-                    </div>
-                  </div>
+                  
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleArchiveToggle(movement.id, movement.is_archived || false)}
+                    onClick={() => handleArchiveToggle(group)}
                   >
-                    {movement.is_archived ? (
+                    {group.is_archived ? (
                       <ArchiveRestore className="h-4 w-4" />
                     ) : (
                       <Archive className="h-4 w-4" />
