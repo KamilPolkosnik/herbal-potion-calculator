@@ -46,11 +46,12 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
   const [dateTo, setDateTo] = useState<Date>();
   const [showArchived, setShowArchived] = useState(false);
   const [groupedMovements, setGroupedMovements] = useState<GroupedTransaction[]>([]);
+  const [displayedCount, setDisplayedCount] = useState(10);
 
   // Load movements when component mounts or when showArchived changes
   useEffect(() => {
-    loadMovements(ingredientName, showArchived);
-  }, [ingredientName, showArchived]);
+    loadMovements(ingredientName, true); // Always load all movements, filter client-side
+  }, [ingredientName]);
 
   // Group movements by transaction type and reference
   useEffect(() => {
@@ -61,7 +62,12 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
 
     const grouped: Record<string, GroupedTransaction> = {};
 
-    movements.forEach(movement => {
+    // Filter movements based on archive status first
+    const filteredByArchive = movements.filter(movement => {
+      return showArchived ? (movement.is_archived === true) : (movement.is_archived !== true);
+    });
+
+    filteredByArchive.forEach(movement => {
       if (movement.reference_id && (movement.movement_type === 'sale' || movement.movement_type === 'reversal')) {
         // Create separate groups for sales and reversals even if they share the same reference_id
         const key = `${movement.reference_id}_${movement.movement_type}`;
@@ -79,11 +85,6 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
         }
         
         grouped[key].movements.push(movement);
-        
-        // Update archived status - if any movement is archived, mark group as archived
-        if (movement.is_archived) {
-          grouped[key].is_archived = true;
-        }
       } else {
         // Individual movements (purchase, adjustment, etc.)
         grouped[movement.id] = {
@@ -99,7 +100,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
 
     let filteredGroups = Object.values(grouped);
 
-    // Apply filters
+    // Apply other filters
     if (searchTerm) {
       filteredGroups = filteredGroups.filter(group =>
         group.movements.some(movement =>
@@ -132,7 +133,8 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
     filteredGroups.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     setGroupedMovements(filteredGroups);
-  }, [movements, searchTerm, movementTypeFilter, dateFrom, dateTo]);
+    setDisplayedCount(10); // Reset displayed count when filters change
+  }, [movements, searchTerm, movementTypeFilter, dateFrom, dateTo, showArchived]);
 
   const getMovementTypeColor = (type: string) => {
     switch (type) {
@@ -174,6 +176,16 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
     }
   };
 
+  const getGroupBadgeType = (group: GroupedTransaction) => {
+    if (group.type === 'sale') {
+      return 'sale';
+    } else if (group.type === 'reversal') {
+      return 'reversal';
+    } else {
+      return group.movements[0].movement_type;
+    }
+  };
+
   const handleArchiveToggle = async (group: GroupedTransaction) => {
     try {
       const promises = group.movements.map(movement => {
@@ -185,7 +197,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
       });
       
       await Promise.all(promises);
-      await loadMovements(ingredientName, showArchived);
+      await loadMovements(ingredientName, true);
     } catch (error) {
       console.error('Error toggling archive status:', error);
     }
@@ -219,6 +231,10 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
     setShowArchived(prev => !prev);
   };
 
+  const loadMore = () => {
+    setDisplayedCount(prev => prev + 10);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -226,6 +242,9 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
       </div>
     );
   }
+
+  const displayedMovements = groupedMovements.slice(0, displayedCount);
+  const hasMore = displayedCount < groupedMovements.length;
 
   return (
     <Card>
@@ -244,7 +263,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
             <Button
               variant="outline"
               size="sm"
-              onClick={() => loadMovements(ingredientName, showArchived)}
+              onClick={() => loadMovements(ingredientName, true)}
               disabled={loading}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -351,7 +370,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
           </div>
         </div>
 
-        {groupedMovements.length === 0 ? (
+        {displayedMovements.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             {showArchived 
               ? "Brak zarchiwizowanych ruchów magazynowych spełniających kryteria wyszukiwania."
@@ -360,7 +379,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
           </div>
         ) : (
           <div className="space-y-2">
-            {groupedMovements.map((group) => (
+            {displayedMovements.map((group) => (
               <div
                 key={group.id}
                 className={cn(
@@ -375,11 +394,10 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
                         {getGroupTitle(group)}
                       </span>
                       
-                      {group.movements.map((movement, index) => (
-                        <Badge key={index} className={getMovementTypeColor(movement.movement_type)}>
-                          {getMovementTypeLabel(movement.movement_type)}
-                        </Badge>
-                      ))}
+                      {/* Only show one badge per group */}
+                      <Badge className={getMovementTypeColor(getGroupBadgeType(group))}>
+                        {getMovementTypeLabel(getGroupBadgeType(group))}
+                      </Badge>
                       
                       {group.is_archived && (
                         <Badge variant="secondary">Zarchiwizowany</Badge>
@@ -420,6 +438,18 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
                 </div>
               </div>
             ))}
+            
+            {hasMore && (
+              <div className="text-center pt-4">
+                <Button
+                  variant="outline"
+                  onClick={loadMore}
+                  disabled={loading}
+                >
+                  Załaduj więcej
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

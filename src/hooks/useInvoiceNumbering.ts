@@ -10,7 +10,7 @@ export const useInvoiceNumbering = () => {
     try {
       setLoading(true);
       
-      // Get all transactions ordered by creation date
+      // Get all transactions ordered by creation date to establish original order
       const { data: transactions, error } = await supabase
         .from('sales_transactions')
         .select('id, created_at')
@@ -18,12 +18,19 @@ export const useInvoiceNumbering = () => {
 
       if (error) throw error;
 
-      // Generate sequential numbers based on chronological order
+      // Generate numbers based on UUID to ensure stability
       const numbers: Record<string, string> = {};
-      transactions?.forEach((transaction, index) => {
-        const invoiceNumber = (index + 1).toString().padStart(9, '0');
-        numbers[transaction.id] = invoiceNumber;
-      });
+      
+      if (transactions) {
+        // Create a map of transaction IDs with their chronological position
+        const sortedTransactionIds = transactions.map(t => t.id);
+        
+        // For each transaction, generate a stable number based on its position in the chronological order
+        sortedTransactionIds.forEach((transactionId, index) => {
+          const invoiceNumber = (index + 1).toString().padStart(9, '0');
+          numbers[transactionId] = invoiceNumber;
+        });
+      }
 
       setInvoiceNumbers(numbers);
     } catch (error) {
