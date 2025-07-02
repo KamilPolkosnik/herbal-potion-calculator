@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Undo2, ShoppingCart, Calendar, Trash2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronRight, Undo2, ShoppingCart, Calendar, Trash2 } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -26,6 +27,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
   const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set());
 
   const handleReverse = async (transactionId: string, compositionName: string) => {
     try {
@@ -81,18 +83,14 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
     }
   };
 
-  // Funkcja do generowania numeru transakcji na podstawie chronologicznej pozycji
-  const generateTransactionNumber = (transactionId: string) => {
-    // Sortuj wszystkie transakcje chronologicznie (od najstarszej do najnowszej)
-    const chronologicalTransactions = [...transactions].sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    
-    // Znajdź indeks tej transakcji w chronologicznej kolejności
-    const chronologicalIndex = chronologicalTransactions.findIndex(t => t.id === transactionId);
-    
-    // Zwróć numer transakcji (indeks + 1, wypadowany do 9 cyfr)
-    return (chronologicalIndex + 1).toString().padStart(9, '0');
+  // Funkcja do generowania stałego numeru transakcji
+  const generateStableTransactionNumber = (transactionId: string) => {
+    // Konwertuj UUID na numer - użyj pierwszych 8 znaków UUID i przekonwertuj na liczbę
+    const uuidPart = transactionId.replace(/-/g, '').substring(0, 8);
+    const numericValue = parseInt(uuidPart, 16);
+    // Użyj modulo aby otrzymać 9-cyfrowy numer
+    const invoiceNumber = (numericValue % 1000000000).toString().padStart(9, '0');
+    return invoiceNumber;
   };
 
   const filteredTransactions = useMemo(() => {
@@ -112,6 +110,85 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
 
     return filtered;
   }, [transactions, dateFrom, dateTo]);
+
+  // Grupuj transakcje z wieloma pozycjami
+  const groupedTransactions = useMemo(() => {
+    const grouped: Array<{
+      id: string;
+      transaction: any;
+      isMultiItem: boolean;
+      items: Array<{ name: string; quantity: number; price: number }>;
+      mainItem: string;
+    }> = [];
+
+    filteredTransactions.forEach(transaction => {
+      const isMultiItem = transaction.composition_name.includes(',');
+      
+      if (isMultiItem) {
+        // Parse composition names to handle multiple items
+        const compositionParts = transaction.composition_name.split(', ');
+        const items = compositionParts.map(part => {
+          const matchWithPrice = part.match(/^(\d+)x (.+) \[(\d+(?:\.\d{2})?)zł\]$/);
+          if (matchWithPrice) {
+            return {
+              name: matchWithPrice[2],
+              quantity: parseInt(matchWithPrice[1]),
+              price: parseFloat(matchWithPrice[3])
+            };
+          }
+          
+          const match = part.match(/^(\d+)x (.+)$/);
+          if (match) {
+            return {
+              name: match[2],
+              quantity: parseInt(match[1]),
+              price: transaction.unit_price
+            };
+          }
+          
+          return {
+            name: part,
+            quantity: 1,
+            price: transaction.unit_price
+          };
+        });
+
+        grouped.push({
+          id: transaction.id,
+          transaction,
+          isMultiItem: true,
+          items,
+          mainItem: items[0]?.name || 'Zestaw'
+        });
+      } else {
+        grouped.push({
+          id: transaction.id,
+          transaction,
+          isMultiItem: false,
+          items: [{
+            name: transaction.composition_name,
+            quantity: transaction.quantity,
+            price: transaction.unit_price
+          }],
+          mainItem: transaction.composition_name
+        });
+      }
+    });
+
+    return grouped;
+  }, [filteredTransactions]);
+
+  const toggleExpanded = (transactionId: string) => {
+    setExpandedTransactions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(transactionId)) {
+        newSet.delete(transactionId);
+      } else {
+        newSet.add(transactionId);
+      }
+      return newSet;
+    });
+  };
 
   const clearFilters = () => {
     setDateFrom('');
@@ -167,7 +244,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
         </div>
       </CardHeader>
       <CardContent>
-        {filteredTransactions.length === 0 ? (
+        {groupedTransactions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             {dateFrom || dateTo ? 'Brak transakcji w wybranym zakresie dat' : 'Brak transakcji do wyświetlenia'}
           </div>
@@ -188,58 +265,95 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell className="font-mono text-sm">
-                      {generateTransactionNumber(transaction.id)}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
-                    </TableCell>
-                    <TableCell>{transaction.composition_name}</TableCell>
-                    <TableCell>{transaction.buyer_name || 'Klient indywidualny'}</TableCell>
-                    <TableCell>{transaction.quantity} szt.</TableCell>
-                    <TableCell>{transaction.unit_price.toFixed(2)} zł</TableCell>
-                    <TableCell>{transaction.total_price.toFixed(2)} zł</TableCell>
-                    <TableCell>
-                      {transaction.is_reversed ? (
-                        <span className="text-red-600 font-medium">Cofnięta</span>
-                      ) : (
-                        <span className="text-green-600 font-medium">Aktywna</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <InvoiceGenerator 
-                          transaction={transaction}
-                          companySettings={companySettings}
-                          transactionNumber={generateTransactionNumber(transaction.id)}
-                        />
-                        {!transaction.is_reversed ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleReverse(transaction.id, transaction.composition_name)}
-                          >
-                            <Undo2 className="w-4 h-4 mr-1" />
-                            Cofnij
-                          </Button>
-                        ) : (
-                          // Przycisk "Usuń" tylko dla administratorów
-                          user?.role === 'admin' && (
+                {groupedTransactions.map((group) => (
+                  <React.Fragment key={group.id}>
+                    <TableRow>
+                      <TableCell className="font-mono text-sm">
+                        {generateStableTransactionNumber(group.transaction.id)}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(group.transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{group.mainItem}</span>
+                          {group.isMultiItem && (
                             <Button
-                              variant="destructive"
+                              variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(transaction.id, transaction.composition_name)}
+                              onClick={() => toggleExpanded(group.id)}
+                              className="h-6 w-6 p-0"
                             >
-                              <Trash2 className="w-4 h-4 mr-1" />
-                              Usuń
+                              {expandedTransactions.has(group.id) ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
                             </Button>
-                          )
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{group.transaction.buyer_name || 'Klient indywidualny'}</TableCell>
+                      <TableCell>{group.transaction.quantity} szt.</TableCell>
+                      <TableCell>{group.transaction.unit_price.toFixed(2)} zł</TableCell>
+                      <TableCell>{group.transaction.total_price.toFixed(2)} zł</TableCell>
+                      <TableCell>
+                        {group.transaction.is_reversed ? (
+                          <span className="text-red-600 font-medium">Cofnięta</span>
+                        ) : (
+                          <span className="text-green-600 font-medium">Aktywna</span>
                         )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <InvoiceGenerator 
+                            transaction={group.transaction}
+                            companySettings={companySettings}
+                            transactionNumber={generateStableTransactionNumber(group.transaction.id)}
+                          />
+                          {!group.transaction.is_reversed ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
+                            >
+                              <Undo2 className="w-4 h-4 mr-1" />
+                              Cofnij
+                            </Button>
+                          ) : (
+                            // Przycisk "Usuń" tylko dla administratorów
+                            user?.role === 'admin' && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Usuń
+                              </Button>
+                            )
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {group.isMultiItem && expandedTransactions.has(group.id) && (
+                      <TableRow>
+                        <TableCell colSpan={9} className="bg-gray-50 p-4">
+                          <div className="text-sm">
+                            <p className="font-medium mb-2">Szczegóły pozycji:</p>
+                            <div className="space-y-1">
+                              {group.items.map((item, index) => (
+                                <div key={index} className="flex justify-between items-center">
+                                  <span>{item.name}</span>
+                                  <span>{item.quantity} szt. × {item.price.toFixed(2)} zł</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>
