@@ -223,6 +223,7 @@ export type Database = {
           composition_name: string
           created_at: string
           id: string
+          invoice_number: number
           is_reversed: boolean
           quantity: number
           reversed_at: string | null
@@ -239,6 +240,7 @@ export type Database = {
           composition_name: string
           created_at?: string
           id?: string
+          invoice_number?: number
           is_reversed?: boolean
           quantity: number
           reversed_at?: string | null
@@ -255,6 +257,7 @@ export type Database = {
           composition_name?: string
           created_at?: string
           id?: string
+          invoice_number?: number
           is_reversed?: boolean
           quantity?: number
           reversed_at?: string | null

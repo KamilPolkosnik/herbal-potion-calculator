@@ -10,27 +10,25 @@ export const useInvoiceNumbering = () => {
     try {
       setLoading(true);
       
-      // Get all transactions ordered by creation date
+      // Get all transactions with their assigned invoice numbers
       const { data: transactions, error } = await supabase
         .from('sales_transactions')
-        .select('id, created_at')
-        .order('created_at', { ascending: true });
+        .select('id, invoice_number');
 
       if (error) throw error;
 
-      // Generate stable numbers based on creation order
+      // Map transaction IDs to their invoice numbers
       const numbers: Record<string, string> = {};
       
       if (transactions) {
-        // Each transaction gets a number based on its chronological position
-        // This ensures that once assigned, the number never changes
-        transactions.forEach((transaction, index) => {
-          const invoiceNumber = (index + 1).toString().padStart(9, '0');
+        transactions.forEach((transaction) => {
+          // Format invoice number with leading zeros
+          const invoiceNumber = transaction.invoice_number.toString().padStart(9, '0');
           numbers[transaction.id] = invoiceNumber;
         });
       }
 
-      console.log('Generated chronological invoice numbers:', numbers);
+      console.log('Loaded invoice numbers from database:', numbers);
       setInvoiceNumbers(numbers);
     } catch (error) {
       console.error('Error loading invoice numbers:', error);

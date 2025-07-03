@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { convertToBaseUnit, areUnitsCompatible } from '@/utils/unitConverter';
@@ -208,6 +207,7 @@ export const useSales = () => {
         fullAddress = addressParts.join(', ');
       }
 
+      // Transakcja automatycznie otrzyma numer faktury z sekwencji
       const { data: transaction, error: transactionError } = await supabase
         .from('sales_transactions')
         .insert({
@@ -227,7 +227,7 @@ export const useSales = () => {
 
       if (transactionError) throw transactionError;
 
-      console.log('Transaction created:', transaction);
+      console.log('Transaction created with invoice number:', transaction.invoice_number);
 
       // NAPRAWKA: Ujednolicenie zapisu użycia składników
       const ingredientUsages = [];
@@ -425,6 +425,7 @@ export const useSales = () => {
         `${item.quantity}x ${item.compositionName} [${item.unitPrice.toFixed(2)}zł]`
       ).join(', ');
       
+      // Transakcja automatycznie otrzyma numer faktury z sekwencji
       const { data: transaction, error: transactionError } = await supabase
         .from('sales_transactions')
         .insert({
@@ -444,7 +445,7 @@ export const useSales = () => {
 
       if (transactionError) throw transactionError;
 
-      console.log('Cart transaction created:', transaction);
+      console.log('Cart transaction created with invoice number:', transaction.invoice_number);
 
       // NAPRAWKA: Zapisz użycie składników zsumowane, nie osobno dla każdego produktu
       const consolidatedUsages = Object.entries(consolidatedIngredientUsage).map(([ingredientName, usage]) => ({

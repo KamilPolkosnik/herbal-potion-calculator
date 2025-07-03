@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { useSales } from '@/hooks/useSales';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { useInvoiceNumbering } from '@/hooks/useInvoiceNumbering';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import InvoiceGenerator from './InvoiceGenerator';
@@ -25,7 +23,6 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
   const { settings: companySettings } = useCompanySettings();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { getInvoiceNumber, refreshInvoiceNumbers } = useInvoiceNumbering();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set());
@@ -47,8 +44,6 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       window.dispatchEvent(new CustomEvent('refreshSummary'));
       // Odśwież statystyki sprzedaży
       window.dispatchEvent(new CustomEvent('refreshSalesStatistics'));
-      // Odśwież numerację faktur
-      await refreshInvoiceNumbers();
     } catch (error) {
       console.error('Error reversing transaction:', error);
       toast({
@@ -76,8 +71,6 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       window.dispatchEvent(new CustomEvent('refreshSummary'));
       // Odśwież statystyki sprzedaży
       window.dispatchEvent(new CustomEvent('refreshSalesStatistics'));
-      // Odśwież numerację faktur
-      await refreshInvoiceNumbers();
     } catch (error) {
       console.error('Error deleting transaction:', error);
       toast({
@@ -267,7 +260,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                   <React.Fragment key={group.id}>
                     <TableRow>
                       <TableCell className="font-mono text-sm">
-                        {getInvoiceNumber(group.transaction.id)}
+                        {group.transaction.invoice_number.toString().padStart(9, '0')}
                       </TableCell>
                       <TableCell>
                         {format(new Date(group.transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
@@ -307,7 +300,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                           <InvoiceGenerator 
                             transaction={group.transaction}
                             companySettings={companySettings}
-                            transactionNumber={getInvoiceNumber(group.transaction.id)}
+                            transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
                           />
                           {!group.transaction.is_reversed ? (
                             <Button
