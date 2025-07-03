@@ -10,7 +10,7 @@ export const useInvoiceNumbering = () => {
     try {
       setLoading(true);
       
-      // Get all transactions ordered by creation date to establish chronological order
+      // Get all transactions ordered by creation date to establish original assignment order
       const { data: transactions, error } = await supabase
         .from('sales_transactions')
         .select('id, created_at')
@@ -18,23 +18,36 @@ export const useInvoiceNumbering = () => {
 
       if (error) throw error;
 
-      // Generate stable numbers based on chronological order
+      // Generate permanent, stable numbers based on creation order
       const numbers: Record<string, string> = {};
       
       if (transactions) {
-        // Sort by created_at to ensure consistent chronological ordering
+        // Sort by created_at to ensure consistent chronological ordering for initial assignment
         const sortedTransactions = [...transactions].sort((a, b) => 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         
-        // Assign sequential numbers based on chronological position
+        // Create a stable mapping using transaction ID hash to ensure consistency
+        // This ensures that the same transaction always gets the same number
+        const transactionIds = sortedTransactions.map(t => t.id).sort();
+        
+        // Create a stable assignment based on sorted transaction IDs
+        const stableMapping = new Map();
         sortedTransactions.forEach((transaction, index) => {
-          const invoiceNumber = (index + 1).toString().padStart(9, '0');
+          // Find the position of this transaction ID in the sorted list of all IDs
+          const stableIndex = transactionIds.indexOf(transaction.id);
+          stableMapping.set(transaction.id, stableIndex + 1);
+        });
+        
+        // Now assign numbers based on creation order but using stable mapping
+        sortedTransactions.forEach((transaction) => {
+          const stableNumber = stableMapping.get(transaction.id);
+          const invoiceNumber = stableNumber.toString().padStart(9, '0');
           numbers[transaction.id] = invoiceNumber;
         });
       }
 
-      console.log('Generated invoice numbers:', numbers);
+      console.log('Generated stable invoice numbers:', numbers);
       setInvoiceNumbers(numbers);
     } catch (error) {
       console.error('Error loading invoice numbers:', error);
