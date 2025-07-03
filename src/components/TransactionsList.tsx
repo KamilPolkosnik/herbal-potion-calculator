@@ -103,7 +103,10 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       filtered = filtered.filter(t => new Date(t.created_at) <= toDate);
     }
 
-    return filtered;
+    // Sort by creation date (newest first for display)
+    return filtered.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   }, [transactions, dateFrom, dateTo]);
 
   // Grupuj transakcje z wieloma pozycjami
