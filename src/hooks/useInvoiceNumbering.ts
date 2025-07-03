@@ -10,7 +10,7 @@ export const useInvoiceNumbering = () => {
     try {
       setLoading(true);
       
-      // Get all transactions ordered by creation date to establish original order
+      // Get all transactions ordered by creation date to establish chronological order
       const { data: transactions, error } = await supabase
         .from('sales_transactions')
         .select('id, created_at')
@@ -18,20 +18,23 @@ export const useInvoiceNumbering = () => {
 
       if (error) throw error;
 
-      // Generate numbers based on UUID to ensure stability
+      // Generate stable numbers based on chronological order
       const numbers: Record<string, string> = {};
       
       if (transactions) {
-        // Create a map of transaction IDs with their chronological position
-        const sortedTransactionIds = transactions.map(t => t.id);
+        // Sort by created_at to ensure consistent chronological ordering
+        const sortedTransactions = [...transactions].sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
         
-        // For each transaction, generate a stable number based on its position in the chronological order
-        sortedTransactionIds.forEach((transactionId, index) => {
+        // Assign sequential numbers based on chronological position
+        sortedTransactions.forEach((transaction, index) => {
           const invoiceNumber = (index + 1).toString().padStart(9, '0');
-          numbers[transactionId] = invoiceNumber;
+          numbers[transaction.id] = invoiceNumber;
         });
       }
 
+      console.log('Generated invoice numbers:', numbers);
       setInvoiceNumbers(numbers);
     } catch (error) {
       console.error('Error loading invoice numbers:', error);
@@ -41,7 +44,9 @@ export const useInvoiceNumbering = () => {
   };
 
   const getInvoiceNumber = (transactionId: string): string => {
-    return invoiceNumbers[transactionId] || '000000000';
+    const number = invoiceNumbers[transactionId];
+    console.log(`Getting invoice number for ${transactionId}: ${number || '000000000'}`);
+    return number || '000000000';
   };
 
   useEffect(() => {
