@@ -237,8 +237,8 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <div className="text-lg">Ładowanie historii ruchów...</div>
+      <div className="flex justify-center items-center p-4 sm:p-8">
+        <div className="text-base sm:text-lg">Ładowanie historii ruchów...</div>
       </div>
     );
   }
@@ -248,16 +248,19 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>{showArchived ? 'Archiwum Ruchów Magazynowych' : 'Historia Ruchów Magazynowych'}</span>
-          <div className="flex gap-2">
+      <CardHeader className="px-3 sm:px-6">
+        <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+          <span className="text-base sm:text-lg">
+            {showArchived ? 'Archiwum Ruchów Magazynowych' : 'Historia Ruchów Magazynowych'}
+          </span>
+          <div className="flex flex-wrap gap-1 sm:gap-2">
             <Button
               variant={showArchived ? "default" : "outline"}
               size="sm"
               onClick={handleShowArchivedToggle}
+              className="text-xs sm:text-sm"
             >
-              {showArchived ? <ArchiveRestore className="h-4 w-4 mr-2" /> : <Archive className="h-4 w-4 mr-2" />}
+              {showArchived ? <ArchiveRestore className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" /> : <Archive className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />}
               {showArchived ? 'Pokaż Aktywne' : 'Archiwum'}
             </Button>
             <Button
@@ -265,8 +268,9 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
               size="sm"
               onClick={() => loadMovements(ingredientName, true)}
               disabled={loading}
+              className="text-xs sm:text-sm"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               Odśwież
             </Button>
             <Button
@@ -274,25 +278,27 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
               size="sm"
               onClick={exportToCSV}
               disabled={groupedMovements.length === 0}
+              className="text-xs sm:text-sm"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Eksportuj CSV
+              <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+              CSV
             </Button>
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+      <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4 mb-3 sm:mb-4">
           <div>
             <Input
               placeholder="Wyszukaj składnik..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="text-sm"
             />
           </div>
           <div>
             <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Typ ruchu" />
               </SelectTrigger>
               <SelectContent>
@@ -310,11 +316,11 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal text-sm",
                     !dateFrom && "text-muted-foreground"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   {dateFrom ? format(dateFrom, "dd.MM.yyyy") : "Data od"}
                 </Button>
               </PopoverTrigger>
@@ -335,11 +341,11 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal text-sm",
                     !dateTo && "text-muted-foreground"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   {dateTo ? format(dateTo, "dd.MM.yyyy") : "Data do"}
                 </Button>
               </PopoverTrigger>
@@ -363,7 +369,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
                 setSearchTerm('');
                 setMovementTypeFilter('all');
               }}
-              className="w-full"
+              className="w-full text-sm"
             >
               Wyczyść filtry
             </Button>
@@ -371,7 +377,7 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
         </div>
 
         {displayedMovements.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-6 sm:py-8 text-gray-500 text-sm sm:text-base">
             {showArchived 
               ? "Brak zarchiwizowanych ruchów magazynowych spełniających kryteria wyszukiwania."
               : "Brak ruchów magazynowych spełniających kryteria wyszukiwania."
@@ -383,39 +389,39 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
               <div
                 key={group.id}
                 className={cn(
-                  "p-3 border rounded-lg hover:bg-gray-50",
+                  "p-2 sm:p-3 border rounded-lg hover:bg-gray-50",
                   group.is_archived && "bg-gray-100 opacity-75"
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-2">
+                      <span className="font-medium text-sm sm:text-base truncate">
                         {getGroupTitle(group)}
                       </span>
                       
                       {/* Only show one badge per group */}
-                      <Badge className={getMovementTypeColor(getGroupBadgeType(group))}>
+                      <Badge className={`${getMovementTypeColor(getGroupBadgeType(group))} text-xs`}>
                         {getMovementTypeLabel(getGroupBadgeType(group))}
                       </Badge>
                       
                       {group.is_archived && (
-                        <Badge variant="secondary">Zarchiwizowany</Badge>
+                        <Badge variant="secondary" className="text-xs">Zarchiwizowany</Badge>
                       )}
                     </div>
                     
                     <div className="space-y-1">
                       {group.movements.map((movement, index) => (
-                        <div key={index} className="text-sm text-gray-600">
-                          <span className="font-medium">{movement.ingredient_name}:</span>
-                          <span className={`ml-2 ${movement.quantity_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <div key={index} className="text-xs sm:text-sm text-gray-600">
+                          <span className="font-medium truncate">{movement.ingredient_name}:</span>
+                          <span className={`ml-1 sm:ml-2 ${movement.quantity_change > 0 ? 'text-green-600' : 'text-red-600'}`}>
                             {movement.quantity_change > 0 ? '+' : ''}{movement.quantity_change.toFixed(2)} {movement.unit}
                           </span>
                         </div>
                       ))}
                       
                       {group.notes && (
-                        <div className="text-sm text-gray-600 mt-1">{group.notes}</div>
+                        <div className="text-xs sm:text-sm text-gray-600 mt-1 truncate">{group.notes}</div>
                       )}
                       
                       <div className="text-xs text-gray-500">
@@ -428,11 +434,12 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
                     variant="outline"
                     size="sm"
                     onClick={() => handleArchiveToggle(group)}
+                    className="ml-2 h-8 w-8 p-0 flex-shrink-0"
                   >
                     {group.is_archived ? (
-                      <ArchiveRestore className="h-4 w-4" />
+                      <ArchiveRestore className="h-3 w-3 sm:h-4 sm:w-4" />
                     ) : (
-                      <Archive className="h-4 w-4" />
+                      <Archive className="h-3 w-3 sm:h-4 sm:w-4" />
                     )}
                   </Button>
                 </div>
@@ -440,11 +447,12 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
             ))}
             
             {hasMore && (
-              <div className="text-center pt-4">
+              <div className="text-center pt-3 sm:pt-4">
                 <Button
                   variant="outline"
                   onClick={loadMore}
                   disabled={loading}
+                  className="text-sm"
                 >
                   Załaduj więcej
                 </Button>
