@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -17,6 +16,7 @@ import UESReportGenerator from '@/components/UESReportGenerator';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useAuth } from '@/hooks/useAuth';
 import { useSummaryData } from '@/hooks/useSummaryData';
+import MonthlyCostsManager from '@/components/MonthlyCostsManager';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('ingredients');
@@ -151,6 +151,20 @@ const Index = () => {
                 </CardHeader>
                 <CardContent>
                   <UESReportGenerator />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Monthly Costs Manager - tylko dla administratorów */}
+            {user?.role === 'admin' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl text-center text-red-700">
+                    Zarządzanie Kosztami Miesięcznymi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <MonthlyCostsManager />
                 </CardContent>
               </Card>
             )}

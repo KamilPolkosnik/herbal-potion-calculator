@@ -212,6 +212,42 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_costs: {
+        Row: {
+          amount: number
+          category: string
+          cost_month: number
+          cost_year: number
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string
+          cost_month: number
+          cost_year: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          cost_month?: number
+          cost_year?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales_transactions: {
         Row: {
           buyer_address: string | null
