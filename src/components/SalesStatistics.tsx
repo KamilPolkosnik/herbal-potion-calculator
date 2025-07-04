@@ -82,6 +82,40 @@ const SalesStatistics: React.FC = () => {
     }
   }, [transactions, selectedMonth, selectedYear, reportType]);
 
+  // Parse composition name to extract individual products
+  const parseCompositionName = (compositionName: string, totalPrice: number) => {
+    const products: Array<{ name: string; quantity: number; price: number }> = [];
+    
+    // Check if it's a multi-item transaction (contains commas and price info)
+    if (compositionName.includes(',') && compositionName.includes('[') && compositionName.includes('zł]')) {
+      const parts = compositionName.split(', ');
+      
+      parts.forEach(part => {
+        const match = part.match(/^(\d+)x (.+) \[(\d+(?:\.\d{2})?)zł\]$/);
+        if (match) {
+          const quantity = parseInt(match[1]);
+          const name = match[2];
+          const price = parseFloat(match[3]);
+          
+          products.push({
+            name,
+            quantity,
+            price: price * quantity // Total price for this product
+          });
+        }
+      });
+    } else {
+      // Single product transaction
+      products.push({
+        name: compositionName,
+        quantity: 1,
+        price: totalPrice
+      });
+    }
+    
+    return products;
+  };
+
   const generateReport = () => {
     const reportData = {
       period: reportType === 'monthly' 
@@ -93,21 +127,26 @@ const SalesStatistics: React.FC = () => {
       transactions: filteredTransactions
     };
 
-    // Get composition sales breakdown
+    // Get composition sales breakdown with proper parsing
     const compositionSales = filteredTransactions.reduce((acc, transaction) => {
-      const existing = acc.find(item => item.name === transaction.composition_name);
-      if (existing) {
-        existing.quantity += transaction.quantity;
-        existing.revenue += transaction.total_price;
-        existing.count += 1;
-      } else {
-        acc.push({
-          name: transaction.composition_name,
-          quantity: transaction.quantity,
-          revenue: transaction.total_price,
-          count: 1
-        });
-      }
+      const products = parseCompositionName(transaction.composition_name, transaction.total_price);
+      
+      products.forEach(product => {
+        const existing = acc.find(item => item.name === product.name);
+        if (existing) {
+          existing.quantity += product.quantity;
+          existing.revenue += product.price;
+          existing.count += 1;
+        } else {
+          acc.push({
+            name: product.name,
+            quantity: product.quantity,
+            revenue: product.price,
+            count: 1
+          });
+        }
+      });
+      
       return acc;
     }, [] as Array<{ name: string; quantity: number; revenue: number; count: number }>);
 
@@ -260,21 +299,26 @@ const SalesStatistics: React.FC = () => {
 
   const totalProfit = totalRevenue - totalCosts;
 
-  // Get composition sales breakdown
+  // Get composition sales breakdown with proper parsing for multi-item transactions
   const compositionSales = filteredTransactions.reduce((acc, transaction) => {
-    const existing = acc.find(item => item.name === transaction.composition_name);
-    if (existing) {
-      existing.quantity += transaction.quantity;
-      existing.revenue += transaction.total_price;
-      existing.count += 1;
-    } else {
-      acc.push({
-        name: transaction.composition_name,
-        quantity: transaction.quantity,
-        revenue: transaction.total_price,
-        count: 1
-      });
-    }
+    const products = parseCompositionName(transaction.composition_name, transaction.total_price);
+    
+    products.forEach(product => {
+      const existing = acc.find(item => item.name === product.name);
+      if (existing) {
+        existing.quantity += product.quantity;
+        existing.revenue += product.price;
+        existing.count += 1;
+      } else {
+        acc.push({
+          name: product.name,
+          quantity: product.quantity,
+          revenue: product.price,
+          count: 1
+        });
+      }
+    });
+    
     return acc;
   }, [] as Array<{ name: string; quantity: number; revenue: number; count: number }>);
 
