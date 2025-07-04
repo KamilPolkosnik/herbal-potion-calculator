@@ -38,16 +38,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center text-green-700">
+      <Card className="w-full max-w-sm mx-auto">
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="text-xl sm:text-2xl text-center text-green-700">
             Logowanie
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="username">Login</Label>
+              <Label htmlFor="username" className="text-sm sm:text-base">Login</Label>
               <Input
                 id="username"
                 type="text"
@@ -55,10 +55,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={isLoading}
+                className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="password">Hasło</Label>
+              <Label htmlFor="password" className="text-sm sm:text-base">Hasło</Label>
               <Input
                 id="password"
                 type="password"
@@ -66,10 +67,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
+                className="mt-1"
               />
             </div>
             {error && (
-              <div className="text-red-600 text-sm">{error}</div>
+              <div className="text-red-600 text-sm text-center">{error}</div>
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Logowanie...' : 'Zaloguj się'}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
@@ -189,8 +188,8 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
 
   if (loading || loadingIngredients || compositionLoading || thresholdsLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <div className="text-lg">Ładowanie danych...</div>
+      <div className="flex justify-center items-center p-4 sm:p-8">
+        <div className="text-base sm:text-lg text-center">Ładowanie danych...</div>
       </div>
     );
   }
@@ -200,14 +199,14 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Tabs defaultValue="ingredients" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="ingredients">Składniki</TabsTrigger>
-          <TabsTrigger value="history">Historia Ruchów</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="ingredients" className="text-xs sm:text-sm py-2">Składniki</TabsTrigger>
+          <TabsTrigger value="history" className="text-xs sm:text-sm py-2">Historia Ruchów</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="ingredients" className="space-y-6">
+        <TabsContent value="ingredients" className="space-y-4 sm:space-y-6 mt-4">
           <IngredientFilters onFilterChange={handleFilterChange} />
           
           <IngredientInfoBox onRefresh={handleRefresh} isLoading={loadingIngredients} />
@@ -249,7 +248,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
           />
         </TabsContent>
         
-        <TabsContent value="history">
+        <TabsContent value="history" className="mt-4">
           <IngredientMovementHistory />
         </TabsContent>
       </Tabs>

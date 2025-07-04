@@ -37,10 +37,10 @@ const IngredientSection: React.FC<IngredientSectionProps> = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">{title}</CardTitle>
+        <CardTitle className="text-base sm:text-lg px-2">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <CardContent className="px-2 sm:px-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           {items.map((ingredient) => (
             <IngredientCard
               key={ingredient}
