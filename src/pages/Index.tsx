@@ -1,7 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import AppSidebar from "@/components/AppSidebar";
 import IngredientManager from "@/components/IngredientManager";
 import CompositionManager from "@/components/CompositionManager";
 import SalesManager from "@/components/SalesManager";
