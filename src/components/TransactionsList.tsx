@@ -195,170 +195,177 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
   }
 
   return (
-    <Card>
-      <CardHeader className="px-3 sm:px-6">
-        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-          <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
-          Historia Transakcji
+    <Card className="w-full min-w-0 overflow-hidden">
+      <CardHeader className="px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6">
+        <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
+          <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+          <span className="break-words">Historia Transakcji</span>
         </CardTitle>
         
         {/* Date Range Filter */}
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-start sm:items-end">
-          <div className="w-full sm:w-auto">
-            <Label htmlFor="dateFrom" className="text-sm">Data Od:</Label>
-            <Input
-              id="dateFrom"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full sm:w-40 text-sm"
-            />
-          </div>
-          <div className="w-full sm:w-auto">
-            <Label htmlFor="dateTo" className="text-sm">Data Do:</Label>
-            <Input
-              id="dateTo"
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-full sm:w-40 text-sm"
-            />
+        <div className="flex flex-col gap-2 sm:gap-3 items-start w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+            <div className="w-full min-w-0">
+              <Label htmlFor="dateFrom" className="text-xs sm:text-sm break-words">Data Od:</Label>
+              <Input
+                id="dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full text-xs sm:text-sm"
+              />
+            </div>
+            <div className="w-full min-w-0">
+              <Label htmlFor="dateTo" className="text-xs sm:text-sm break-words">Data Do:</Label>
+              <Input
+                id="dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full text-xs sm:text-sm"
+              />
+            </div>
           </div>
           <Button
             variant="outline"
             onClick={clearFilters}
-            className="mb-0 w-full sm:w-auto text-sm"
+            className="w-full sm:w-auto text-xs sm:text-sm"
           >
-            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            Wyczyść filtry
+            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 shrink-0" />
+            <span className="break-words">Wyczyść filtry</span>
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="px-3 sm:px-6">
+      <CardContent className="px-2 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
         {groupedTransactions.length === 0 ? (
-          <div className="text-center py-6 sm:py-8 text-gray-500 text-sm sm:text-base">
+          <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm md:text-base break-words">
             {dateFrom || dateTo ? 'Brak transakcji w wybranym zakresie dat' : 'Brak transakcji do wyświetlenia'}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <ScrollArea className="h-64 sm:h-96">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs sm:text-sm">Nr Transakcji</TableHead>
-                    <TableHead className="text-xs sm:text-sm hidden sm:table-cell">Data</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Zestaw</TableHead>
-                    <TableHead className="text-xs sm:text-sm hidden md:table-cell">Kupujący</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Ilość</TableHead>
-                    <TableHead className="text-xs sm:text-sm hidden sm:table-cell">Cena jedn.</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Łącznie</TableHead>
-                    <TableHead className="text-xs sm:text-sm hidden lg:table-cell">Status</TableHead>
-                    <TableHead className="text-xs sm:text-sm">Akcje</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groupedTransactions.map((group) => (
-                    <React.Fragment key={group.id}>
-                      <TableRow>
-                        <TableCell className="font-mono text-xs sm:text-sm">
-                          {group.transaction.invoice_number.toString().padStart(9, '0')}
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
-                          {format(new Date(group.transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm">
-                          <div className="flex items-center gap-1 sm:gap-2">
-                            <span className="truncate max-w-[80px] sm:max-w-none">{group.mainItem}</span>
-                            {group.isMultiItem && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleExpanded(group.id)}
-                                className="h-5 w-5 sm:h-6 sm:w-6 p-0"
-                              >
-                                {expandedTransactions.has(group.id) ? (
-                                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
-                                ) : (
-                                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-                                )}
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm hidden md:table-cell">
-                          {group.transaction.buyer_name || 'Klient indywidualny'}
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm">{group.transaction.quantity} szt.</TableCell>
-                        <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
-                          {group.transaction.unit_price.toFixed(2)} zł
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm font-medium">
-                          {group.transaction.total_price.toFixed(2)} zł
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {group.transaction.is_reversed ? (
-                            <span className="text-red-600 font-medium text-xs">Cofnięta</span>
-                          ) : (
-                            <span className="text-green-600 font-medium text-xs">Aktywna</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
-                            <InvoiceGenerator 
-                              transaction={group.transaction}
-                              companySettings={companySettings}
-                              transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
-                            />
-                            {!group.transaction.is_reversed ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
-                                className="text-xs px-2 py-1 h-7 sm:h-8"
-                              >
-                                <Undo2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                                <span className="hidden sm:inline">Cofnij</span>
-                              </Button>
-                            ) : (
-                              // Przycisk "Usuń" tylko dla administratorów
-                              user?.role === 'admin' && (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
-                                  className="text-xs px-2 py-1 h-7 sm:h-8"
-                                >
-                                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                                  <span className="hidden sm:inline">Usuń</span>
-                                </Button>
-                              )
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      {group.isMultiItem && expandedTransactions.has(group.id) && (
+          <div className="w-full overflow-x-auto">
+            <ScrollArea className="h-64 sm:h-80 md:h-96 w-full">
+              <div className="min-w-[600px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Nr</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden sm:table-cell">Data</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Zestaw</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden md:table-cell">Kupujący</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Ilość</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden sm:table-cell">Cena jedn.</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Łącznie</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden lg:table-cell">Status</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Akcje</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {groupedTransactions.map((group) => (
+                      <React.Fragment key={group.id}>
                         <TableRow>
-                          <TableCell colSpan={9} className="bg-gray-50 p-2 sm:p-4">
-                            <div className="text-xs sm:text-sm">
-                              <p className="font-medium mb-1 sm:mb-2">Szczegóły pozycji:</p>
-                              <div className="space-y-1">
-                                {group.items.map((item, index) => (
-                                  <div key={index} className="flex justify-between items-center">
-                                    <span className="truncate">{item.name}</span>
-                                    <span className="whitespace-nowrap ml-2">
-                                      {item.quantity} szt. × {item.price.toFixed(2)} zł
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                          <TableCell className="font-mono text-xs px-1 sm:px-2">
+                            {group.transaction.invoice_number.toString().padStart(9, '0')}
+                          </TableCell>
+                          <TableCell className="text-xs px-1 sm:px-2 hidden sm:table-cell">
+                            {format(new Date(group.transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                          </TableCell>
+                          <TableCell className="text-xs px-1 sm:px-2">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className="truncate text-xs break-words max-w-[100px] sm:max-w-[150px]">
+                                {group.mainItem}
+                              </span>
+                              {group.isMultiItem && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleExpanded(group.id)}
+                                  className="h-4 w-4 sm:h-5 sm:w-5 p-0 shrink-0"
+                                >
+                                  {expandedTransactions.has(group.id) ? (
+                                    <ChevronDown className="h-3 w-3" />
+                                  ) : (
+                                    <ChevronRight className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs px-1 sm:px-2 hidden md:table-cell">
+                            <span className="break-words max-w-[100px] block truncate">
+                              {group.transaction.buyer_name || 'Klient indywidualny'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs px-1 sm:px-2">{group.transaction.quantity} szt.</TableCell>
+                          <TableCell className="text-xs px-1 sm:px-2 hidden sm:table-cell">
+                            {group.transaction.unit_price.toFixed(2)} zł
+                          </TableCell>
+                          <TableCell className="text-xs font-medium px-1 sm:px-2">
+                            {group.transaction.total_price.toFixed(2)} zł
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell px-1 sm:px-2">
+                            {group.transaction.is_reversed ? (
+                              <span className="text-red-600 font-medium text-xs">Cofnięta</span>
+                            ) : (
+                              <span className="text-green-600 font-medium text-xs">Aktywna</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="px-1 sm:px-2">
+                            <div className="flex flex-col gap-1">
+                              <InvoiceGenerator 
+                                transaction={group.transaction}
+                                companySettings={companySettings}
+                                transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
+                              />
+                              {!group.transaction.is_reversed ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
+                                  className="text-xs px-1 py-1 h-6 w-full"
+                                >
+                                  <Undo2 className="w-3 h-3 mr-1 shrink-0" />
+                                  <span>Cofnij</span>
+                                </Button>
+                              ) : (
+                                user?.role === 'admin' && (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
+                                    className="text-xs px-1 py-1 h-6 w-full"
+                                  >
+                                    <Trash2 className="w-3 h-3 mr-1 shrink-0" />
+                                    <span>Usuń</span>
+                                  </Button>
+                                )
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </TableBody>
-              </Table>
+                        {group.isMultiItem && expandedTransactions.has(group.id) && (
+                          <TableRow>
+                            <TableCell colSpan={9} className="bg-gray-50 p-2 sm:p-4">
+                              <div className="text-xs sm:text-sm">
+                                <p className="font-medium mb-1 sm:mb-2">Szczegóły pozycji:</p>
+                                <div className="space-y-1">
+                                  {group.items.map((item, index) => (
+                                    <div key={index} className="flex justify-between items-center gap-2">
+                                      <span className="truncate break-words min-w-0 flex-1">{item.name}</span>
+                                      <span className="whitespace-nowrap shrink-0">
+                                        {item.quantity} szt. × {item.price.toFixed(2)} zł
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </ScrollArea>
           </div>
         )}
