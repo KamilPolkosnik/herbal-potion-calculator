@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -11,12 +11,18 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarFooter,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-const AppSidebar: React.FC = () => {
+interface AppSidebarProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
   const { user, logout, loading } = useAuth();
 
   // Debug logging
@@ -36,6 +42,7 @@ const AppSidebar: React.FC = () => {
     return (
       <Sidebar>
         <SidebarHeader className="border-b p-4">
+          <SidebarTrigger className="mb-2" />
           <div className="flex items-center gap-3">
             <Package className="w-8 h-8 text-green-600" />
             <div>
@@ -57,9 +64,19 @@ const AppSidebar: React.FC = () => {
     );
   }
 
+  const menuItems = [
+    { id: 'summary', label: 'Podsumowanie', icon: TrendingUp },
+    { id: 'ingredients', label: 'Składniki', icon: Package },
+    { id: 'compositions', label: 'Zestawy', icon: Calculator },
+    { id: 'sales', label: 'Sprzedaż', icon: ShoppingCart },
+    { id: 'settings', label: 'Ustawienia', icon: Settings },
+    ...(user?.role === 'admin' ? [{ id: 'users', label: 'Użytkownicy', icon: Users }] : [])
+  ];
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b p-4">
+        <SidebarTrigger className="mb-2" />
         <div className="flex items-center gap-3">
           <Package className="w-8 h-8 text-green-600" />
           <div>
@@ -78,12 +95,18 @@ const AppSidebar: React.FC = () => {
           <SidebarGroupLabel>Nawigacja</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton className="w-full justify-start">
-                  <TrendingUp className="w-4 h-4" />
-                  <span>Podsumowanie</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton 
+                    className="w-full justify-start"
+                    onClick={() => onTabChange(item.id)}
+                    data-active={activeTab === item.id}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

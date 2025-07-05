@@ -31,6 +31,7 @@ const Index = () => {
   } = useSummaryData();
   const { settings: companySettings, loading: settingsLoading } = useCompanySettings();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [activeTab, setActiveTab] = useState('summary');
 
   const handleDataChange = () => {
     refreshSummary();
@@ -65,10 +66,10 @@ const Index = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
-        <AppSidebar />
+        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <main className="flex-1 p-2 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden">
           <div className="max-w-full mx-auto">
-            <Tabs defaultValue="summary" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-4 sm:mb-6 md:mb-8">
                 <TabsTrigger value="summary" className="text-xs sm:text-sm">Podsumowanie</TabsTrigger>
                 <TabsTrigger value="ingredients" className="text-xs sm:text-sm">Składniki</TabsTrigger>
