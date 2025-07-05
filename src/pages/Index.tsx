@@ -1,7 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import AppSidebar from "@/components/AppSidebar";
 import IngredientManager from "@/components/IngredientManager";
 import CompositionManager from "@/components/CompositionManager";
 import SalesManager from "@/components/SalesManager";
@@ -57,6 +57,10 @@ const Index = () => {
   if (!user) {
     return null;
   }
+
+  console.log('Generator UES - settingsLoading:', settingsLoading);
+  console.log('Generator UES - companySettings:', companySettings);
+  console.log('Generator UES - show_ues_generator:', companySettings?.show_ues_generator);
 
   return (
     <SidebarProvider>
@@ -151,9 +155,16 @@ const Index = () => {
                 </div>
 
                 {/* Generator UES - tylko jeśli włączony w ustawieniach */}
-                {!settingsLoading && companySettings?.show_ues_generator && (
+                {!settingsLoading && companySettings?.show_ues_generator === true && (
                   <div className="w-full">
-                    <UESReportGenerator />
+                    <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
+                      <div className="max-w-4xl mx-auto">
+                        <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 text-center">
+                          Generator UES
+                        </h2>
+                        <UESReportGenerator />
+                      </div>
+                    </div>
                   </div>
                 )}
 

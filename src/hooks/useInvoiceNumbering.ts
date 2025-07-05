@@ -21,6 +21,8 @@ export const useInvoiceNumbering = () => {
       // Numer korekty to liczba cofniętych transakcji + 1
       const correctionNumber = (reversedTransactions?.length || 0) + 1;
       
+      console.log('Generated correction number:', correctionNumber, 'for', reversedTransactions?.length, 'reversed transactions');
+      
       return `K/${correctionNumber.toString().padStart(9, '0')}`;
     } catch (error) {
       console.error('Error getting next correction number:', error);
