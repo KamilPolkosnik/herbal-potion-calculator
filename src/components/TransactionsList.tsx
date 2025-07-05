@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,23 +33,16 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
 
   const handleReverse = async (transactionId: string, compositionName: string) => {
     try {
-      console.log('Starting transaction reversal for:', transactionId);
-      
       // Wygeneruj numer korekty przed cofnięciem
       const correctionNumber = await getNextCorrectionNumber();
-      console.log('Generated correction number:', correctionNumber);
       
       await reverseTransaction(transactionId);
       
       // Zapisz numer korekty dla tej transakcji
-      setCorrectionNumbers(prev => {
-        const updated = {
-          ...prev,
-          [transactionId]: correctionNumber
-        };
-        console.log('Updated correction numbers:', updated);
-        return updated;
-      });
+      setCorrectionNumbers(prev => ({
+        ...prev,
+        [transactionId]: correctionNumber
+      }));
       
       toast({
         title: "Sukces",

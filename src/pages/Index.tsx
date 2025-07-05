@@ -1,6 +1,7 @@
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import AppSidebar from "@/components/AppSidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 import IngredientManager from "@/components/IngredientManager";
 import CompositionManager from "@/components/CompositionManager";
 import SalesManager from "@/components/SalesManager";
@@ -30,7 +31,6 @@ const Index = () => {
   } = useSummaryData();
   const { settings: companySettings, loading: settingsLoading } = useCompanySettings();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState('ingredients');
 
   const handleDataChange = () => {
     refreshSummary();
@@ -58,45 +58,33 @@ const Index = () => {
     return null;
   }
 
-  console.log('Generator UES - settingsLoading:', settingsLoading);
-  console.log('Generator UES - companySettings:', companySettings);
-  console.log('Generator UES - show_ues_generator:', companySettings?.show_ues_generator);
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
-        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <AppSidebar />
         <main className="flex-1 p-2 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden">
           <div className="max-w-full mx-auto">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsContent value="ingredients">
-                <IngredientManager />
-              </TabsContent>
-
-              <TabsContent value="sales">
-                <SalesManager onDataChange={handleDataChange} />
-              </TabsContent>
-
-              <TabsContent value="management" className="space-y-4 sm:space-y-6">
-                {/* Zarządzanie Kosztami Miesięcznymi */}
-                <div className="w-full">
-                  <MonthlyCostsManager onDataChange={handleDataChange} />
-                </div>
-
-                {/* Historia Transakcji */}
-                <div className="w-full">
-                  <TransactionsList onDataChange={handleDataChange} />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="compositions">
-                <CompositionManager />
-              </TabsContent>
+            <Tabs defaultValue="summary" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-4 sm:mb-6 md:mb-8">
+                <TabsTrigger value="summary" className="text-xs sm:text-sm">Podsumowanie</TabsTrigger>
+                <TabsTrigger value="ingredients" className="text-xs sm:text-sm">Składniki</TabsTrigger>
+                <TabsTrigger value="compositions" className="text-xs sm:text-sm">Zestawy</TabsTrigger>
+                <TabsTrigger value="sales" className="text-xs sm:text-sm">Sprzedaż</TabsTrigger>
+                <TabsTrigger value="settings" className="text-xs sm:text-sm">Ustawienia</TabsTrigger>
+                {user?.role === 'admin' && (
+                  <TabsTrigger value="users" className="text-xs sm:text-sm">Użytkownicy</TabsTrigger>
+                )}
+              </TabsList>
 
               <TabsContent value="summary" className="space-y-4 sm:space-y-6">
                 {/* Statystyki Sprzedaży */}
                 <div className="w-full">
                   <SalesStatistics key={refreshTrigger} />
+                </div>
+
+                {/* Zarządzanie Kosztami Miesięcznymi */}
+                <div className="w-full">
+                  <MonthlyCostsManager onDataChange={handleDataChange} />
                 </div>
 
                 {/* Podsumowanie Finansowe */}
@@ -163,27 +151,32 @@ const Index = () => {
                 </div>
 
                 {/* Generator UES - tylko jeśli włączony w ustawieniach */}
-                {!settingsLoading && companySettings?.show_ues_generator === true && (
+                {!settingsLoading && companySettings?.show_ues_generator && (
                   <div className="w-full">
-                    <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
-                      <div className="max-w-4xl mx-auto">
-                        <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 text-center">
-                          Generator UES
-                        </h2>
-                        <UESReportGenerator />
-                      </div>
-                    </div>
+                    <UESReportGenerator />
                   </div>
                 )}
+
+                {/* Historia Transakcji */}
+                <div className="w-full">
+                  <TransactionsList onDataChange={handleDataChange} />
+                </div>
               </TabsContent>
 
-              <TabsContent value="shopping">
-                <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
-                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6">
-                    Lista Zakupów
-                  </h2>
-                  <p className="text-gray-600">Lista zakupów będzie tutaj wyświetlana.</p>
-                </div>
+              <TabsContent value="ingredients">
+                <IngredientManager />
+              </TabsContent>
+
+              <TabsContent value="compositions">
+                <CompositionManager />
+              </TabsContent>
+
+              <TabsContent value="sales">
+                <SalesManager onDataChange={handleDataChange} />
+              </TabsContent>
+
+              <TabsContent value="settings">
+                <CompanySettings />
               </TabsContent>
 
               {user?.role === 'admin' && (
@@ -191,10 +184,6 @@ const Index = () => {
                   <UserManagement />
                 </TabsContent>
               )}
-
-              <TabsContent value="settings">
-                <CompanySettings />
-              </TabsContent>
             </Tabs>
           </div>
         </main>

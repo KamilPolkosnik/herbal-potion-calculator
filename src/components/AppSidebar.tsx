@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -11,11 +11,9 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarFooter,
-  SidebarTrigger,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, List, Users, Briefcase } from 'lucide-react';
+import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AppSidebarProps {
@@ -60,21 +58,57 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
             Ładowanie menu...
           </div>
         </SidebarContent>
-        <SidebarRail />
       </Sidebar>
     );
   }
 
   const menuItems = [
-    { id: 'ingredients', label: 'Magazyn', icon: Package },
-    { id: 'sales', label: 'Sprzedaż', icon: ShoppingCart },
-    { id: 'management', label: 'Zarządzanie', icon: Briefcase },
-    { id: 'compositions', label: 'Zestawy', icon: Calculator },
-    { id: 'summary', label: 'Podsumowanie', icon: TrendingUp },
-    { id: 'shopping', label: 'Lista Zakupów', icon: List },
-    ...(user?.role === 'admin' ? [{ id: 'users', label: 'Użytkownicy', icon: Users }] : []),
-    { id: 'settings', label: 'Ustawienia', icon: Settings },
+    {
+      id: 'ingredients',
+      title: 'Składniki',
+      icon: Package,
+    },
+    {
+      id: 'calculator',
+      title: 'Zestawy',
+      icon: Calculator,
+    },
+    {
+      id: 'management',
+      title: 'Zarządzanie',
+      icon: Settings,
+    },
+    {
+      id: 'sales',
+      title: 'Sprzedaż',
+      icon: DollarSign,
+    },
+    {
+      id: 'shopping',
+      title: 'Lista Zakupów',
+      icon: ShoppingCart,
+    },
+    {
+      id: 'summary',
+      title: 'Podsumowanie',
+      icon: TrendingUp,
+    },
+    // Zakładka użytkowników tylko dla administratorów
+    ...(user?.role === 'admin' ? [{
+      id: 'users',
+      title: 'Użytkownicy',
+      icon: Users,
+    }] : []),
+    // Zakładka ustawień tylko dla administratorów
+    ...(user?.role === 'admin' ? [{
+      id: 'settings',
+      title: 'Ustawienia',
+      icon: Settings,
+    }] : []),
   ];
+
+  console.log('AppSidebar - menuItems length:', menuItems.length);
+  console.log('AppSidebar - menuItems:', menuItems.map(item => item.id));
 
   return (
     <Sidebar>
@@ -97,18 +131,21 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
           <SidebarGroupLabel>Nawigacja</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton 
-                    className="w-full justify-start"
-                    onClick={() => onTabChange(item.id)}
-                    data-active={activeTab === item.id}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      isActive={activeTab === item.id}
+                      onClick={() => onTabChange(item.id)}
+                      className="w-full justify-start"
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -130,8 +167,6 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
           </Button>
         </div>
       </SidebarFooter>
-      
-      <SidebarRail />
     </Sidebar>
   );
 };

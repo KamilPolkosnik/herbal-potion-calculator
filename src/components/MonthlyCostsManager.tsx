@@ -13,11 +13,7 @@ import { useMonthlyCosts, MonthlyCost } from '@/hooks/useMonthlyCosts';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 
-interface MonthlyCostsManagerProps {
-  onDataChange?: () => void;
-}
-
-const MonthlyCostsManager: React.FC<MonthlyCostsManagerProps> = ({ onDataChange }) => {
+const MonthlyCostsManager: React.FC = () => {
   const { costs, loading, addCost, updateCost, deleteCost, fetchCosts } = useMonthlyCosts();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -113,7 +109,6 @@ const MonthlyCostsManager: React.FC<MonthlyCostsManagerProps> = ({ onDataChange 
     if (success) {
       setIsAddDialogOpen(false);
       resetForm();
-      onDataChange?.();
     }
   };
 
@@ -146,15 +141,11 @@ const MonthlyCostsManager: React.FC<MonthlyCostsManagerProps> = ({ onDataChange 
       setIsEditDialogOpen(false);
       setEditingCost(null);
       resetForm();
-      onDataChange?.();
     }
   };
 
   const handleDelete = async (id: string) => {
-    const success = await deleteCost(id);
-    if (success) {
-      onDataChange?.();
-    }
+    await deleteCost(id);
   };
 
   const generateReport = () => {
