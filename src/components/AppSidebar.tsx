@@ -12,9 +12,10 @@ import {
   SidebarGroupLabel,
   SidebarFooter,
   SidebarTrigger,
+  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign, Users } from 'lucide-react';
+import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, List, Users, Briefcase } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AppSidebarProps {
@@ -42,7 +43,6 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
     return (
       <Sidebar>
         <SidebarHeader className="border-b p-4">
-          <SidebarTrigger className="mb-2" />
           <div className="flex items-center gap-3">
             <Package className="w-8 h-8 text-green-600" />
             <div>
@@ -60,23 +60,25 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
             Ładowanie menu...
           </div>
         </SidebarContent>
+        <SidebarRail />
       </Sidebar>
     );
   }
 
   const menuItems = [
-    { id: 'summary', label: 'Podsumowanie', icon: TrendingUp },
-    { id: 'ingredients', label: 'Składniki', icon: Package },
-    { id: 'compositions', label: 'Zestawy', icon: Calculator },
+    { id: 'ingredients', label: 'Magazyn', icon: Package },
     { id: 'sales', label: 'Sprzedaż', icon: ShoppingCart },
+    { id: 'management', label: 'Zarządzanie', icon: Briefcase },
+    { id: 'compositions', label: 'Zestawy', icon: Calculator },
+    { id: 'summary', label: 'Podsumowanie', icon: TrendingUp },
+    { id: 'shopping', label: 'Lista Zakupów', icon: List },
+    ...(user?.role === 'admin' ? [{ id: 'users', label: 'Użytkownicy', icon: Users }] : []),
     { id: 'settings', label: 'Ustawienia', icon: Settings },
-    ...(user?.role === 'admin' ? [{ id: 'users', label: 'Użytkownicy', icon: Users }] : [])
   ];
 
   return (
     <Sidebar>
       <SidebarHeader className="border-b p-4">
-        <SidebarTrigger className="mb-2" />
         <div className="flex items-center gap-3">
           <Package className="w-8 h-8 text-green-600" />
           <div>
@@ -128,6 +130,8 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
           </Button>
         </div>
       </SidebarFooter>
+      
+      <SidebarRail />
     </Sidebar>
   );
 };
