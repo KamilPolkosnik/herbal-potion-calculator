@@ -3,54 +3,58 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useInvoiceNumbering = () => {
-  const [invoiceNumbers, setInvoiceNumbers] = useState<Record<string, string>>({});
+  const [nextCorrectionNumber, setNextCorrectionNumber] = useState<number>(1);
   const [loading, setLoading] = useState(true);
 
-  const loadInvoiceNumbers = async () => {
+  const getNextCorrectionNumber = async (): Promise<string> => {
     try {
-      setLoading(true);
-      
-      // Get all transactions with their assigned invoice numbers
-      const { data: transactions, error } = await supabase
+      // Pobierz wszystkie transakcje cofnięte, posortowane według reversed_at
+      const { data: reversedTransactions, error } = await supabase
         .from('sales_transactions')
-        .select('id, invoice_number');
+        .select('id, reversed_at')
+        .eq('is_reversed', true)
+        .not('reversed_at', 'is', null)
+        .order('reversed_at', { ascending: true });
 
       if (error) throw error;
 
-      // Map transaction IDs to their invoice numbers
-      const numbers: Record<string, string> = {};
+      // Numer korekty to liczba cofniętych transakcji + 1
+      const correctionNumber = (reversedTransactions?.length || 0) + 1;
       
-      if (transactions) {
-        transactions.forEach((transaction) => {
-          // Format invoice number with leading zeros
-          const invoiceNumber = transaction.invoice_number.toString().padStart(9, '0');
-          numbers[transaction.id] = invoiceNumber;
-        });
-      }
-
-      console.log('Loaded invoice numbers from database:', numbers);
-      setInvoiceNumbers(numbers);
+      return `K/${correctionNumber.toString().padStart(9, '0')}`;
     } catch (error) {
-      console.error('Error loading invoice numbers:', error);
+      console.error('Error getting next correction number:', error);
+      return `K/${Date.now().toString().padStart(9, '0')}`;
+    }
+  };
+
+  const loadNextCorrectionNumber = async () => {
+    try {
+      const { data: reversedTransactions, error } = await supabase
+        .from('sales_transactions')
+        .select('id')
+        .eq('is_reversed', true)
+        .not('reversed_at', 'is', null);
+
+      if (error) throw error;
+
+      setNextCorrectionNumber((reversedTransactions?.length || 0) + 1);
+    } catch (error) {
+      console.error('Error loading next correction number:', error);
+      setNextCorrectionNumber(1);
     } finally {
       setLoading(false);
     }
   };
 
-  const getInvoiceNumber = (transactionId: string): string => {
-    const number = invoiceNumbers[transactionId];
-    console.log(`Getting invoice number for ${transactionId}: ${number || '000000000'}`);
-    return number || '000000000';
-  };
-
   useEffect(() => {
-    loadInvoiceNumbers();
+    loadNextCorrectionNumber();
   }, []);
 
   return {
-    invoiceNumbers,
+    nextCorrectionNumber,
     loading,
-    getInvoiceNumber,
-    refreshInvoiceNumbers: loadInvoiceNumbers
+    getNextCorrectionNumber,
+    refreshCorrectionNumber: loadNextCorrectionNumber
   };
 };

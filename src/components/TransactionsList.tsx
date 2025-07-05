@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,9 +10,11 @@ import { useSales } from '@/hooks/useSales';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useInvoiceNumbering } from '@/hooks/useInvoiceNumbering';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import InvoiceGenerator from './InvoiceGenerator';
+import CorrectionInvoiceGenerator from './CorrectionInvoiceGenerator';
 
 interface TransactionsListProps {
   onDataChange?: () => void | Promise<void>;
@@ -24,17 +25,28 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
   const { settings: companySettings } = useCompanySettings();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { getNextCorrectionNumber } = useInvoiceNumbering();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set());
+  const [correctionNumbers, setCorrectionNumbers] = useState<Record<string, string>>({});
 
   const handleReverse = async (transactionId: string, compositionName: string) => {
     try {
+      // Wygeneruj numer korekty przed cofnięciem
+      const correctionNumber = await getNextCorrectionNumber();
+      
       await reverseTransaction(transactionId);
+      
+      // Zapisz numer korekty dla tej transakcji
+      setCorrectionNumbers(prev => ({
+        ...prev,
+        [transactionId]: correctionNumber
+      }));
       
       toast({
         title: "Sukces",
-        description: `Transakcja dla ${compositionName} została cofnięta`,
+        description: `Transakcja dla ${compositionName} została cofnięta. Numer korekty: ${correctionNumber}`,
       });
 
       if (onDataChange) {
@@ -324,33 +336,43 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                           </TableCell>
                           <TableCell className="px-1 w-20">
                             <div className="flex flex-col gap-1 w-full min-w-0">
-                              <InvoiceGenerator 
-                                transaction={group.transaction}
-                                companySettings={companySettings}
-                                transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
-                              />
                               {!group.transaction.is_reversed ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
-                                  className="text-xs px-1 py-1 h-6 w-full min-w-0"
-                                >
-                                  <Undo2 className="w-3 h-3 mr-1 shrink-0" />
-                                  <span className="truncate">Cofnij</span>
-                                </Button>
-                              ) : (
-                                user?.role === 'admin' && (
+                                <>
+                                  <InvoiceGenerator 
+                                    transaction={group.transaction}
+                                    companySettings={companySettings}
+                                    transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
+                                  />
                                   <Button
-                                    variant="destructive"
+                                    variant="outline"
                                     size="sm"
-                                    onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
+                                    onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
                                     className="text-xs px-1 py-1 h-6 w-full min-w-0"
                                   >
-                                    <Trash2 className="w-3 h-3 mr-1 shrink-0" />
-                                    <span className="truncate">Usuń</span>
+                                    <Undo2 className="w-3 h-3 mr-1 shrink-0" />
+                                    <span className="truncate">Cofnij</span>
                                   </Button>
-                                )
+                                </>
+                              ) : (
+                                <>
+                                  <CorrectionInvoiceGenerator 
+                                    transaction={group.transaction}
+                                    companySettings={companySettings}
+                                    transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
+                                    correctionNumber={correctionNumbers[group.transaction.id] || 'K/000000001'}
+                                  />
+                                  {user?.role === 'admin' && (
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
+                                      className="text-xs px-1 py-1 h-6 w-full min-w-0"
+                                    >
+                                      <Trash2 className="w-3 h-3 mr-1 shrink-0" />
+                                      <span className="truncate">Usuń</span>
+                                    </Button>
+                                  )}
+                                </>
                               )}
                             </div>
                           </TableCell>
