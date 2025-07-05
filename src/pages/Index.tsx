@@ -17,13 +17,25 @@ import UESReportGenerator from '@/components/UESReportGenerator';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useAuth } from '@/hooks/useAuth';
 import { useSummaryData } from '@/hooks/useSummaryData';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import MonthlyCostsManager from '@/components/MonthlyCostsManager';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('ingredients');
   const { ingredients, prices, loading, refreshData } = useIngredients();
   const { user, loading: authLoading } = useAuth();
-  const { rawMaterialsValue, oilsValue, othersValue, totalValue, loading: summaryLoading, refreshSummary } = useSummaryData();
+  const { settings } = useCompanySettings();
+  const { 
+    rawMaterialsValue, 
+    oilsValue, 
+    othersValue, 
+    totalValue, 
+    totalSales,
+    monthlyCosts,
+    estimatedProfit,
+    loading: summaryLoading, 
+    refreshSummary 
+  } = useSummaryData();
 
   // Nasłuchuj zdarzenia odświeżania podsumowania
   useEffect(() => {
@@ -158,43 +170,7 @@ const Index = () => {
       case 'summary':
         return (
           <div className="w-full space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6">
-            {/* UES Report Generator - tylko dla administratorów */}
-            {user?.role === 'admin' && (
-              <div className="w-full">
-                <Card className="w-full">
-                  <CardHeader className="px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6">
-                    <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl text-center text-purple-700 px-1 break-words">
-                      Generator UES
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-2 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
-                    <div className="flex justify-center">
-                      <div className="w-full max-w-md">
-                        <UESReportGenerator />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Monthly Costs Manager - tylko dla administratorów */}
-            {user?.role === 'admin' && (
-              <div className="w-full">
-                <Card className="w-full">
-                  <CardHeader className="px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6">
-                    <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl text-center text-red-700 px-1 break-words">
-                      Zarządzanie Kosztami Miesięcznymi
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-2 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
-                    <MonthlyCostsManager />
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Sales Statistics - tylko dla administratorów */}
+            {/* Sales Statistics - na górze (tylko dla administratorów) */}
             {user?.role === 'admin' && (
               <div className="w-full">
                 <Card className="w-full">
@@ -210,7 +186,23 @@ const Index = () => {
               </div>
             )}
 
-            {/* Financial Summary - tylko dla administratorów */}
+            {/* Monthly Costs Manager - na drugiej pozycji (tylko dla administratorów) */}
+            {user?.role === 'admin' && (
+              <div className="w-full">
+                <Card className="w-full">
+                  <CardHeader className="px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6">
+                    <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl text-center text-red-700 px-1 break-words">
+                      Zarządzanie Kosztami Miesięcznymi
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-2 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
+                    <MonthlyCostsManager />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Financial Summary - na trzeciej pozycji (tylko dla administratorów) */}
             {user?.role === 'admin' && (
               <div className="w-full">
                 <Card className="w-full">
@@ -227,7 +219,7 @@ const Index = () => {
                     ) : (
                       <div className="flex justify-center">
                         <div className="w-full max-w-6xl">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
                             <div className="bg-green-100 p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden">
                               <h3 className="text-xs sm:text-sm md:text-base font-semibold text-green-800 mb-1 sm:mb-2 leading-tight break-words">
                                 Wartość Surowców
@@ -263,7 +255,33 @@ const Index = () => {
                                 {totalValue.toFixed(2)} zł
                               </p>
                             </div>
+
+                            <div className="bg-emerald-100 p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden">
+                              <h3 className="text-xs sm:text-sm md:text-base font-semibold text-emerald-800 mb-1 sm:mb-2 leading-tight break-words">
+                                Całkowita Sprzedaż
+                              </h3>
+                              <p className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-emerald-600 break-words">
+                                {totalSales.toFixed(2)} zł
+                              </p>
+                            </div>
+
+                            <div className={`p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden ${estimatedProfit >= 0 ? 'bg-cyan-100' : 'bg-red-100'}`}>
+                              <h3 className={`text-xs sm:text-sm md:text-base font-semibold mb-1 sm:mb-2 leading-tight break-words ${estimatedProfit >= 0 ? 'text-cyan-800' : 'text-red-800'}`}>
+                                Szacunkowy Zysk
+                              </h3>
+                              <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold break-words ${estimatedProfit >= 0 ? 'text-cyan-600' : 'text-red-600'}`}>
+                                {estimatedProfit.toFixed(2)} zł
+                              </p>
+                            </div>
                           </div>
+                          
+                          {monthlyCosts > 0 && (
+                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <p className="text-sm text-yellow-800 text-center">
+                                Koszty miesięczne za obecny miesiąc: <strong>{monthlyCosts.toFixed(2)} zł</strong>
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -271,8 +289,28 @@ const Index = () => {
                 </Card>
               </div>
             )}
+
+            {/* UES Report Generator - na czwartej pozycji (tylko dla administratorów i jeśli włączone) */}
+            {user?.role === 'admin' && settings?.show_ues_generator && (
+              <div className="w-full">
+                <Card className="w-full">
+                  <CardHeader className="px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6">
+                    <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl text-center text-purple-700 px-1 break-words">
+                      Generator UES
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-2 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
+                    <div className="flex justify-center">
+                      <div className="w-full max-w-md">
+                        <UESReportGenerator />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
             
-            {/* Transactions List */}
+            {/* Transactions List - na końcu */}
             <div className="w-full">
               <TransactionsList onDataChange={refreshSummary} />
             </div>

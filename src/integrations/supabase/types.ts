@@ -48,6 +48,7 @@ export type Database = {
           company_website: string | null
           created_at: string
           id: string
+          show_ues_generator: boolean
           updated_at: string
         }
         Insert: {
@@ -61,6 +62,7 @@ export type Database = {
           company_website?: string | null
           created_at?: string
           id?: string
+          show_ues_generator?: boolean
           updated_at?: string
         }
         Update: {
@@ -74,6 +76,7 @@ export type Database = {
           company_website?: string | null
           created_at?: string
           id?: string
+          show_ues_generator?: boolean
           updated_at?: string
         }
         Relationships: []

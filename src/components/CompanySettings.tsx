@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -5,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Save, Users, MapPin } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Building, Save, Users, MapPin, FileBarChart } from 'lucide-react';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +29,8 @@ const CompanySettings: React.FC = () => {
     company_email: '',
     company_website: '',
     bank_account: '',
-    bank_name: ''
+    bank_name: '',
+    show_ues_generator: true
   });
   const [saving, setSaving] = useState(false);
 
@@ -76,12 +79,13 @@ const CompanySettings: React.FC = () => {
         company_email: settings.company_email || '',
         company_website: settings.company_website || '',
         bank_account: settings.bank_account || '',
-        bank_name: settings.bank_name || ''
+        bank_name: settings.bank_name || '',
+        show_ues_generator: settings.show_ues_generator
       });
     }
   }, [settings]);
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -118,7 +122,8 @@ const CompanySettings: React.FC = () => {
         company_email: formData.company_email,
         company_website: formData.company_website,
         bank_account: formData.bank_account,
-        bank_name: formData.bank_name
+        bank_name: formData.bank_name,
+        show_ues_generator: formData.show_ues_generator
       });
       
       toast({
@@ -306,6 +311,24 @@ const CompanySettings: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Ustawienia aplikacji */}
+                {user?.role === 'admin' && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Ustawienia Aplikacji</h3>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="show_ues_generator"
+                        checked={formData.show_ues_generator}
+                        onCheckedChange={(checked) => handleChange('show_ues_generator', checked)}
+                      />
+                      <Label htmlFor="show_ues_generator" className="flex items-center gap-2">
+                        <FileBarChart className="w-4 h-4" />
+                        Wyświetlaj Generator UES w zakładce Podsumowanie
+                      </Label>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex justify-end">
                   <Button onClick={handleSave} disabled={saving || !formData.company_name}>

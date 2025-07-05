@@ -12,6 +12,7 @@ export interface CompanySettings {
   company_website: string | null;
   bank_account: string | null;
   bank_name: string | null;
+  show_ues_generator: boolean;
   created_at: string;
   updated_at: string;
 }
