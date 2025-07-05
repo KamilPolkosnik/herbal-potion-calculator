@@ -277,88 +277,92 @@ const MonthlyCostsManager: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <div className="text-lg">Ładowanie kosztów...</div>
+      <div className="flex justify-center items-center p-4 sm:p-8">
+        <div className="text-sm sm:text-lg">Ładowanie kosztów...</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 overflow-hidden space-y-3 sm:space-y-6">
       {/* Filters and Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filtry i Działania</CardTitle>
+      <Card className="w-full min-w-0">
+        <CardHeader className="px-2 py-3 sm:px-4 sm:py-4">
+          <CardTitle className="text-sm sm:text-lg break-words">Filtry i Działania</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <div>
-              <Label>Rok</Label>
-              <Select value={filterYear.toString()} onValueChange={(value) => setFilterYear(parseInt(value))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableYears.map(year => (
-                    <SelectItem key={year} value={year.toString()}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <CardContent className="px-2 py-2 sm:px-4 sm:py-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+              <div className="w-full min-w-0">
+                <Label className="text-xs sm:text-sm">Rok</Label>
+                <Select value={filterYear.toString()} onValueChange={(value) => setFilterYear(parseInt(value))}>
+                  <SelectTrigger className="w-full text-xs sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableYears.map(year => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="w-full min-w-0">
+                <Label className="text-xs sm:text-sm">Miesiąc</Label>
+                <Select value={filterMonth?.toString() || 'all'} onValueChange={(value) => setFilterMonth(value === 'all' ? null : parseInt(value))}>
+                  <SelectTrigger className="w-full text-xs sm:text-sm">
+                    <SelectValue placeholder="Wszystkie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Wszystkie</SelectItem>
+                    {months.map(month => (
+                      <SelectItem key={month.value} value={month.value.toString()}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
-            <div>
-              <Label>Miesiąc</Label>
-              <Select value={filterMonth?.toString() || 'all'} onValueChange={(value) => setFilterMonth(value === 'all' ? null : parseInt(value))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Wszystkie" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Wszystkie</SelectItem>
-                  {months.map(month => (
-                    <SelectItem key={month.value} value={month.value.toString()}>
-                      {month.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={applyFilters} className="w-full sm:w-auto flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Filter className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <span>Filtruj</span>
+              </Button>
+              
+              <Button onClick={clearFilters} variant="outline" className="w-full sm:w-auto text-xs sm:text-sm">
+                Wyczyść filtry
+              </Button>
+              
+              <Button onClick={generateReport} className="w-full sm:w-auto flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Download className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <span>Raport PDF</span>
+              </Button>
             </div>
-            
-            <Button onClick={applyFilters} className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filtruj
-            </Button>
-            
-            <Button onClick={clearFilters} variant="outline">
-              Wyczyść filtry
-            </Button>
-            
-            <Button onClick={generateReport} className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Raport PDF
-            </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+        <Card className="w-full min-w-0">
+          <CardContent className="p-3 sm:p-6">
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-700">Łączne Koszty</h3>
-              <p className="text-3xl font-bold text-red-600">{totalCosts.toFixed(2)} zł</p>
-              <p className="text-sm text-gray-500">{filteredCosts.length} pozycji</p>
+              <h3 className="text-sm sm:text-lg font-semibold text-gray-700 break-words">Łączne Koszty</h3>
+              <p className="text-lg sm:text-3xl font-bold text-red-600 break-words">{totalCosts.toFixed(2)} zł</p>
+              <p className="text-xs sm:text-sm text-gray-500">{filteredCosts.length} pozycji</p>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-6">
+        <Card className="w-full min-w-0">
+          <CardContent className="p-3 sm:p-6">
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-700">Okres</h3>
-              <p className="text-xl font-semibold text-blue-600">
+              <h3 className="text-sm sm:text-lg font-semibold text-gray-700 break-words">Okres</h3>
+              <p className="text-sm sm:text-xl font-semibold text-blue-600 break-words">
                 {filterMonth 
                   ? `${months.find(m => m.value === filterMonth)?.label} ${filterYear}`
                   : `Rok ${filterYear}`}
@@ -367,11 +371,11 @@ const MonthlyCostsManager: React.FC = () => {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardContent className="p-6">
+        <Card className="w-full min-w-0">
+          <CardContent className="p-3 sm:p-6">
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-700">Średni Koszt</h3>
-              <p className="text-xl font-semibold text-orange-600">
+              <h3 className="text-sm sm:text-lg font-semibold text-gray-700 break-words">Średni Koszt</h3>
+              <p className="text-sm sm:text-xl font-semibold text-orange-600 break-words">
                 {filteredCosts.length > 0 ? (totalCosts / filteredCosts.length).toFixed(2) : '0.00'} zł
               </p>
             </div>
@@ -382,38 +386,40 @@ const MonthlyCostsManager: React.FC = () => {
       {/* Add Cost Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogTrigger asChild>
-          <Button className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Dodaj Koszt
+          <Button className="w-full sm:w-auto flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+            <span>Dodaj Koszt</span>
           </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-md mx-auto">
           <DialogHeader>
-            <DialogTitle>Dodaj Nowy Koszt</DialogTitle>
+            <DialogTitle className="text-sm sm:text-base">Dodaj Nowy Koszt</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4 max-h-[70vh] overflow-y-auto">
             <div>
-              <Label htmlFor="name">Nazwa *</Label>
+              <Label htmlFor="name" className="text-xs sm:text-sm">Nazwa *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Nazwa kosztu"
+                className="text-xs sm:text-sm"
               />
             </div>
             
             <div>
-              <Label htmlFor="description">Opis</Label>
+              <Label htmlFor="description" className="text-xs sm:text-sm">Opis</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Opcjonalny opis"
+                className="text-xs sm:text-sm"
               />
             </div>
             
             <div>
-              <Label htmlFor="amount">Kwota *</Label>
+              <Label htmlFor="amount" className="text-xs sm:text-sm">Kwota *</Label>
               <Input
                 id="amount"
                 type="number"
@@ -421,13 +427,14 @@ const MonthlyCostsManager: React.FC = () => {
                 value={formData.amount}
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 placeholder="0.00"
+                className="text-xs sm:text-sm"
               />
             </div>
             
             <div>
-              <Label>Kategoria</Label>
+              <Label className="text-xs sm:text-sm">Kategoria</Label>
               <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -440,11 +447,11 @@ const MonthlyCostsManager: React.FC = () => {
               </Select>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
               <div>
-                <Label>Miesiąc</Label>
+                <Label className="text-xs sm:text-sm">Miesiąc</Label>
                 <Select value={formData.cost_month.toString()} onValueChange={(value) => setFormData({ ...formData, cost_month: parseInt(value) })}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-xs sm:text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -458,20 +465,21 @@ const MonthlyCostsManager: React.FC = () => {
               </div>
               
               <div>
-                <Label>Rok</Label>
+                <Label className="text-xs sm:text-sm">Rok</Label>
                 <Input
                   type="number"
                   value={formData.cost_year}
                   onChange={(e) => setFormData({ ...formData, cost_year: parseInt(e.target.value) })}
+                  className="text-xs sm:text-sm"
                 />
               </div>
             </div>
             
-            <div className="flex gap-2 pt-4">
-              <Button onClick={handleAdd} disabled={!formData.name || !formData.amount}>
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 sm:pt-4">
+              <Button onClick={handleAdd} disabled={!formData.name || !formData.amount} className="w-full sm:w-auto text-xs sm:text-sm">
                 Dodaj Koszt
               </Button>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="w-full sm:w-auto text-xs sm:text-sm">
                 Anuluj
               </Button>
             </div>
@@ -481,7 +489,7 @@ const MonthlyCostsManager: React.FC = () => {
 
       {/* Edit Cost Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-md mx-auto">
           <DialogHeader>
             <DialogTitle>Edytuj Koszt</DialogTitle>
           </DialogHeader>
@@ -574,81 +582,94 @@ const MonthlyCostsManager: React.FC = () => {
       </Dialog>
 
       {/* Costs Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista Kosztów</CardTitle>
+      <Card className="w-full min-w-0">
+        <CardHeader className="px-2 py-3 sm:px-4 sm:py-4">
+          <CardTitle className="text-sm sm:text-base break-words">Lista Kosztów</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 py-2 sm:px-4 sm:py-3">
           {filteredCosts.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nazwa</TableHead>
-                  <TableHead>Opis</TableHead>
-                  <TableHead>Kategoria</TableHead>
-                  <TableHead>Okres</TableHead>
-                  <TableHead className="text-right">Kwota</TableHead>
-                  <TableHead>Utworzono</TableHead>
-                  <TableHead>Akcje</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCosts.map((cost) => (
-                  <TableRow key={cost.id}>
-                    <TableCell className="font-medium">{cost.name}</TableCell>
-                    <TableCell>{cost.description || '-'}</TableCell>
-                    <TableCell>
-                      <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
-                        {categories.find(c => c.value === cost.category)?.label || cost.category}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {months.find(m => m.value === cost.cost_month)?.label} {cost.cost_year}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {cost.amount.toFixed(2)} zł
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(cost.created_at), 'dd.MM.yyyy', { locale: pl })}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(cost)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="outline">
-                              <Trash2 className="w-4 h-4" />
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[600px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Nazwa</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden sm:table-cell">Opis</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Kategoria</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden md:table-cell">Okres</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 text-right">Kwota</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden lg:table-cell">Utworzono</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Akcje</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCosts.map((cost) => (
+                      <TableRow key={cost.id}>
+                        <TableCell className="font-medium text-xs px-1 sm:px-2">
+                          <div className="max-w-[100px] sm:max-w-[150px] truncate break-words">
+                            {cost.name}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs px-1 sm:px-2 hidden sm:table-cell">
+                          <div className="max-w-[100px] truncate break-words">
+                            {cost.description || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs px-1 sm:px-2">
+                          <span className="px-1 py-1 bg-gray-100 rounded-full text-xs break-words">
+                            {categories.find(c => c.value === cost.category)?.label || cost.category}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs px-1 sm:px-2 hidden md:table-cell">
+                          {months.find(m => m.value === cost.cost_month)?.label} {cost.cost_year}
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold px-1 sm:px-2 text-right">
+                          {cost.amount.toFixed(2)} zł
+                        </TableCell>
+                        <TableCell className="text-xs px-1 sm:px-2 hidden lg:table-cell">
+                          {format(new Date(cost.created_at), 'dd.MM.yyyy', { locale: pl })}
+                        </TableCell>
+                        <TableCell className="px-1 sm:px-2">
+                          <div className="flex flex-col gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(cost)}
+                              className="text-xs px-1 py-1 h-6 w-full"
+                            >
+                              <Edit className="w-3 h-3" />
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Potwierdź usunięcie</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Czy na pewno chcesz usunąć koszt "{cost.name}"? Ta operacja nie może być cofnięta.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Anuluj</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(cost.id)}>
-                                Usuń
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="outline" className="text-xs px-1 py-1 h-6 w-full">
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="w-[95vw] max-w-md mx-auto">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Potwierdź usunięcie</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-xs sm:text-sm break-words">
+                                    Czy na pewno chcesz usunąć koszt "{cost.name}"? Ta operacja nie może być cofnięta.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+                                  <AlertDialogCancel className="w-full sm:w-auto text-xs sm:text-sm">Anuluj</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(cost.id)} className="w-full sm:w-auto text-xs sm:text-sm">
+                                    Usuń
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm break-words">
               Brak kosztów w wybranym okresie
             </div>
           )}
