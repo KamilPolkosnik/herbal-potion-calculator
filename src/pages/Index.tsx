@@ -144,13 +144,13 @@ const Index = () => {
           <div className="space-y-3 sm:space-y-4 md:space-y-6">
             {/* UES Report Generator - tylko dla administratorów */}
             {user?.role === 'admin' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base sm:text-lg md:text-xl lg:text-2xl text-center text-purple-700 px-2">
+              <Card className="w-full">
+                <CardHeader className="px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center text-purple-700 px-1 sm:px-2">
                     Generator UES
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-2 sm:px-4 md:px-6">
+                <CardContent className="px-3 sm:px-4 md:px-6">
                   <UESReportGenerator />
                 </CardContent>
               </Card>
@@ -158,13 +158,13 @@ const Index = () => {
 
             {/* Monthly Costs Manager - tylko dla administratorów */}
             {user?.role === 'admin' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base sm:text-lg md:text-xl lg:text-2xl text-center text-red-700 px-2">
+              <Card className="w-full">
+                <CardHeader className="px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center text-red-700 px-1 sm:px-2">
                     Zarządzanie Kosztami Miesięcznymi
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-2 sm:px-4 md:px-6">
+                <CardContent className="px-3 sm:px-4 md:px-6">
                   <MonthlyCostsManager />
                 </CardContent>
               </Card>
@@ -172,13 +172,13 @@ const Index = () => {
 
             {/* Sales Statistics - tylko dla administratorów */}
             {user?.role === 'admin' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base sm:text-lg md:text-xl lg:text-2xl text-center text-green-700 px-2">
+              <Card className="w-full">
+                <CardHeader className="px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center text-green-700 px-1 sm:px-2">
                     Statystyki Sprzedaży
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-2 sm:px-4 md:px-6">
+                <CardContent className="px-3 sm:px-4 md:px-6">
                   <SalesStatistics />
                 </CardContent>
               </Card>
@@ -186,51 +186,51 @@ const Index = () => {
 
             {/* Financial Summary - tylko dla administratorów */}
             {user?.role === 'admin' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base sm:text-lg md:text-xl lg:text-2xl text-center text-blue-700 px-2">
+              <Card className="w-full">
+                <CardHeader className="px-3 sm:px-6">
+                  <CardTitle className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-center text-blue-700 px-1 sm:px-2">
                     Podsumowanie Finansowe
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="px-2 sm:px-4 md:px-6">
+                <CardContent className="px-3 sm:px-4 md:px-6">
                   {summaryLoading ? (
                     <div className="flex justify-center items-center p-4 sm:p-6 md:p-8">
-                      <div className="text-sm sm:text-base md:text-lg text-center">Ładowanie podsumowania...</div>
+                      <div className="text-xs sm:text-sm md:text-base lg:text-lg text-center">Ładowanie podsumowania...</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-                      <div className="bg-green-100 p-3 sm:p-4 md:p-6 rounded-lg text-center">
-                        <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-green-800 mb-1 sm:mb-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+                      <div className="bg-green-100 p-2 sm:p-3 md:p-4 lg:p-6 rounded-lg text-center min-w-0">
+                        <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-green-800 mb-1 sm:mb-2 leading-tight">
                           Wartość Surowców
                         </h3>
-                        <p className="text-sm sm:text-lg md:text-2xl font-bold text-green-600">
+                        <p className="text-xs sm:text-sm md:text-lg lg:text-xl xl:text-2xl font-bold text-green-600 break-words">
                           {rawMaterialsValue.toFixed(2)} zł
                         </p>
                       </div>
                       
-                      <div className="bg-blue-100 p-3 sm:p-4 md:p-6 rounded-lg text-center">
-                        <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-blue-800 mb-1 sm:mb-2">
+                      <div className="bg-blue-100 p-2 sm:p-3 md:p-4 lg:p-6 rounded-lg text-center min-w-0">
+                        <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-blue-800 mb-1 sm:mb-2 leading-tight">
                           Wartość Olejków
                         </h3>
-                        <p className="text-sm sm:text-lg md:text-2xl font-bold text-blue-600">
+                        <p className="text-xs sm:text-sm md:text-lg lg:text-xl xl:text-2xl font-bold text-blue-600 break-words">
                           {oilsValue.toFixed(2)} zł
                         </p>
                       </div>
                       
-                      <div className="bg-orange-100 p-3 sm:p-4 md:p-6 rounded-lg text-center">
-                        <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-orange-800 mb-1 sm:mb-2">
+                      <div className="bg-orange-100 p-2 sm:p-3 md:p-4 lg:p-6 rounded-lg text-center min-w-0">
+                        <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-orange-800 mb-1 sm:mb-2 leading-tight">
                           Wartość Innych
                         </h3>
-                        <p className="text-sm sm:text-lg md:text-2xl font-bold text-orange-600">
+                        <p className="text-xs sm:text-sm md:text-lg lg:text-xl xl:text-2xl font-bold text-orange-600 break-words">
                           {othersValue.toFixed(2)} zł
                         </p>
                       </div>
                       
-                      <div className="bg-purple-100 p-3 sm:p-4 md:p-6 rounded-lg text-center">
-                        <h3 className="text-xs sm:text-sm md:text-lg font-semibold text-purple-800 mb-1 sm:mb-2">
+                      <div className="bg-purple-100 p-2 sm:p-3 md:p-4 lg:p-6 rounded-lg text-center min-w-0">
+                        <h3 className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-purple-800 mb-1 sm:mb-2 leading-tight">
                           Wartość Całkowita
                         </h3>
-                        <p className="text-sm sm:text-lg md:text-2xl font-bold text-purple-600">
+                        <p className="text-xs sm:text-sm md:text-lg lg:text-xl xl:text-2xl font-bold text-purple-600 break-words">
                           {totalValue.toFixed(2)} zł
                         </p>
                       </div>
