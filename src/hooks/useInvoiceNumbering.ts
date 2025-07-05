@@ -3,58 +3,54 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useInvoiceNumbering = () => {
-  const [nextCorrectionNumber, setNextCorrectionNumber] = useState<number>(1);
+  const [invoiceNumbers, setInvoiceNumbers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  const getNextCorrectionNumber = async (): Promise<string> => {
+  const loadInvoiceNumbers = async () => {
     try {
-      // Pobierz wszystkie transakcje cofnięte, posortowane według reversed_at
-      const { data: reversedTransactions, error } = await supabase
-        .from('sales_transactions')
-        .select('id, reversed_at')
-        .eq('is_reversed', true)
-        .not('reversed_at', 'is', null)
-        .order('reversed_at', { ascending: true });
-
-      if (error) throw error;
-
-      // Numer korekty to liczba cofniętych transakcji + 1
-      const correctionNumber = (reversedTransactions?.length || 0) + 1;
+      setLoading(true);
       
-      return `K/${correctionNumber.toString().padStart(9, '0')}`;
-    } catch (error) {
-      console.error('Error getting next correction number:', error);
-      return `K/${Date.now().toString().padStart(9, '0')}`;
-    }
-  };
-
-  const loadNextCorrectionNumber = async () => {
-    try {
-      const { data: reversedTransactions, error } = await supabase
+      // Get all transactions with their assigned invoice numbers
+      const { data: transactions, error } = await supabase
         .from('sales_transactions')
-        .select('id')
-        .eq('is_reversed', true)
-        .not('reversed_at', 'is', null);
+        .select('id, invoice_number');
 
       if (error) throw error;
 
-      setNextCorrectionNumber((reversedTransactions?.length || 0) + 1);
+      // Map transaction IDs to their invoice numbers
+      const numbers: Record<string, string> = {};
+      
+      if (transactions) {
+        transactions.forEach((transaction) => {
+          // Format invoice number with leading zeros
+          const invoiceNumber = transaction.invoice_number.toString().padStart(9, '0');
+          numbers[transaction.id] = invoiceNumber;
+        });
+      }
+
+      console.log('Loaded invoice numbers from database:', numbers);
+      setInvoiceNumbers(numbers);
     } catch (error) {
-      console.error('Error loading next correction number:', error);
-      setNextCorrectionNumber(1);
+      console.error('Error loading invoice numbers:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const getInvoiceNumber = (transactionId: string): string => {
+    const number = invoiceNumbers[transactionId];
+    console.log(`Getting invoice number for ${transactionId}: ${number || '000000000'}`);
+    return number || '000000000';
+  };
+
   useEffect(() => {
-    loadNextCorrectionNumber();
+    loadInvoiceNumbers();
   }, []);
 
   return {
-    nextCorrectionNumber,
+    invoiceNumbers,
     loading,
-    getNextCorrectionNumber,
-    refreshCorrectionNumber: loadNextCorrectionNumber
+    getInvoiceNumber,
+    refreshInvoiceNumbers: loadInvoiceNumbers
   };
 };

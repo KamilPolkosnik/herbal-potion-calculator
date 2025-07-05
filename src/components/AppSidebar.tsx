@@ -16,7 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-const AppSidebar = () => {
+interface AppSidebarProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
   const { user, logout, loading } = useAuth();
 
   // Debug logging
@@ -29,14 +34,6 @@ const AppSidebar = () => {
     logout();
     // Force page reload to reset all application state
     window.location.reload();
-  };
-
-  const handleTabChange = (tabValue: string) => {
-    // Find the tab trigger and click it
-    const tabTrigger = document.querySelector(`[value="${tabValue}"]`);
-    if (tabTrigger) {
-      (tabTrigger as HTMLElement).click();
-    }
   };
 
   // Poczekaj aż dane użytkownika zostaną załadowane
@@ -67,41 +64,46 @@ const AppSidebar = () => {
 
   const menuItems = [
     {
-      id: 'summary',
-      title: 'Podsumowanie',
-      icon: TrendingUp,
-      value: 'summary'
-    },
-    {
       id: 'ingredients',
       title: 'Składniki',
       icon: Package,
-      value: 'ingredients'
     },
     {
-      id: 'compositions',
+      id: 'calculator',
       title: 'Zestawy',
       icon: Calculator,
-      value: 'compositions'
+    },
+    {
+      id: 'management',
+      title: 'Zarządzanie',
+      icon: Settings,
     },
     {
       id: 'sales',
       title: 'Sprzedaż',
       icon: DollarSign,
-      value: 'sales'
     },
     {
-      id: 'settings',
-      title: 'Ustawienia',
-      icon: Settings,
-      value: 'settings'
+      id: 'shopping',
+      title: 'Lista Zakupów',
+      icon: ShoppingCart,
+    },
+    {
+      id: 'summary',
+      title: 'Podsumowanie',
+      icon: TrendingUp,
     },
     // Zakładka użytkowników tylko dla administratorów
     ...(user?.role === 'admin' ? [{
       id: 'users',
       title: 'Użytkownicy',
       icon: Users,
-      value: 'users'
+    }] : []),
+    // Zakładka ustawień tylko dla administratorów
+    ...(user?.role === 'admin' ? [{
+      id: 'settings',
+      title: 'Ustawienia',
+      icon: Settings,
     }] : []),
   ];
 
@@ -134,7 +136,8 @@ const AppSidebar = () => {
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
-                      onClick={() => handleTabChange(item.value)}
+                      isActive={activeTab === item.id}
+                      onClick={() => onTabChange(item.id)}
                       className="w-full justify-start"
                     >
                       <Icon className="w-4 h-4" />

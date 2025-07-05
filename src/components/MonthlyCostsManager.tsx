@@ -1,424 +1,681 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { DollarSign, Plus, Edit, Trash2, Calendar } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Plus, Edit, Trash2, Download, Filter } from 'lucide-react';
 import { useMonthlyCosts, MonthlyCost } from '@/hooks/useMonthlyCosts';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 
-interface MonthlyCostsManagerProps {
-  onDataChange?: () => void;
-}
-
-const MonthlyCostsManager: React.FC<MonthlyCostsManagerProps> = ({ onDataChange }) => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
-
+const MonthlyCostsManager: React.FC = () => {
+  const { costs, loading, addCost, updateCost, deleteCost, fetchCosts } = useMonthlyCosts();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [newCost, setNewCost] = useState({
+  const [editingCost, setEditingCost] = useState<MonthlyCost | null>(null);
+  const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
+  const [filterMonth, setFilterMonth] = useState<number | null>(null);
+
+  const [formData, setFormData] = useState({
     name: '',
     description: '',
     amount: '',
-    category: 'Koszty stałe',
-    month: currentMonth.toString(),
-    year: currentYear.toString(),
+    category: 'inne',
+    cost_month: new Date().getMonth() + 1,
+    cost_year: new Date().getFullYear()
   });
-  const [editingCost, setEditingCost] = useState<MonthlyCost | null>(null);
 
-  const { costs, loading, fetchCosts, addCost, updateCost, deleteCost } = useMonthlyCosts();
+  const categories = [
+    { value: 'materiały', label: 'Materiały' },
+    { value: 'transport', label: 'Transport' },
+    { value: 'marketing', label: 'Marketing' },
+    { value: 'administracja', label: 'Administracja' },
+    { value: 'podatki', label: 'Podatki' },
+    { value: 'ubezpieczenia', label: 'Ubezpieczenia' },
+    { value: 'energia', label: 'Energia' },
+    { value: 'inne', label: 'Inne' }
+  ];
 
-  useEffect(() => {
-    fetchCosts(selectedYear, selectedMonth);
-  }, [selectedYear, selectedMonth, fetchCosts]);
+  const months = [
+    { value: 1, label: 'Styczeń' },
+    { value: 2, label: 'Luty' },
+    { value: 3, label: 'Marzec' },
+    { value: 4, label: 'Kwiecień' },
+    { value: 5, label: 'Maj' },
+    { value: 6, label: 'Czerwiec' },
+    { value: 7, label: 'Lipiec' },
+    { value: 8, label: 'Sierpień' },
+    { value: 9, label: 'Wrzesień' },
+    { value: 10, label: 'Październik' },
+    { value: 11, label: 'Listopad' },
+    { value: 12, label: 'Grudzień' }
+  ];
 
-  const handleAddCost = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Generate available years from costs
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = new Set<number>();
     
+    costs.forEach(cost => years.add(cost.cost_year));
+    years.add(currentYear);
+    
+    return Array.from(years).sort((a, b) => b - a);
+  }, [costs]);
+
+  // Filter costs based on selected year/month
+  const filteredCosts = useMemo(() => {
+    return costs.filter(cost => {
+      if (filterYear && cost.cost_year !== filterYear) return false;
+      if (filterMonth && cost.cost_month !== filterMonth) return false;
+      return true;
+    });
+  }, [costs, filterYear, filterMonth]);
+
+  // Calculate totals
+  const totalCosts = filteredCosts.reduce((sum, cost) => sum + cost.amount, 0);
+  const categoryTotals = filteredCosts.reduce((acc, cost) => {
+    acc[cost.category] = (acc[cost.category] || 0) + cost.amount;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      amount: '',
+      category: 'inne',
+      cost_month: new Date().getMonth() + 1,
+      cost_year: new Date().getFullYear()
+    });
+  };
+
+  const handleAdd = async () => {
+    if (!formData.name || !formData.amount) return;
+
     const success = await addCost({
-      name: newCost.name,
-      description: newCost.description,
-      amount: parseFloat(newCost.amount),
-      category: newCost.category,
-      cost_month: parseInt(newCost.month),
-      cost_year: parseInt(newCost.year),
+      name: formData.name,
+      description: formData.description,
+      amount: parseFloat(formData.amount),
+      category: formData.category,
+      cost_month: formData.cost_month,
+      cost_year: formData.cost_year
     });
 
     if (success) {
-      setNewCost({
-        name: '',
-        description: '',
-        amount: '',
-        category: 'Koszty stałe',
-        month: (new Date().getMonth() + 1).toString(),
-        year: new Date().getFullYear().toString(),
-      });
       setIsAddDialogOpen(false);
-      onDataChange?.();
+      resetForm();
     }
   };
 
-  const handleUpdateCost = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCost) return;
-    
+  const handleEdit = (cost: MonthlyCost) => {
+    setEditingCost(cost);
+    setFormData({
+      name: cost.name,
+      description: cost.description || '',
+      amount: cost.amount.toString(),
+      category: cost.category,
+      cost_month: cost.cost_month,
+      cost_year: cost.cost_year
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingCost || !formData.name || !formData.amount) return;
+
     const success = await updateCost(editingCost.id, {
-      name: editingCost.name,
-      description: editingCost.description,
-      amount: editingCost.amount,
-      category: editingCost.category,
-      cost_month: editingCost.cost_month,
-      cost_year: editingCost.cost_year,
+      name: formData.name,
+      description: formData.description,
+      amount: parseFloat(formData.amount),
+      category: formData.category,
+      cost_month: formData.cost_month,
+      cost_year: formData.cost_year
     });
 
     if (success) {
-      setEditingCost(null);
       setIsEditDialogOpen(false);
-      onDataChange?.();
+      setEditingCost(null);
+      resetForm();
     }
   };
 
-  const handleDeleteCost = async (id: string) => {
-    if (window.confirm('Czy na pewno chcesz usunąć ten koszt?')) {
-      const success = await deleteCost(id);
-      if (success) {
-        onDataChange?.();
-      }
+  const handleDelete = async (id: string) => {
+    await deleteCost(id);
+  };
+
+  const generateReport = () => {
+    const reportData = {
+      period: filterMonth 
+        ? `${months.find(m => m.value === filterMonth)?.label} ${filterYear}`
+        : `Rok ${filterYear}`,
+      totalCosts,
+      costs: filteredCosts,
+      categoryTotals
+    };
+
+    const reportContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Raport Kosztów - ${reportData.period}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .period { font-size: 16px; color: #666; }
+        .summary { margin: 20px 0; }
+        .summary-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .summary-table th { background-color: #f2f2f2; }
+        .number-cell { text-align: right; }
+        .costs-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .costs-table th, .costs-table td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+        .costs-table th { background-color: #f2f2f2; }
+        .footer { margin-top: 40px; font-size: 12px; color: #666; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">RAPORT KOSZTÓW</div>
+        <div class="period">${reportData.period}</div>
+    </div>
+    
+    <div class="summary">
+        <h3>Podsumowanie</h3>
+        <table class="summary-table">
+            <tr>
+                <td><strong>Łączne koszty:</strong></td>
+                <td class="number-cell">${reportData.totalCosts.toFixed(2)} zł</td>
+            </tr>
+            <tr>
+                <td><strong>Liczba pozycji:</strong></td>
+                <td class="number-cell">${reportData.costs.length}</td>
+            </tr>
+        </table>
+    </div>
+
+    ${Object.keys(reportData.categoryTotals).length > 0 ? `
+    <div class="category-summary">
+        <h3>Koszty według kategorii</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Kategoria</th>
+                    <th>Kwota</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${Object.entries(reportData.categoryTotals).map(([category, amount]) => `
+                <tr>
+                    <td>${categories.find(c => c.value === category)?.label || category}</td>
+                    <td class="number-cell">${amount.toFixed(2)} zł</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+    ` : ''}
+
+    ${reportData.costs.length > 0 ? `
+    <div class="costs-section">
+        <h3>Szczegółowe Koszty</h3>
+        <table class="costs-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Nazwa</th>
+                    <th>Opis</th>
+                    <th>Kategoria</th>
+                    <th>Kwota</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reportData.costs.map(cost => `
+                <tr>
+                    <td>${cost.cost_month}/${cost.cost_year}</td>
+                    <td>${cost.name}</td>
+                    <td>${cost.description || '-'}</td>
+                    <td>${categories.find(c => c.value === cost.category)?.label || cost.category}</td>
+                    <td class="number-cell">${cost.amount.toFixed(2)} zł</td>
+                </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    </div>
+    ` : ''}
+    
+    <div class="footer">
+        <p>Wygenerowano: ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: pl })}</p>
+    </div>
+</body>
+</html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(reportContent);
+      printWindow.document.close();
+      printWindow.print();
     }
+  };
+
+  const applyFilters = () => {
+    fetchCosts(filterYear, filterMonth || undefined);
+  };
+
+  const clearFilters = () => {
+    setFilterYear(new Date().getFullYear());
+    setFilterMonth(null);
+    fetchCosts();
   };
 
   if (loading) {
-    return <div className="text-center p-4">Ładowanie kosztów...</div>;
+    return (
+      <div className="flex justify-center items-center p-4 sm:p-8">
+        <div className="text-sm sm:text-lg">Ładowanie kosztów...</div>
+      </div>
+    );
   }
 
   return (
-    <Card className="w-full min-w-0 overflow-hidden">
-      <CardHeader className="flex items-center justify-between">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <DollarSign className="w-4 h-4 mr-1" />
-          Koszty Miesięczne
-        </CardTitle>
-        <div className="flex items-center space-x-2">
-          <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
-            <SelectTrigger className="w-[120px] text-xs">
-              <SelectValue placeholder="Wybierz miesiąc" />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                <SelectItem key={month} value={month.toString()}>
-                  {format(new Date(2000, month - 1, 1), 'MMMM', { locale: pl })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-            <SelectTrigger className="w-[80px] text-xs">
-              <SelectValue placeholder="Wybierz rok" />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 5 }, (_, i) => currentYear - i).map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="text-xs">
-                <Plus className="w-3 h-3 mr-2" />
+    <div className="w-full min-w-0 overflow-hidden space-y-3 sm:space-y-6">
+      {/* Filters and Actions */}
+      <Card className="w-full min-w-0">
+        <CardHeader className="px-2 py-3 sm:px-4 sm:py-4">
+          <CardTitle className="text-sm sm:text-lg break-words">Filtry i Działania</CardTitle>
+        </CardHeader>
+        <CardContent className="px-2 py-2 sm:px-4 sm:py-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+              <div className="w-full min-w-0">
+                <Label className="text-xs sm:text-sm">Rok</Label>
+                <Select value={filterYear.toString()} onValueChange={(value) => setFilterYear(parseInt(value))}>
+                  <SelectTrigger className="w-full text-xs sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableYears.map(year => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="w-full min-w-0">
+                <Label className="text-xs sm:text-sm">Miesiąc</Label>
+                <Select value={filterMonth?.toString() || 'all'} onValueChange={(value) => setFilterMonth(value === 'all' ? null : parseInt(value))}>
+                  <SelectTrigger className="w-full text-xs sm:text-sm">
+                    <SelectValue placeholder="Wszystkie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Wszystkie</SelectItem>
+                    {months.map(month => (
+                      <SelectItem key={month.value} value={month.value.toString()}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={applyFilters} className="w-full sm:w-auto flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Filter className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <span>Filtruj</span>
+              </Button>
+              
+              <Button onClick={clearFilters} variant="outline" className="w-full sm:w-auto text-xs sm:text-sm">
+                Wyczyść filtry
+              </Button>
+              
+              <Button onClick={generateReport} className="w-full sm:w-auto flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Download className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                <span>Raport PDF</span>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+        <Card className="w-full min-w-0">
+          <CardContent className="p-3 sm:p-6">
+            <div className="text-center">
+              <h3 className="text-sm sm:text-lg font-semibold text-gray-700 break-words">Łączne Koszty</h3>
+              <p className="text-lg sm:text-3xl font-bold text-red-600 break-words">{totalCosts.toFixed(2)} zł</p>
+              <p className="text-xs sm:text-sm text-gray-500">{filteredCosts.length} pozycji</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="w-full min-w-0">
+          <CardContent className="p-3 sm:p-6">
+            <div className="text-center">
+              <h3 className="text-sm sm:text-lg font-semibold text-gray-700 break-words">Okres</h3>
+              <p className="text-sm sm:text-xl font-semibold text-blue-600 break-words">
+                {filterMonth 
+                  ? `${months.find(m => m.value === filterMonth)?.label} ${filterYear}`
+                  : `Rok ${filterYear}`}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="w-full min-w-0">
+          <CardContent className="p-3 sm:p-6">
+            <div className="text-center">
+              <h3 className="text-sm sm:text-lg font-semibold text-gray-700 break-words">Średni Koszt</h3>
+              <p className="text-sm sm:text-xl font-semibold text-orange-600 break-words">
+                {filteredCosts.length > 0 ? (totalCosts / filteredCosts.length).toFixed(2) : '0.00'} zł
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Add Cost Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogTrigger asChild>
+          <Button className="w-full sm:w-auto flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+            <span>Dodaj Koszt</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="w-[95vw] max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="text-sm sm:text-base">Dodaj Nowy Koszt</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 sm:space-y-4 max-h-[70vh] overflow-y-auto">
+            <div>
+              <Label htmlFor="name" className="text-xs sm:text-sm">Nazwa *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Nazwa kosztu"
+                className="text-xs sm:text-sm"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="description" className="text-xs sm:text-sm">Opis</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Opcjonalny opis"
+                className="text-xs sm:text-sm"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="amount" className="text-xs sm:text-sm">Kwota *</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                placeholder="0.00"
+                className="text-xs sm:text-sm"
+              />
+            </div>
+            
+            <div>
+              <Label className="text-xs sm:text-sm">Kategoria</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <SelectTrigger className="text-xs sm:text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(category => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 sm:gap-4">
+              <div>
+                <Label className="text-xs sm:text-sm">Miesiąc</Label>
+                <Select value={formData.cost_month.toString()} onValueChange={(value) => setFormData({ ...formData, cost_month: parseInt(value) })}>
+                  <SelectTrigger className="text-xs sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map(month => (
+                      <SelectItem key={month.value} value={month.value.toString()}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label className="text-xs sm:text-sm">Rok</Label>
+                <Input
+                  type="number"
+                  value={formData.cost_year}
+                  onChange={(e) => setFormData({ ...formData, cost_year: parseInt(e.target.value) })}
+                  className="text-xs sm:text-sm"
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 sm:pt-4">
+              <Button onClick={handleAdd} disabled={!formData.name || !formData.amount} className="w-full sm:w-auto text-xs sm:text-sm">
                 Dodaj Koszt
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Dodaj nowy koszt</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleAddCost} className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nazwa
-                  </Label>
-                  <Input
-                    type="text"
-                    id="name"
-                    value={newCost.name}
-                    onChange={(e) => setNewCost({ ...newCost, name: e.target.value })}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">
-                    Opis
-                  </Label>
-                  <Textarea
-                    id="description"
-                    value={newCost.description}
-                    onChange={(e) => setNewCost({ ...newCost, description: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amount" className="text-right">
-                    Kwota
-                  </Label>
-                  <Input
-                    type="number"
-                    id="amount"
-                    value={newCost.amount}
-                    onChange={(e) => setNewCost({ ...newCost, amount: e.target.value })}
-                    className="col-span-3"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="category" className="text-right">
-                    Kategoria
-                  </Label>
-                  <Select onValueChange={(value) => setNewCost({ ...newCost, category: value })}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Wybierz kategorię" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Koszty stałe">Koszty stałe</SelectItem>
-                      <SelectItem value="Media">Media</SelectItem>
-                      <SelectItem value="Marketing">Marketing</SelectItem>
-                      <SelectItem value="Inne">Inne</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="month" className="text-right">
-                    Miesiąc
-                  </Label>
-                  <Select onValueChange={(value) => setNewCost({ ...newCost, month: value })}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Wybierz miesiąc" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                        <SelectItem key={month} value={month.toString()}>
-                          {format(new Date(2000, month - 1, 1), 'MMMM', { locale: pl })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="year" className="text-right">
-                    Rok
-                  </Label>
-                  <Select onValueChange={(value) => setNewCost({ ...newCost, year: value })}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Wybierz rok" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 5 }, (_, i) => currentYear - i).map((year) => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit">Dodaj koszt</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <ScrollArea className="h-80">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Nazwa</TableHead>
-                <TableHead>Opis</TableHead>
-                <TableHead>Kategoria</TableHead>
-                <TableHead className="text-right">Kwota</TableHead>
-                <TableHead className="text-center">Miesiąc/Rok</TableHead>
-                <TableHead className="text-right">Akcje</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {costs.map((cost) => (
-                <TableRow key={cost.id}>
-                  <TableCell className="font-medium">{cost.name}</TableCell>
-                  <TableCell>{cost.description}</TableCell>
-                  <TableCell>{cost.category}</TableCell>
-                  <TableCell className="text-right">{cost.amount.toFixed(2)} zł</TableCell>
-                  <TableCell className="text-center">
-                    {format(new Date(cost.cost_year, cost.cost_month - 1, 1), 'MMMM/yyyy', { locale: pl })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => setEditingCost(cost)}
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edytuj
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
-                          <DialogHeader>
-                            <DialogTitle>Edytuj koszt</DialogTitle>
-                          </DialogHeader>
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              if (editingCost) {
-                                handleUpdateCost(e);
-                              }
-                            }}
-                            className="grid gap-4 py-4"
-                          >
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="name" className="text-right">
-                                Nazwa
-                              </Label>
-                              <Input
-                                type="text"
-                                id="name"
-                                value={editingCost?.name || ''}
-                                onChange={(e) =>
-                                  setEditingCost({ ...editingCost!, name: e.target.value })
-                                }
-                                className="col-span-3"
-                                required
-                              />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="description" className="text-right">
-                                Opis
-                              </Label>
-                              <Textarea
-                                id="description"
-                                value={editingCost?.description || ''}
-                                onChange={(e) =>
-                                  setEditingCost({ ...editingCost!, description: e.target.value })
-                                }
-                                className="col-span-3"
-                              />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="amount" className="text-right">
-                                Kwota
-                              </Label>
-                              <Input
-                                type="number"
-                                id="amount"
-                                value={editingCost?.amount || ''}
-                                onChange={(e) =>
-                                  setEditingCost({
-                                    ...editingCost!,
-                                    amount: parseFloat(e.target.value),
-                                  })
-                                }
-                                className="col-span-3"
-                                required
-                              />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="category" className="text-right">
-                                Kategoria
-                              </Label>
-                              <Select
-                                onValueChange={(value) =>
-                                  setEditingCost({ ...editingCost!, category: value })
-                                }
-                                defaultValue={editingCost?.category}
-                              >
-                                <SelectTrigger className="col-span-3">
-                                  <SelectValue placeholder="Wybierz kategorię" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Koszty stałe">Koszty stałe</SelectItem>
-                                  <SelectItem value="Media">Media</SelectItem>
-                                  <SelectItem value="Marketing">Marketing</SelectItem>
-                                  <SelectItem value="Inne">Inne</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="month" className="text-right">
-                                Miesiąc
-                              </Label>
-                              <Select
-                                onValueChange={(value) =>
-                                  setEditingCost({ ...editingCost!, cost_month: parseInt(value) })
-                                }
-                                defaultValue={editingCost?.cost_month.toString()}
-                              >
-                                <SelectTrigger className="col-span-3">
-                                  <SelectValue placeholder="Wybierz miesiąc" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                                    <SelectItem key={month} value={month.toString()}>
-                                      {format(new Date(2000, month - 1, 1), 'MMMM', { locale: pl })}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="year" className="text-right">
-                                Rok
-                              </Label>
-                              <Select
-                                onValueChange={(value) =>
-                                  setEditingCost({ ...editingCost!, cost_year: parseInt(value) })
-                                }
-                                defaultValue={editingCost?.cost_year.toString()}
-                              >
-                                <SelectTrigger className="col-span-3">
-                                  <SelectValue placeholder="Wybierz rok" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 5 }, (_, i) => currentYear - i).map((year) => (
-                                    <SelectItem key={year} value={year.toString()}>
-                                      {year}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button type="submit">Zapisz zmiany</Button>
-                          </form>
-                        </DialogContent>
-                      </Dialog>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteCost(cost.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Usuń
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="w-full sm:w-auto text-xs sm:text-sm">
+                Anuluj
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Cost Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle>Edytuj Koszt</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Nazwa *</Label>
+              <Input
+                id="edit-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Nazwa kosztu"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="edit-description">Opis</Label>
+              <Textarea
+                id="edit-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Opcjonalny opis"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="edit-amount">Kwota *</Label>
+              <Input
+                id="edit-amount"
+                type="number"
+                step="0.01"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                placeholder="0.00"
+              />
+            </div>
+            
+            <div>
+              <Label>Kategoria</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(category => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Miesiąc</Label>
+                <Select value={formData.cost_month.toString()} onValueChange={(value) => setFormData({ ...formData, cost_month: parseInt(value) })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map(month => (
+                      <SelectItem key={month.value} value={month.value.toString()}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label>Rok</Label>
+                <Input
+                  type="number"
+                  value={formData.cost_year}
+                  onChange={(e) => setFormData({ ...formData, cost_year: parseInt(e.target.value) })}
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2 pt-4">
+              <Button onClick={handleUpdate} disabled={!formData.name || !formData.amount}>
+                Zapisz Zmiany
+              </Button>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Anuluj
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Costs Table */}
+      <Card className="w-full min-w-0">
+        <CardHeader className="px-2 py-3 sm:px-4 sm:py-4">
+          <CardTitle className="text-sm sm:text-base break-words">Lista Kosztów</CardTitle>
+        </CardHeader>
+        <CardContent className="px-2 py-2 sm:px-4 sm:py-3">
+          {filteredCosts.length > 0 ? (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[600px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Nazwa</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden sm:table-cell">Opis</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Kategoria</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden md:table-cell">Okres</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 text-right">Kwota</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden lg:table-cell">Utworzono</TableHead>
+                      <TableHead className="text-xs font-medium px-1 sm:px-2">Akcje</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCosts.map((cost) => (
+                      <TableRow key={cost.id}>
+                        <TableCell className="font-medium text-xs px-1 sm:px-2">
+                          <div className="max-w-[100px] sm:max-w-[150px] truncate break-words">
+                            {cost.name}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs px-1 sm:px-2 hidden sm:table-cell">
+                          <div className="max-w-[100px] truncate break-words">
+                            {cost.description || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs px-1 sm:px-2">
+                          <span className="px-1 py-1 bg-gray-100 rounded-full text-xs break-words">
+                            {categories.find(c => c.value === cost.category)?.label || cost.category}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs px-1 sm:px-2 hidden md:table-cell">
+                          {months.find(m => m.value === cost.cost_month)?.label} {cost.cost_year}
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold px-1 sm:px-2 text-right">
+                          {cost.amount.toFixed(2)} zł
+                        </TableCell>
+                        <TableCell className="text-xs px-1 sm:px-2 hidden lg:table-cell">
+                          {format(new Date(cost.created_at), 'dd.MM.yyyy', { locale: pl })}
+                        </TableCell>
+                        <TableCell className="px-1 sm:px-2">
+                          <div className="flex flex-col gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(cost)}
+                              className="text-xs px-1 py-1 h-6 w-full"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="outline" className="text-xs px-1 py-1 h-6 w-full">
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="w-[95vw] max-w-md mx-auto">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Potwierdź usunięcie</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-xs sm:text-sm break-words">
+                                    Czy na pewno chcesz usunąć koszt "{cost.name}"? Ta operacja nie może być cofnięta.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+                                  <AlertDialogCancel className="w-full sm:w-auto text-xs sm:text-sm">Anuluj</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(cost.id)} className="w-full sm:w-auto text-xs sm:text-sm">
+                                    Usuń
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm break-words">
+              Brak kosztów w wybranym okresie
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
