@@ -1,7 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import AppSidebar from "@/components/AppSidebar";
 import IngredientManager from "@/components/IngredientManager";
 import CompositionManager from "@/components/CompositionManager";
 import SalesManager from "@/components/SalesManager";
@@ -63,7 +63,7 @@ const Index = () => {
       <div className="min-h-screen flex w-full bg-gray-50">
         <AppSidebar />
         <main className="flex-1 p-2 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-full mx-auto">
+          <div className="w-full max-w-full mx-auto">
             <Tabs defaultValue="summary" className="w-full">
               <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-4 sm:mb-6 md:mb-8">
                 <TabsTrigger value="summary" className="text-xs sm:text-sm">Podsumowanie</TabsTrigger>
@@ -84,14 +84,14 @@ const Index = () => {
 
                 {/* Zarządzanie Kosztami Miesięcznymi */}
                 <div className="w-full">
-                  <MonthlyCostsManager onDataChange={handleDataChange} />
+                  <MonthlyCostsManager />
                 </div>
 
                 {/* Podsumowanie Finansowe */}
                 <div className="w-full">
-                  <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
-                    <div className="max-w-4xl mx-auto">
-                      <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 text-center">
+                  <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 md:p-6">
+                    <div className="w-full max-w-full mx-auto">
+                      <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 text-center break-words">
                         Podsumowanie Finansowe
                       </h2>
                       {loading ? (
@@ -100,47 +100,47 @@ const Index = () => {
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-                          <div className="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
-                            <h3 className="font-semibold text-green-800 text-sm sm:text-base mb-1 sm:mb-2">Surowce Ziołowe</h3>
-                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 break-words">
+                          <div className="bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200 min-w-0">
+                            <h3 className="font-semibold text-green-800 text-sm sm:text-base mb-1 sm:mb-2 break-words">Surowce Ziołowe</h3>
+                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-600 break-all">
                               {rawMaterialsValue.toFixed(2)} zł
                             </p>
                           </div>
-                          <div className="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200">
-                            <h3 className="font-semibold text-purple-800 text-sm sm:text-base mb-1 sm:mb-2">Olejki Eteryczne</h3>
-                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-purple-600 break-words">
+                          <div className="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200 min-w-0">
+                            <h3 className="font-semibold text-purple-800 text-sm sm:text-base mb-1 sm:mb-2 break-words">Olejki Eteryczne</h3>
+                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-purple-600 break-all">
                               {oilsValue.toFixed(2)} zł
                             </p>
                           </div>
-                          <div className="bg-orange-50 p-3 sm:p-4 rounded-lg border border-orange-200">
-                            <h3 className="font-semibold text-orange-800 text-sm sm:text-base mb-1 sm:mb-2">Inne</h3>
-                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 break-words">
+                          <div className="bg-orange-50 p-3 sm:p-4 rounded-lg border border-orange-200 min-w-0">
+                            <h3 className="font-semibold text-orange-800 text-sm sm:text-base mb-1 sm:mb-2 break-words">Inne</h3>
+                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-orange-600 break-all">
                               {othersValue.toFixed(2)} zł
                             </p>
                           </div>
-                          <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
-                            <h3 className="font-semibold text-blue-800 text-sm sm:text-base mb-1 sm:mb-2">Wartość Składników</h3>
-                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 break-words">
+                          <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 min-w-0">
+                            <h3 className="font-semibold text-blue-800 text-sm sm:text-base mb-1 sm:mb-2 break-words">Wartość Składników</h3>
+                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 break-all">
                               {totalValue.toFixed(2)} zł
                             </p>
                           </div>
-                          <div className="bg-emerald-50 p-3 sm:p-4 rounded-lg border border-emerald-200">
-                            <h3 className="font-semibold text-emerald-800 text-sm sm:text-base mb-1 sm:mb-2">Całkowita Sprzedaż</h3>
-                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-600 break-words">
+                          <div className="bg-emerald-50 p-3 sm:p-4 rounded-lg border border-emerald-200 min-w-0">
+                            <h3 className="font-semibold text-emerald-800 text-sm sm:text-base mb-1 sm:mb-2 break-words">Całkowita Sprzedaż</h3>
+                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-600 break-all">
                               {totalSales.toFixed(2)} zł
                             </p>
                           </div>
-                          <div className="bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200">
-                            <h3 className="font-semibold text-red-800 text-sm sm:text-base mb-1 sm:mb-2">Koszty Miesięczne</h3>
-                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 break-words">
+                          <div className="bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200 min-w-0">
+                            <h3 className="font-semibold text-red-800 text-sm sm:text-base mb-1 sm:mb-2 break-words">Koszty Miesięczne</h3>
+                            <p className="text-lg sm:text-xl md:text-2xl font-bold text-red-600 break-all">
                               {monthlyCosts.toFixed(2)} zł
                             </p>
                           </div>
-                          <div className={`p-3 sm:p-4 rounded-lg border ${estimatedProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                            <h3 className={`font-semibold text-sm sm:text-base mb-1 sm:mb-2 ${estimatedProfit >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                          <div className={`p-3 sm:p-4 rounded-lg border min-w-0 ${estimatedProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                            <h3 className={`font-semibold text-sm sm:text-base mb-1 sm:mb-2 break-words ${estimatedProfit >= 0 ? 'text-green-800' : 'text-red-800'}`}>
                               Szacunkowy Zysk
                             </h3>
-                            <p className={`text-lg sm:text-xl md:text-2xl font-bold break-words ${estimatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <p className={`text-lg sm:text-xl md:text-2xl font-bold break-all ${estimatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {estimatedProfit.toFixed(2)} zł
                             </p>
                           </div>

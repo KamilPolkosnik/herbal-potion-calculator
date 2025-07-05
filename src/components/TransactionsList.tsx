@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -269,7 +270,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                       <TableHead className="text-xs font-medium px-1 hidden sm:table-cell w-16">Cena jedn.</TableHead>
                       <TableHead className="text-xs font-medium px-1 w-16">Łącznie</TableHead>
                       <TableHead className="text-xs font-medium px-1 hidden lg:table-cell w-16">Status</TableHead>
-                      <TableHead className="text-xs font-medium px-1 w-20">Akcje</TableHead>
+                      <TableHead className="text-xs font-medium px-1 w-24">Akcje</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -334,7 +335,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                               <span className="text-green-600 font-medium text-xs block w-full truncate">Aktywna</span>
                             )}
                           </TableCell>
-                          <TableCell className="px-1 w-20">
+                          <TableCell className="px-1 w-24">
                             <div className="flex flex-col gap-1 w-full min-w-0">
                               {!group.transaction.is_reversed ? (
                                 <>
