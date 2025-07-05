@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -236,7 +237,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="px-2 py-2 sm:px-4 sm:py-3 md:px-6 md:py-4">
+      <CardContent className="px-1 py-2 sm:px-2 sm:py-3 md:px-4 md:py-4">
         {groupedTransactions.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm md:text-base break-words">
             {dateFrom || dateTo ? 'Brak transakcji w wybranym zakresie dat' : 'Brak transakcji do wyświetlenia'}
@@ -244,34 +245,38 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
         ) : (
           <div className="w-full overflow-x-auto">
             <ScrollArea className="h-64 sm:h-80 md:h-96 w-full">
-              <div className="min-w-[600px]">
-                <Table>
+              <div className="min-w-[320px]">
+                <Table className="w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2">Nr</TableHead>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden sm:table-cell">Data</TableHead>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2">Zestaw</TableHead>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden md:table-cell">Kupujący</TableHead>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2">Ilość</TableHead>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden sm:table-cell">Cena jedn.</TableHead>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2">Łącznie</TableHead>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2 hidden lg:table-cell">Status</TableHead>
-                      <TableHead className="text-xs font-medium px-1 sm:px-2">Akcje</TableHead>
+                      <TableHead className="text-xs font-medium px-1 w-16">Nr</TableHead>
+                      <TableHead className="text-xs font-medium px-1 hidden sm:table-cell w-20">Data</TableHead>
+                      <TableHead className="text-xs font-medium px-1 min-w-0">Zestaw</TableHead>
+                      <TableHead className="text-xs font-medium px-1 hidden md:table-cell w-24">Kupujący</TableHead>
+                      <TableHead className="text-xs font-medium px-1 w-12">Ilość</TableHead>
+                      <TableHead className="text-xs font-medium px-1 hidden sm:table-cell w-16">Cena jedn.</TableHead>
+                      <TableHead className="text-xs font-medium px-1 w-16">Łącznie</TableHead>
+                      <TableHead className="text-xs font-medium px-1 hidden lg:table-cell w-16">Status</TableHead>
+                      <TableHead className="text-xs font-medium px-1 w-20">Akcje</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {groupedTransactions.map((group) => (
                       <React.Fragment key={group.id}>
                         <TableRow>
-                          <TableCell className="font-mono text-xs px-1 sm:px-2">
-                            {group.transaction.invoice_number.toString().padStart(9, '0')}
+                          <TableCell className="font-mono text-xs px-1">
+                            <span className="block w-full truncate">
+                              {group.transaction.invoice_number.toString().padStart(9, '0')}
+                            </span>
                           </TableCell>
-                          <TableCell className="text-xs px-1 sm:px-2 hidden sm:table-cell">
-                            {format(new Date(group.transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                          <TableCell className="text-xs px-1 hidden sm:table-cell">
+                            <span className="block w-full truncate">
+                              {format(new Date(group.transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                            </span>
                           </TableCell>
-                          <TableCell className="text-xs px-1 sm:px-2">
-                            <div className="flex items-center gap-1 min-w-0">
-                              <span className="truncate text-xs break-words max-w-[100px] sm:max-w-[150px]">
+                          <TableCell className="text-xs px-1 min-w-0">
+                            <div className="flex items-center gap-1 min-w-0 w-full">
+                              <span className="truncate text-xs break-words flex-1 min-w-0">
                                 {group.mainItem}
                               </span>
                               {group.isMultiItem && (
@@ -279,7 +284,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => toggleExpanded(group.id)}
-                                  className="h-4 w-4 sm:h-5 sm:w-5 p-0 shrink-0"
+                                  className="h-4 w-4 p-0 shrink-0"
                                 >
                                   {expandedTransactions.has(group.id) ? (
                                     <ChevronDown className="h-3 w-3" />
@@ -290,27 +295,35 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-xs px-1 sm:px-2 hidden md:table-cell">
-                            <span className="break-words max-w-[100px] block truncate">
+                          <TableCell className="text-xs px-1 hidden md:table-cell">
+                            <span className="break-words block w-full truncate">
                               {group.transaction.buyer_name || 'Klient indywidualny'}
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs px-1 sm:px-2">{group.transaction.quantity} szt.</TableCell>
-                          <TableCell className="text-xs px-1 sm:px-2 hidden sm:table-cell">
-                            {group.transaction.unit_price.toFixed(2)} zł
+                          <TableCell className="text-xs px-1">
+                            <span className="block w-full truncate">
+                              {group.transaction.quantity} szt.
+                            </span>
                           </TableCell>
-                          <TableCell className="text-xs font-medium px-1 sm:px-2">
-                            {group.transaction.total_price.toFixed(2)} zł
+                          <TableCell className="text-xs px-1 hidden sm:table-cell">
+                            <span className="block w-full truncate">
+                              {group.transaction.unit_price.toFixed(2)} zł
+                            </span>
                           </TableCell>
-                          <TableCell className="hidden lg:table-cell px-1 sm:px-2">
+                          <TableCell className="text-xs font-medium px-1">
+                            <span className="block w-full truncate">
+                              {group.transaction.total_price.toFixed(2)} zł
+                            </span>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell px-1">
                             {group.transaction.is_reversed ? (
-                              <span className="text-red-600 font-medium text-xs">Cofnięta</span>
+                              <span className="text-red-600 font-medium text-xs block w-full truncate">Cofnięta</span>
                             ) : (
-                              <span className="text-green-600 font-medium text-xs">Aktywna</span>
+                              <span className="text-green-600 font-medium text-xs block w-full truncate">Aktywna</span>
                             )}
                           </TableCell>
-                          <TableCell className="px-1 sm:px-2">
-                            <div className="flex flex-col gap-1">
+                          <TableCell className="px-1 w-20">
+                            <div className="flex flex-col gap-1 w-full min-w-0">
                               <InvoiceGenerator 
                                 transaction={group.transaction}
                                 companySettings={companySettings}
@@ -321,10 +334,10 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
-                                  className="text-xs px-1 py-1 h-6 w-full"
+                                  className="text-xs px-1 py-1 h-6 w-full min-w-0"
                                 >
                                   <Undo2 className="w-3 h-3 mr-1 shrink-0" />
-                                  <span>Cofnij</span>
+                                  <span className="truncate">Cofnij</span>
                                 </Button>
                               ) : (
                                 user?.role === 'admin' && (
@@ -332,10 +345,10 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                                     variant="destructive"
                                     size="sm"
                                     onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
-                                    className="text-xs px-1 py-1 h-6 w-full"
+                                    className="text-xs px-1 py-1 h-6 w-full min-w-0"
                                   >
                                     <Trash2 className="w-3 h-3 mr-1 shrink-0" />
-                                    <span>Usuń</span>
+                                    <span className="truncate">Usuń</span>
                                   </Button>
                                 )
                               )}
@@ -345,13 +358,13 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                         {group.isMultiItem && expandedTransactions.has(group.id) && (
                           <TableRow>
                             <TableCell colSpan={9} className="bg-gray-50 p-2 sm:p-4">
-                              <div className="text-xs sm:text-sm">
+                              <div className="text-xs sm:text-sm w-full overflow-x-auto">
                                 <p className="font-medium mb-1 sm:mb-2">Szczegóły pozycji:</p>
-                                <div className="space-y-1">
+                                <div className="space-y-1 w-full">
                                   {group.items.map((item, index) => (
-                                    <div key={index} className="flex justify-between items-center gap-2">
+                                    <div key={index} className="flex justify-between items-center gap-2 w-full min-w-0">
                                       <span className="truncate break-words min-w-0 flex-1">{item.name}</span>
-                                      <span className="whitespace-nowrap shrink-0">
+                                      <span className="whitespace-nowrap shrink-0 text-xs">
                                         {item.quantity} szt. × {item.price.toFixed(2)} zł
                                       </span>
                                     </div>

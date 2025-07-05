@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -126,14 +125,14 @@ const UESReportGenerator: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-w-0 overflow-hidden">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-        <div className="w-full sm:w-auto min-w-0">
-          <label className="block text-xs sm:text-sm font-medium mb-1 sm:mb-2 break-words">
+    <div className="w-full max-w-full min-w-0 overflow-hidden">
+      <div className="flex flex-col gap-2 w-full">
+        <div className="w-full min-w-0">
+          <label className="block text-xs sm:text-sm font-medium mb-1 break-words">
             Rok dla UES:
           </label>
           <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-            <SelectTrigger className="w-full sm:w-32 text-xs sm:text-sm">
+            <SelectTrigger className="w-full text-xs sm:text-sm min-w-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -148,7 +147,7 @@ const UESReportGenerator: React.FC = () => {
         
         <Button 
           onClick={generateUESReport} 
-          className="w-full sm:w-auto flex items-center justify-center gap-1 sm:gap-2 mt-2 sm:mt-6 text-xs sm:text-sm px-2 sm:px-4 py-2 min-w-0"
+          className="w-full flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 py-2 min-w-0"
         >
           <FileBarChart className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
           <span className="truncate">Wygeneruj UES</span>

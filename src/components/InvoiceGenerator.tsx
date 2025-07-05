@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Copy } from 'lucide-react';
@@ -271,14 +272,24 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   };
 
   return (
-    <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={() => generatePDF(true)}>
-        <FileText className="w-4 h-4 mr-1" />
-        Faktura PDF
+    <div className="flex flex-col gap-1 w-full min-w-0">
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => generatePDF(true)}
+        className="w-full text-xs px-1 py-1 h-6 min-w-0"
+      >
+        <FileText className="w-3 h-3 mr-1 shrink-0" />
+        <span className="truncate">Oryginał</span>
       </Button>
-      <Button variant="outline" size="sm" onClick={() => generatePDF(false)}>
-        <Copy className="w-4 h-4 mr-1" />
-        Kopia PDF
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => generatePDF(false)}
+        className="w-full text-xs px-1 py-1 h-6 min-w-0"
+      >
+        <Copy className="w-3 h-3 mr-1 shrink-0" />
+        <span className="truncate">Kopia</span>
       </Button>
     </div>
   );
