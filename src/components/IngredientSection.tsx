@@ -40,7 +40,7 @@ const IngredientSection: React.FC<IngredientSectionProps> = ({
         <CardTitle className="text-base sm:text-lg px-2">{title}</CardTitle>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 max-w-none">
           {items.map((ingredient) => (
             <IngredientCard
               key={ingredient}
