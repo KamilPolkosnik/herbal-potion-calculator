@@ -24,19 +24,11 @@ interface AppSidebarProps {
 const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
   const { user, logout, loading } = useAuth();
 
-  // Debug logging
-  console.log('AppSidebar - current user:', user);
-  console.log('AppSidebar - user role:', user?.role);
-  console.log('AppSidebar - is admin?', user?.role === 'admin');
-  console.log('AppSidebar - loading:', loading);
-
   const handleLogout = () => {
     logout();
-    // Force page reload to reset all application state
     window.location.reload();
   };
 
-  // Poczekaj aż dane użytkownika zostaną załadowane
   if (loading || !user) {
     return (
       <Sidebar>
@@ -65,18 +57,8 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
   const menuItems = [
     {
       id: 'ingredients',
-      title: 'Składniki',
+      title: 'Magazyn',
       icon: Package,
-    },
-    {
-      id: 'calculator',
-      title: 'Zestawy',
-      icon: Calculator,
-    },
-    {
-      id: 'management',
-      title: 'Zarządzanie',
-      icon: Settings,
     },
     {
       id: 'sales',
@@ -84,31 +66,36 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
       icon: DollarSign,
     },
     {
-      id: 'shopping',
-      title: 'Lista Zakupów',
-      icon: ShoppingCart,
+      id: 'management',
+      title: 'Zarządzanie',
+      icon: Settings,
+    },
+    {
+      id: 'compositions',
+      title: 'Zestawy',
+      icon: Calculator,
     },
     {
       id: 'summary',
       title: 'Podsumowanie',
       icon: TrendingUp,
     },
-    // Zakładka użytkowników tylko dla administratorów
+    {
+      id: 'shopping',
+      title: 'Lista Zakupów',
+      icon: ShoppingCart,
+    },
     ...(user?.role === 'admin' ? [{
       id: 'users',
       title: 'Użytkownicy',
       icon: Users,
     }] : []),
-    // Zakładka ustawień tylko dla administratorów
     ...(user?.role === 'admin' ? [{
       id: 'settings',
       title: 'Ustawienia',
       icon: Settings,
     }] : []),
   ];
-
-  console.log('AppSidebar - menuItems length:', menuItems.length);
-  console.log('AppSidebar - menuItems:', menuItems.map(item => item.id));
 
   return (
     <Sidebar>
