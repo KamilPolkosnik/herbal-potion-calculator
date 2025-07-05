@@ -1,7 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import AppSidebar from "@/components/AppSidebar";
 import IngredientManager from "@/components/IngredientManager";
 import CompositionManager from "@/components/CompositionManager";
 import SalesManager from "@/components/SalesManager";
@@ -77,17 +77,17 @@ const Index = () => {
               </TabsList>
 
               <TabsContent value="summary" className="space-y-4 sm:space-y-6">
-                {/* Statystyki Sprzedaży */}
+                {/* Statistics */}
                 <div className="w-full">
                   <SalesStatistics key={refreshTrigger} />
                 </div>
 
-                {/* Zarządzanie Kosztami Miesięcznymi */}
+                {/* Monthly Costs */}
                 <div className="w-full">
                   <MonthlyCostsManager onDataChange={handleDataChange} />
                 </div>
 
-                {/* Podsumowanie Finansowe */}
+                {/* Financial Summary */}
                 <div className="w-full">
                   <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6">
                     <div className="max-w-4xl mx-auto">
@@ -150,14 +150,14 @@ const Index = () => {
                   </div>
                 </div>
 
-                {/* Generator UES - tylko jeśli włączony w ustawieniach */}
+                {/* UES Generator */}
                 {!settingsLoading && companySettings?.show_ues_generator && (
                   <div className="w-full">
                     <UESReportGenerator />
                   </div>
                 )}
 
-                {/* Historia Transakcji */}
+                {/* Transactions History */}
                 <div className="w-full">
                   <TransactionsList onDataChange={handleDataChange} />
                 </div>
