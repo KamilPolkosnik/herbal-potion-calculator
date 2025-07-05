@@ -16,12 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-interface AppSidebarProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}
-
-const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
+const AppSidebar = () => {
   const { user, logout, loading } = useAuth();
 
   // Debug logging
@@ -34,6 +29,14 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
     logout();
     // Force page reload to reset all application state
     window.location.reload();
+  };
+
+  const handleTabChange = (tabValue: string) => {
+    // Find the tab trigger and click it
+    const tabTrigger = document.querySelector(`[value="${tabValue}"]`);
+    if (tabTrigger) {
+      (tabTrigger as HTMLElement).click();
+    }
   };
 
   // Poczekaj aż dane użytkownika zostaną załadowane
@@ -64,46 +67,41 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
 
   const menuItems = [
     {
+      id: 'summary',
+      title: 'Podsumowanie',
+      icon: TrendingUp,
+      value: 'summary'
+    },
+    {
       id: 'ingredients',
       title: 'Składniki',
       icon: Package,
+      value: 'ingredients'
     },
     {
-      id: 'calculator',
+      id: 'compositions',
       title: 'Zestawy',
       icon: Calculator,
-    },
-    {
-      id: 'management',
-      title: 'Zarządzanie',
-      icon: Settings,
+      value: 'compositions'
     },
     {
       id: 'sales',
       title: 'Sprzedaż',
       icon: DollarSign,
+      value: 'sales'
     },
     {
-      id: 'shopping',
-      title: 'Lista Zakupów',
-      icon: ShoppingCart,
-    },
-    {
-      id: 'summary',
-      title: 'Podsumowanie',
-      icon: TrendingUp,
+      id: 'settings',
+      title: 'Ustawienia',
+      icon: Settings,
+      value: 'settings'
     },
     // Zakładka użytkowników tylko dla administratorów
     ...(user?.role === 'admin' ? [{
       id: 'users',
       title: 'Użytkownicy',
       icon: Users,
-    }] : []),
-    // Zakładka ustawień tylko dla administratorów
-    ...(user?.role === 'admin' ? [{
-      id: 'settings',
-      title: 'Ustawienia',
-      icon: Settings,
+      value: 'users'
     }] : []),
   ];
 
@@ -136,8 +134,7 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
-                      isActive={activeTab === item.id}
-                      onClick={() => onTabChange(item.id)}
+                      onClick={() => handleTabChange(item.value)}
                       className="w-full justify-start"
                     >
                       <Icon className="w-4 h-4" />

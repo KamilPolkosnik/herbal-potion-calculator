@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,8 +31,8 @@ const MonthlyCostsManager: React.FC<MonthlyCostsManagerProps> = ({ onDataChange 
     description: '',
     amount: '',
     category: 'Koszty stałe',
-    month: currentMonth,
-    year: currentYear,
+    month: currentMonth.toString(),
+    year: currentYear.toString(),
   });
   const [editingCost, setEditingCost] = useState<MonthlyCost | null>(null);
 
@@ -59,8 +60,8 @@ const MonthlyCostsManager: React.FC<MonthlyCostsManagerProps> = ({ onDataChange 
         description: '',
         amount: '',
         category: 'Koszty stałe',
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
+        month: (new Date().getMonth() + 1).toString(),
+        year: new Date().getFullYear().toString(),
       });
       setIsAddDialogOpen(false);
       onDataChange?.();
@@ -264,7 +265,11 @@ const MonthlyCostsManager: React.FC<MonthlyCostsManagerProps> = ({ onDataChange 
                     <div className="flex justify-end gap-2">
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => setEditingCost(cost)}
+                          >
                             <Edit className="w-4 h-4 mr-2" />
                             Edytuj
                           </Button>
