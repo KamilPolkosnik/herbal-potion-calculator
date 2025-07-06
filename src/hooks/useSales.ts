@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -68,7 +69,8 @@ export const useSales = () => {
     compositionName: string,
     quantity: number,
     unitPrice: number,
-    buyerData: BuyerData = {}
+    buyerData: BuyerData = {},
+    saleDate?: Date
   ) => {
     try {
       const totalPrice = quantity * unitPrice;
@@ -86,22 +88,28 @@ export const useSales = () => {
         buyerAddress = addressParts.join(', ');
       }
 
+      // Insert the transaction record with custom date if provided
+      const transactionData: any = {
+        composition_id: compositionId,
+        composition_name: compositionName,
+        quantity: quantity,
+        unit_price: unitPrice,
+        total_price: totalPrice,
+        buyer_name: buyerData.name || null,
+        buyer_email: buyerData.email || null,
+        buyer_phone: buyerData.phone || null,
+        buyer_tax_id: buyerData.tax_id || null,
+        buyer_address: buyerAddress
+      };
+
+      // Add custom date if provided
+      if (saleDate) {
+        transactionData.created_at = saleDate.toISOString();
+      }
+
       const { data: transaction, error } = await supabase
         .from('sales_transactions')
-        .insert([
-          {
-            composition_id: compositionId,
-            composition_name: compositionName,
-            quantity: quantity,
-            unit_price: unitPrice,
-            total_price: totalPrice,
-            buyer_name: buyerData.name || null,
-            buyer_email: buyerData.email || null,
-            buyer_phone: buyerData.phone || null,
-            buyer_tax_id: buyerData.tax_id || null,
-            buyer_address: buyerAddress
-          },
-        ])
+        .insert(transactionData)
         .select()
         .single();
 

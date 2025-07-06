@@ -10,28 +10,42 @@ export const useIngredientCategories = (ingredients: string[], ingredientUnits: 
 
       ingredients.forEach(ingredient => {
         const unit = ingredientUnits[ingredient];
+        const ingredientLower = ingredient.toLowerCase();
         
-        if (unit === 'ml') {
+        console.log(`Categorizing ingredient: ${ingredient}, unit: ${unit}`);
+        
+        // Najpierw sprawdź nazwę składnika
+        if (ingredientLower.includes('olejek')) {
           oils.push(ingredient);
-        } else if (unit === 'szt.' || unit === 'szt' || unit === 'kpl.' || unit === 'kpl') {
+          console.log(`${ingredient} -> oils (by name)`);
+        } else if (ingredientLower.includes('etykiet') || 
+                   ingredientLower.includes('worek') || 
+                   ingredientLower.includes('woreczek') || 
+                   ingredientLower.includes('pojemnik') ||
+                   ingredientLower.includes('naklejk') ||
+                   ingredientLower.includes('opakow')) {
           others.push(ingredient);
-        } else if (unit === 'g') {
-          herbs.push(ingredient);
+          console.log(`${ingredient} -> others (by name)`);
         } else {
-          // Fallback logic based on ingredient name when unit is undefined
-          if (ingredient.toLowerCase().includes('olejek')) {
+          // Następnie sprawdź jednostkę
+          if (unit === 'ml') {
             oils.push(ingredient);
-          } else if (ingredient.toLowerCase().includes('worek') || 
-                     ingredient.toLowerCase().includes('woreczek') || 
-                     ingredient.toLowerCase().includes('pojemnik') ||
-                     ingredient.toLowerCase().includes('szt')) {
+            console.log(`${ingredient} -> oils (by unit ml)`);
+          } else if (unit === 'szt.' || unit === 'szt' || unit === 'kpl.' || unit === 'kpl') {
             others.push(ingredient);
-          } else {
+            console.log(`${ingredient} -> others (by unit ${unit})`);
+          } else if (unit === 'g') {
             herbs.push(ingredient);
+            console.log(`${ingredient} -> herbs (by unit g)`);
+          } else {
+            // Fallback - domyślnie zioła
+            herbs.push(ingredient);
+            console.log(`${ingredient} -> herbs (fallback)`);
           }
         }
       });
 
+      console.log('Final categorization:', { herbs, oils, others });
       return { herbs, oils, others };
     };
 

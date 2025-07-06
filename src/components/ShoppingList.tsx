@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -202,19 +203,42 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
 
     Object.entries(neededIngredients).forEach(([ingredient, amount]) => {
       const unit = ingredientUnits[ingredient] || 'g';
+      const ingredientLower = ingredient.toLowerCase();
       
-      if (unit === 'ml') {
+      console.log(`Shopping list - categorizing: ${ingredient}, unit: ${unit}`);
+      
+      // Najpierw sprawdź nazwę składnika
+      if (ingredientLower.includes('olejek')) {
         oils.push([ingredient, amount]);
-      } else if (unit === 'g') {
-        herbs.push([ingredient, amount]);
-      } else if (unit === 'szt') {
+        console.log(`${ingredient} -> oils (by name)`);
+      } else if (ingredientLower.includes('etykiet') || 
+                 ingredientLower.includes('worek') || 
+                 ingredientLower.includes('woreczek') || 
+                 ingredientLower.includes('pojemnik') ||
+                 ingredientLower.includes('naklejk') ||
+                 ingredientLower.includes('opakow')) {
         others.push([ingredient, amount]);
+        console.log(`${ingredient} -> others (by name)`);
       } else {
-        // fallback for any other units
-        others.push([ingredient, amount]);
+        // Następnie sprawdź jednostkę
+        if (unit === 'ml') {
+          oils.push([ingredient, amount]);
+          console.log(`${ingredient} -> oils (by unit ml)`);
+        } else if (unit === 'szt' || unit === 'szt.' || unit === 'kpl' || unit === 'kpl.') {
+          others.push([ingredient, amount]);
+          console.log(`${ingredient} -> others (by unit ${unit})`);
+        } else if (unit === 'g') {
+          herbs.push([ingredient, amount]);
+          console.log(`${ingredient} -> herbs (by unit g)`);
+        } else {
+          // Fallback - domyślnie zioła
+          herbs.push([ingredient, amount]);
+          console.log(`${ingredient} -> herbs (fallback)`);
+        }
       }
     });
 
+    console.log('Shopping list final categorization:', { herbs: herbs.length, oils: oils.length, others: others.length });
     return { herbs, oils, others };
   };
 
