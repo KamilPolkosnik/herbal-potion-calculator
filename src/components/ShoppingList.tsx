@@ -2,274 +2,198 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Trash2, RefreshCw } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useIngredients } from '@/hooks/useIngredients';
-import { useIngredientCategories } from '@/hooks/useIngredientCategories';
 
-interface ShoppingItem {
+interface Composition {
+  id: string;
   name: string;
-  neededAmount: number;
-  currentAmount: number;
-  unit: string;
-  pricePerUnit: number;
+  description: string | null;
+  sale_price: number | null;
+  color: string | null;
+}
+
+interface ShoppingPlan {
+  composition: Composition;
+  quantity: number;
   totalCost: number;
 }
 
-interface ShoppingListProps {
-  warningThresholds?: {
-    herbs: number;
-    oils: number;
-    others: number;
-  };
-}
-
-const ShoppingList: React.FC<ShoppingListProps> = ({ warningThresholds }) => {
-  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
-  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+const ShoppingList: React.FC = () => {
+  const [compositions, setCompositions] = useState<Composition[]>([]);
+  const [shoppingPlan, setShoppingPlan] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
-  const { ingredients, prices, updatePrice } = useIngredients();
 
-  // Prepare ingredient names and units for the categorization hook
-  const ingredientNames = shoppingItems.map(item => item.name);
-  const ingredientUnits = shoppingItems.reduce((acc, item) => {
-    acc[item.name] = item.unit;
-    return acc;
-  }, {} as Record<string, string>);
-
-  const { herbs, oils, others } = useIngredientCategories(ingredientNames, ingredientUnits);
-
-  const loadShoppingList = async () => {
+  const loadCompositions = async () => {
     setLoading(true);
     try {
-      const { data: compositions, error: compositionsError } = await supabase
+      const { data, error } = await supabase
         .from('compositions')
-        .select('id, name');
+        .select('*')
+        .order('name');
 
-      if (compositionsError) {
-        console.error('Error loading compositions:', compositionsError);
+      if (error) {
+        console.error('Error loading compositions:', error);
         return;
       }
 
-      let allIngredients: { name: string; amount: number; unit: string; compositionName: string }[] = [];
-
-      for (const composition of compositions || []) {
-        const { data: ingredientsData, error: ingredientsError } = await supabase
-          .from('composition_ingredients')
-          .select('ingredient_name, amount, unit')
-          .eq('composition_id', composition.id);
-
-        if (ingredientsError) {
-          console.error('Error loading ingredients for composition:', ingredientsError);
-          continue;
-        }
-
-        if (ingredientsData) {
-          allIngredients = allIngredients.concat(ingredientsData.map(item => ({
-            name: item.ingredient_name,
-            amount: item.amount,
-            unit: item.unit,
-            compositionName: composition.name
-          })));
-        }
-      }
-
-      const shoppingListItems: ShoppingItem[] = [];
-      const aggregatedIngredients: Record<string, { neededAmount: number; unit: string }> = {};
-
-      for (const ingredient of allIngredients) {
-        const { name, amount, unit } = ingredient;
-
-        if (aggregatedIngredients[name]) {
-          aggregatedIngredients[name].neededAmount += amount;
-        } else {
-          aggregatedIngredients[name] = { neededAmount: amount, unit: unit };
-        }
-      }
-
-      for (const ingredientName in aggregatedIngredients) {
-        const neededAmount = aggregatedIngredients[ingredientName].neededAmount;
-        const unit = aggregatedIngredients[ingredientName].unit;
-        const currentAmount = ingredients[ingredientName] || 0;
-        const pricePerUnit = prices[ingredientName] || 0;
-        const neededBuyAmount = Math.max(0, neededAmount - currentAmount);
-        const totalCost = neededBuyAmount * pricePerUnit;
-
-        shoppingListItems.push({
-          name: ingredientName,
-          neededAmount: neededAmount,
-          currentAmount: currentAmount,
-          unit: unit,
-          pricePerUnit: pricePerUnit,
-          totalCost: totalCost
-        });
-      }
-
-      setShoppingItems(shoppingListItems);
+      setCompositions(data || []);
     } catch (error) {
-      console.error('Error loading shopping list:', error);
+      console.error('Error loading compositions:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCheck = (name: string) => {
-    setCheckedItems(prev => {
-      const newCheckedItems = new Set(prev);
-      if (newCheckedItems.has(name)) {
-        newCheckedItems.delete(name);
-      } else {
-        newCheckedItems.add(name);
-      }
-      return newCheckedItems;
-    });
-  };
+  useEffect(() => {
+    loadCompositions();
+  }, []);
 
-  const handleRefresh = async () => {
-    setLoading(true);
-    await loadShoppingList();
-    setLoading(false);
-  };
-
-  const handleCustomAmountChange = (name: string, value: number) => {
-    setCustomAmounts(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handlePriceUpdate = async (ingredient: string, price: number) => {
-    console.log('ShoppingList - updating price:', ingredient, price);
-    await updatePrice(ingredient, price);
+  const handleQuantityChange = (compositionId: string, quantity: number) => {
+    setShoppingPlan(prev => ({
+      ...prev,
+      [compositionId]: Math.max(0, quantity)
+    }));
   };
 
   const calculateTotalCost = () => {
-    let total = 0;
-    for (const item of shoppingItems) {
-      const buyAmount = customAmounts[item.name] !== undefined ? customAmounts[item.name] : Math.max(0, item.neededAmount - item.currentAmount);
-      total += buyAmount * item.pricePerUnit;
-    }
-    return total;
+    return compositions.reduce((total, composition) => {
+      const quantity = shoppingPlan[composition.id] || 0;
+      const price = composition.sale_price || 0;
+      return total + (quantity * price);
+    }, 0);
   };
 
-  useEffect(() => {
-    loadShoppingList();
-  }, [ingredients, warningThresholds]);
-
-  const renderCategorySection = (title: string, items: string[], categoryItems: ShoppingItem[], unit: string, threshold?: number) => {
-    if (categoryItems.length === 0) return null;
-
-    return (
-      <div>
-        <h3 className="text-lg font-semibold mb-2">
-          {title}
-          {threshold !== undefined && (
-            <span className="text-sm text-gray-500 ml-2">
-              (Próg ostrzegawczy: {threshold}{unit})
-            </span>
-          )}
-        </h3>
-        <div className="space-y-2">
-          {categoryItems.map(item => (
-            <div key={item.name} className="flex items-center justify-between p-2 border rounded">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id={`check-${item.name}`}
-                  checked={checkedItems.has(item.name)}
-                  onCheckedChange={() => handleCheck(item.name)}
-                />
-                <label
-                  htmlFor={`check-${item.name}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {item.name}
-                </label>
-                <Badge variant="outline">
-                  Potrzeba: {item.neededAmount} {item.unit}
-                </Badge>
-                <Badge variant="secondary">
-                  Obecnie: {item.currentAmount} {item.unit}
-                </Badge>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Cena za jednostkę"
-                  className="w-24"
-                  value={item.pricePerUnit}
-                  onChange={(e) => handlePriceUpdate(item.name, parseFloat(e.target.value) || 0)}
-                />
-                <Input
-                  type="number"
-                  placeholder="Ilość do kupienia"
-                  className="w-24"
-                  value={customAmounts[item.name] !== undefined ? customAmounts[item.name] : Math.max(0, item.neededAmount - item.currentAmount)}
-                  onChange={(e) => handleCustomAmountChange(item.name, parseFloat(e.target.value))}
-                />
-                <Button variant="destructive" size="icon" disabled={!checkedItems.has(item.name)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+  const calculateNettoPrice = (bruttoPrice: number) => {
+    return bruttoPrice / 1.23;
   };
 
-  const herbItems = shoppingItems.filter(item => herbs.includes(item.name));
-  const oilItems = shoppingItems.filter(item => oils.includes(item.name));
-  const otherItems = shoppingItems.filter(item => others.includes(item.name));
+  const calculateVAT = (bruttoPrice: number) => {
+    return bruttoPrice - calculateNettoPrice(bruttoPrice);
+  };
+
+  const totalBrutto = calculateTotalCost();
+  const totalNetto = calculateNettoPrice(totalBrutto);
+  const totalVAT = calculateVAT(totalBrutto);
+
+  const generateShoppingListPDF = () => {
+    // Tu będzie implementacja generowania PDF
+    console.log('Generowanie PDF listy zakupów...');
+  };
+
+  const clearShoppingList = () => {
+    setShoppingPlan({});
+  };
 
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Lista Zakupów</CardTitle>
-          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Odśwież
-          </Button>
+          <CardTitle>Lista Zakupów - Planowanie Zestawów</CardTitle>
+          <div className="flex gap-2">
+            <Button 
+              variant="destructive" 
+              onClick={clearShoppingList}
+              disabled={Object.values(shoppingPlan).every(q => q === 0)}
+            >
+              Wyczyść
+            </Button>
+            <Button variant="outline" onClick={loadCompositions} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Odśwież
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
-          <p>Ładowanie listy zakupów...</p>
+          <p>Ładowanie zestawów...</p>
         ) : (
           <>
-            {renderCategorySection(
-              "Surowce Ziołowe (g)", 
-              herbs, 
-              herbItems, 
-              "g", 
-              warningThresholds?.herbs
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {compositions.map(composition => {
+                const quantity = shoppingPlan[composition.id] || 0;
+                const price = composition.sale_price || 0;
+                const totalPrice = quantity * price;
+                const nettoPrice = calculateNettoPrice(price);
+
+                return (
+                  <Card 
+                    key={composition.id} 
+                    className={`${composition.color || 'bg-blue-500'} text-white`}
+                  >
+                    <CardContent className="p-4">
+                      <h3 className="font-bold text-lg mb-1">{composition.name}</h3>
+                      <p className="text-sm opacity-90 mb-2">
+                        {composition.description || 'Brak opisu'}
+                      </p>
+                      <p className="text-sm mb-3">
+                        {price.toFixed(2)} zł brutto ({nettoPrice.toFixed(2)} zł netto)
+                      </p>
+                      
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium">
+                          Ilość zestawów
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={quantity}
+                          onChange={(e) => handleQuantityChange(composition.id, parseInt(e.target.value) || 0)}
+                          className="bg-white text-black"
+                          placeholder="0"
+                        />
+                        {quantity > 0 && (
+                          <p className="text-sm font-medium">
+                            Koszt: {totalPrice.toFixed(2)} zł
+                          </p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {compositions.length === 0 && (
+              <p>Brak dostępnych zestawów do planowania.</p>
             )}
 
-            {renderCategorySection(
-              "Olejki Eteryczne (ml)", 
-              oils, 
-              oilItems, 
-              "ml", 
-              warningThresholds?.oils
-            )}
+            {/* Podsumowanie kosztów */}
+            <div className="mt-8 space-y-4">
+              <div className="bg-red-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold text-red-800">
+                  Całkowity koszt zakupów: {totalBrutto.toFixed(2)} zł
+                </h4>
+              </div>
 
-            {renderCategorySection(
-              "Inne (szt/kpl)", 
-              others, 
-              otherItems, 
-              "szt/kpl", 
-              warningThresholds?.others
-            )}
+              <div className="bg-green-50 p-6 rounded-lg">
+                <h4 className="text-lg font-semibold text-green-800 mb-2">
+                  Potencjalny przychód brutto: {totalBrutto.toFixed(2)} zł
+                </h4>
+                <div className="text-sm text-green-700 space-y-1">
+                  <p>Przychód netto: {totalNetto.toFixed(2)} zł</p>
+                  <p>VAT (23%): {totalVAT.toFixed(2)} zł</p>
+                </div>
+              </div>
 
-            {shoppingItems.length === 0 && <p>Brak składników do wyświetlenia na liście zakupów.</p>}
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold text-blue-800">
+                  Potencjalny zysk netto: {totalNetto.toFixed(2)} zł
+                </h4>
+              </div>
 
-            <div className="mt-4">
-              <h4 className="text-lg font-semibold">Podsumowanie</h4>
-              <p>
-                Całkowity kosztorys: {calculateTotalCost().toFixed(2)} zł
-              </p>
+              {totalBrutto > 0 && (
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={generateShoppingListPDF}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Generuj listę zakupów
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}

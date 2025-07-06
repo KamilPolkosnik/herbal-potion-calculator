@@ -340,7 +340,8 @@ export const useSales = () => {
         ingredientUpdates[key].totalUsed += usage.quantity_used;
       });
 
-      for (const [ingredientName, { totalUsed, unit }] of Object.entries(ingredientUpdates)) {
+      for (const [ingredientName, updateData] of Object.entries(ingredientUpdates)) {
+        const { totalUsed, unit } = updateData;
         const totalUsedInBaseUnit = convertToBaseUnit(totalUsed, unit);
         
         const { error: updateError } = await supabase.rpc('update_ingredient_amount', {
