@@ -14,7 +14,7 @@ export const useInvoiceNumbering = () => {
       // Get all transactions with their assigned invoice numbers
       const { data: transactions, error } = await supabase
         .from('sales_transactions')
-        .select('id, invoice_number, correction_invoice_number, is_reversed');
+        .select('id, invoice_number, is_reversed');
 
       if (error) throw error;
 
@@ -28,11 +28,8 @@ export const useInvoiceNumbering = () => {
           const invoiceNumber = transaction.invoice_number.toString().padStart(9, '0');
           numbers[transaction.id] = invoiceNumber;
           
-          // Format correction invoice number if exists
-          if (transaction.correction_invoice_number && transaction.is_reversed) {
-            const correctionNumber = `K/${transaction.correction_invoice_number.toString().padStart(9, '0')}`;
-            correctionNums[transaction.id] = correctionNumber;
-          }
+          // For now, we'll assign correction numbers when needed
+          // This will be handled in assignCorrectionNumber function
         });
       }
 
@@ -61,22 +58,10 @@ export const useInvoiceNumbering = () => {
 
   const assignCorrectionNumber = async (transactionId: string): Promise<string> => {
     try {
-      // Get next correction invoice number
-      const { data, error } = await supabase.rpc('nextval', { 
-        sequence_name: 'correction_invoice_number_seq' 
-      });
-      
-      if (error) throw error;
-      
-      const nextNumber = data;
-      
-      // Update the transaction with the correction invoice number
-      const { error: updateError } = await supabase
-        .from('sales_transactions')
-        .update({ correction_invoice_number: nextNumber })
-        .eq('id', transactionId);
-        
-      if (updateError) throw updateError;
+      // For now, we'll generate a simple sequential number
+      // This should be replaced with proper database sequence when the column exists
+      const existingNumbers = Object.values(correctionNumbers);
+      const nextNumber = existingNumbers.length + 1;
       
       // Format the correction number
       const formattedNumber = `K/${nextNumber.toString().padStart(9, '0')}`;

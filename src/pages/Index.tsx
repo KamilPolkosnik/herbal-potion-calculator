@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -36,6 +35,11 @@ const Index = () => {
     loading: summaryLoading, 
     refreshSummary 
   } = useSummaryData();
+
+  console.log('Index - Current user:', user);
+  console.log('Index - Company settings:', settings);
+  console.log('Index - Show UES generator:', settings?.show_ues_generator);
+  console.log('Index - User role:', user?.role);
 
   // Nasłuchuj zdarzenia odświeżania podsumowania
   useEffect(() => {
@@ -291,7 +295,7 @@ const Index = () => {
             )}
 
             {/* UES Report Generator - na czwartej pozycji (tylko dla administratorów i jeśli włączone) */}
-            {user?.role === 'admin' && settings?.show_ues_generator && (
+            {user?.role === 'admin' && settings?.show_ues_generator === true && (
               <div className="w-full">
                 <Card className="w-full">
                   <CardHeader className="px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6">

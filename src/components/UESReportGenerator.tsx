@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,9 +11,11 @@ const UESReportGenerator: React.FC = () => {
   const { transactions } = useSales();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+  console.log('UESReportGenerator - transactions count:', transactions?.length || 0);
+
   // Generate available years from transactions
   const availableYears = React.useMemo(() => {
-    if (!transactions.length) return [new Date().getFullYear()];
+    if (!transactions || transactions.length === 0) return [new Date().getFullYear()];
     
     const years = new Set<number>();
     transactions.forEach(transaction => {
@@ -26,10 +29,14 @@ const UESReportGenerator: React.FC = () => {
   }, [transactions]);
 
   const generateUESReport = () => {
+    console.log('Generating UES report for year:', selectedYear);
+    
     // Filter transactions for selected year (only active transactions)
     const yearTransactions = transactions
       .filter(t => !t.is_reversed && new Date(t.created_at).getFullYear() === selectedYear)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    console.log('Filtered transactions for UES:', yearTransactions.length);
 
     if (yearTransactions.length === 0) {
       alert('Brak transakcji w wybranym roku');
