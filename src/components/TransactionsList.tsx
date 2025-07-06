@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import InvoiceGenerator from './InvoiceGenerator';
+import CorrectionInvoiceGenerator from './CorrectionInvoiceGenerator';
 
 interface TransactionsListProps {
   onDataChange?: () => void | Promise<void>;
@@ -324,33 +325,44 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                           </TableCell>
                           <TableCell className="px-1 w-20">
                             <div className="flex flex-col gap-1 w-full min-w-0">
-                              <InvoiceGenerator 
-                                transaction={group.transaction}
-                                companySettings={companySettings}
-                                transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
-                              />
                               {!group.transaction.is_reversed ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
-                                  className="text-xs px-1 py-1 h-6 w-full min-w-0"
-                                >
-                                  <Undo2 className="w-3 h-3 mr-1 shrink-0" />
-                                  <span className="truncate">Cofnij</span>
-                                </Button>
-                              ) : (
-                                user?.role === 'admin' && (
+                                // Przyciski dla aktywnych transakcji
+                                <>
+                                  <InvoiceGenerator 
+                                    transaction={group.transaction}
+                                    companySettings={companySettings}
+                                    transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
+                                  />
                                   <Button
-                                    variant="destructive"
+                                    variant="outline"
                                     size="sm"
-                                    onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
+                                    onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
                                     className="text-xs px-1 py-1 h-6 w-full min-w-0"
                                   >
-                                    <Trash2 className="w-3 h-3 mr-1 shrink-0" />
-                                    <span className="truncate">Usuń</span>
+                                    <Undo2 className="w-3 h-3 mr-1 shrink-0" />
+                                    <span className="truncate">Cofnij</span>
                                   </Button>
-                                )
+                                </>
+                              ) : (
+                                // Przyciski dla cofniętych transakcji
+                                <>
+                                  <CorrectionInvoiceGenerator 
+                                    transaction={group.transaction}
+                                    companySettings={companySettings}
+                                    originalInvoiceNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
+                                  />
+                                  {user?.role === 'admin' && (
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
+                                      className="text-xs px-1 py-1 h-6 w-full min-w-0"
+                                    >
+                                      <Trash2 className="w-3 h-3 mr-1 shrink-0" />
+                                      <span className="truncate">Usuń</span>
+                                    </Button>
+                                  )}
+                                </>
                               )}
                             </div>
                           </TableCell>
