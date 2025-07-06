@@ -4,11 +4,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingCart, Package, User, AlertTriangle, Trash2, Plus } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ShoppingCart, Package, User, AlertTriangle, Trash2, Plus, CalendarIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSales, BuyerData } from '@/hooks/useSales';
 import { useToast } from '@/hooks/use-toast';
 import { convertToBaseUnit, areUnitsCompatible } from '@/utils/unitConverter';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface Composition {
   id: string;
@@ -40,6 +45,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   const [processing, setProcessing] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [buyerData, setBuyerData] = useState<BuyerData>({});
+  const [saleDate, setSaleDate] = useState<Date>(new Date());
   const { processSale, processCartSale, checkIngredientAvailability } = useSales();
   const { toast } = useToast();
 
@@ -342,7 +348,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
 
     setProcessing(true);
     try {
-      // Process entire cart as single transaction
+      // Process entire cart as single transaction with selected sale date
       await processCartSale(
         cart.map(item => ({
           compositionId: item.compositionId,
@@ -351,7 +357,8 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
           unitPrice: item.unitPrice,
           ingredients: item.ingredients
         })),
-        buyerData
+        buyerData,
+        saleDate
       );
 
       toast({
@@ -391,6 +398,44 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
 
   return (
     <div className="space-y-6">
+      {/* Data sprzedaży */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5" />
+            Data Sprzedaży
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col space-y-2">
+            <Label htmlFor="sale-date">Wybierz datę sprzedaży</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !saleDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {saleDate ? format(saleDate, "dd.MM.yyyy", { locale: pl }) : <span>Wybierz datę</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={saleDate}
+                  onSelect={(date) => date && setSaleDate(date)}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Dane kupującego */}
       <Card>
         <CardHeader>
@@ -642,9 +687,12 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
               ))}
 
               <div className="border-t pt-4">
-                <div className="flex justify-between items-center text-lg font-semibold">
+                <div className="flex justify-between items-center text-lg font-semibold mb-2">
                   <span>Łączna wartość:</span>
                   <span>{getTotalCartValue().toFixed(2)} zł</span>
+                </div>
+                <div className="text-sm text-gray-600 mb-4">
+                  Data sprzedaży: {format(saleDate, "dd.MM.yyyy", { locale: pl })}
                 </div>
               </div>
 
