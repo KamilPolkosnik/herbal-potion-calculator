@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,13 +8,13 @@ import { Trash2, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
+import { useIngredientCategories } from '@/hooks/useIngredientCategories';
 
 interface ShoppingItem {
   name: string;
   neededAmount: number;
   currentAmount: number;
   unit: string;
-  userCategory?: string;
   pricePerUnit: number;
   totalCost: number;
 }
@@ -31,88 +32,16 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ warningThresholds }) => {
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [customAmounts, setCustomAmounts] = useState<Record<string, number>>({});
-  const [userCategories, setUserCategories] = useState<Record<string, string>>({});
-  const { ingredients, prices } = useIngredients();
+  const { ingredients, prices, updatePrice } = useIngredients();
 
-  const loadUserCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('composition_ingredients')
-        .select('ingredient_name, unit');
+  // Prepare ingredient names and units for the categorization hook
+  const ingredientNames = shoppingItems.map(item => item.name);
+  const ingredientUnits = shoppingItems.reduce((acc, item) => {
+    acc[item.name] = item.unit;
+    return acc;
+  }, {} as Record<string, string>);
 
-      if (error) {
-        console.error('Error loading user categories:', error);
-        return;
-      }
-
-      const categories: Record<string, string> = {};
-      
-      data?.forEach(item => {
-        const ingredientName = item.ingredient_name;
-        const unit = item.unit;
-        
-        if (unit === 'krople') {
-          categories[ingredientName] = 'olejek';
-        } else if (unit === 'szt.' || unit === 'szt' || unit === 'kpl.' || unit === 'kpl') {
-          categories[ingredientName] = 'inne';
-        } else if (unit === 'g') {
-          categories[ingredientName] = 'zioło';
-        }
-      });
-
-      console.log('Shopping list loaded user categories:', categories);
-      setUserCategories(categories);
-    } catch (error) {
-      console.error('Error loading user categories:', error);
-    }
-  };
-
-  const categorizeIngredient = (ingredientName: string, unit: string): 'herbs' | 'oils' | 'others' => {
-    console.log(`Shopping list - categorizing: ${ingredientName}, unit: ${unit}, user category: ${userCategories[ingredientName]}`);
-    
-    // First check user-defined category
-    if (userCategories[ingredientName]) {
-      const userCategory = userCategories[ingredientName];
-      if (userCategory === 'olejek') {
-        console.log(`${ingredientName} -> oils (user category)`);
-        return 'oils';
-      } else if (userCategory === 'inne') {
-        console.log(`${ingredientName} -> others (user category)`);
-        return 'others';
-      } else if (userCategory === 'zioło') {
-        console.log(`${ingredientName} -> herbs (user category)`);
-        return 'herbs';
-      }
-    }
-
-    const ingredientLower = ingredientName.toLowerCase();
-    
-    // Fall back to name-based detection
-    if (ingredientLower.includes('olejek')) {
-      console.log(`${ingredientName} -> oils (by name)`);
-      return 'oils';
-    } else if (ingredientLower.includes('etykiet') || 
-               ingredientLower.includes('worek') || 
-               ingredientLower.includes('woreczek') || 
-               ingredientLower.includes('pojemnik') ||
-               ingredientLower.includes('naklejk') ||
-               ingredientLower.includes('opakow')) {
-      console.log(`${ingredientName} -> others (by name)`);
-      return 'others';
-    } else {
-      // Fall back to unit-based detection
-      if (unit === 'ml') {
-        console.log(`${ingredientName} -> oils (by unit ml)`);
-        return 'oils';
-      } else if (unit === 'szt' || unit === 'kpl') {
-        console.log(`${ingredientName} -> others (by unit ${unit})`);
-        return 'others';
-      } else {
-        console.log(`${ingredientName} -> herbs (by unit g or fallback)`);
-        return 'herbs';
-      }
-    }
-  };
+  const { herbs, oils, others } = useIngredientCategories(ingredientNames, ingredientUnits);
 
   const loadShoppingList = async () => {
     setLoading(true);
@@ -176,8 +105,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ warningThresholds }) => {
           currentAmount: currentAmount,
           unit: unit,
           pricePerUnit: pricePerUnit,
-          totalCost: totalCost,
-          userCategory: userCategories[ingredientName]
+          totalCost: totalCost
         });
       }
 
@@ -203,13 +131,17 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ warningThresholds }) => {
 
   const handleRefresh = async () => {
     setLoading(true);
-    await loadUserCategories();
     await loadShoppingList();
     setLoading(false);
   };
 
   const handleCustomAmountChange = (name: string, value: number) => {
     setCustomAmounts(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePriceUpdate = async (ingredient: string, price: number) => {
+    console.log('ShoppingList - updating price:', ingredient, price);
+    await updatePrice(ingredient, price);
   };
 
   const calculateTotalCost = () => {
@@ -222,17 +154,74 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ warningThresholds }) => {
   };
 
   useEffect(() => {
-    const initializeData = async () => {
-      await loadUserCategories();
-      await loadShoppingList();
-    };
-    
-    initializeData();
+    loadShoppingList();
   }, [ingredients, warningThresholds]);
 
-  const herbs = shoppingItems.filter(item => categorizeIngredient(item.name, item.unit) === 'herbs');
-  const oils = shoppingItems.filter(item => categorizeIngredient(item.name, item.unit) === 'oils');
-  const others = shoppingItems.filter(item => categorizeIngredient(item.name, item.unit) === 'others');
+  const renderCategorySection = (title: string, items: string[], categoryItems: ShoppingItem[], unit: string, threshold?: number) => {
+    if (categoryItems.length === 0) return null;
+
+    return (
+      <div>
+        <h3 className="text-lg font-semibold mb-2">
+          {title}
+          {threshold !== undefined && (
+            <span className="text-sm text-gray-500 ml-2">
+              (Próg ostrzegawczy: {threshold}{unit})
+            </span>
+          )}
+        </h3>
+        <div className="space-y-2">
+          {categoryItems.map(item => (
+            <div key={item.name} className="flex items-center justify-between p-2 border rounded">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={`check-${item.name}`}
+                  checked={checkedItems.has(item.name)}
+                  onCheckedChange={() => handleCheck(item.name)}
+                />
+                <label
+                  htmlFor={`check-${item.name}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {item.name}
+                </label>
+                <Badge variant="outline">
+                  Potrzeba: {item.neededAmount} {item.unit}
+                </Badge>
+                <Badge variant="secondary">
+                  Obecnie: {item.currentAmount} {item.unit}
+                </Badge>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Cena za jednostkę"
+                  className="w-24"
+                  value={item.pricePerUnit}
+                  onChange={(e) => handlePriceUpdate(item.name, parseFloat(e.target.value) || 0)}
+                />
+                <Input
+                  type="number"
+                  placeholder="Ilość do kupienia"
+                  className="w-24"
+                  value={customAmounts[item.name] !== undefined ? customAmounts[item.name] : Math.max(0, item.neededAmount - item.currentAmount)}
+                  onChange={(e) => handleCustomAmountChange(item.name, parseFloat(e.target.value))}
+                />
+                <Button variant="destructive" size="icon" disabled={!checkedItems.has(item.name)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const herbItems = shoppingItems.filter(item => herbs.includes(item.name));
+  const oilItems = shoppingItems.filter(item => oils.includes(item.name));
+  const otherItems = shoppingItems.filter(item => others.includes(item.name));
 
   return (
     <Card>
@@ -250,154 +239,28 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ warningThresholds }) => {
           <p>Ładowanie listy zakupów...</p>
         ) : (
           <>
-            {herbs.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Surowce Ziołowe (g)
-                  {warningThresholds?.herbs !== undefined && (
-                    <span className="text-sm text-gray-500 ml-2">
-                      (Próg ostrzegawczy: {warningThresholds.herbs}g)
-                    </span>
-                  )}
-                </h3>
-                <div className="space-y-2">
-                  {herbs.map(item => (
-                    <div key={item.name} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Checkbox
-                          id={`check-${item.name}`}
-                          checked={checkedItems.has(item.name)}
-                          onCheckedChange={() => handleCheck(item.name)}
-                        />
-                        <label
-                          htmlFor={`check-${item.name}`}
-                          className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {item.name}
-                        </label>
-                        <Badge variant="outline" className="ml-2">
-                          Potrzeba: {item.neededAmount} {item.unit}
-                        </Badge>
-                        <Badge variant="secondary" className="ml-2">
-                          Obecnie: {item.currentAmount} {item.unit}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center">
-                        <Input
-                          type="number"
-                          placeholder="Ilość do kupienia"
-                          className="w-24 mr-2"
-                          value={customAmounts[item.name] !== undefined ? customAmounts[item.name] : Math.max(0, item.neededAmount - item.currentAmount)}
-                          onChange={(e) => handleCustomAmountChange(item.name, parseFloat(e.target.value))}
-                        />
-                        <Button variant="destructive" size="icon" disabled={!checkedItems.has(item.name)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {renderCategorySection(
+              "Surowce Ziołowe (g)", 
+              herbs, 
+              herbItems, 
+              "g", 
+              warningThresholds?.herbs
             )}
 
-            {oils.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Olejki Eteryczne (ml)
-                  {warningThresholds?.oils !== undefined && (
-                    <span className="text-sm text-gray-500 ml-2">
-                      (Próg ostrzegawczy: {warningThresholds.oils}ml)
-                    </span>
-                  )}
-                </h3>
-                <div className="space-y-2">
-                  {oils.map(item => (
-                    <div key={item.name} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Checkbox
-                          id={`check-${item.name}`}
-                          checked={checkedItems.has(item.name)}
-                          onCheckedChange={() => handleCheck(item.name)}
-                        />
-                        <label
-                          htmlFor={`check-${item.name}`}
-                          className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {item.name}
-                        </label>
-                        <Badge variant="outline" className="ml-2">
-                          Potrzeba: {item.neededAmount} {item.unit}
-                        </Badge>
-                        <Badge variant="secondary" className="ml-2">
-                          Obecnie: {item.currentAmount} {item.unit}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center">
-                        <Input
-                          type="number"
-                          placeholder="Ilość do kupienia"
-                          className="w-24 mr-2"
-                          value={customAmounts[item.name] !== undefined ? customAmounts[item.name] : Math.max(0, item.neededAmount - item.currentAmount)}
-                          onChange={(e) => handleCustomAmountChange(item.name, parseFloat(e.target.value))}
-                        />
-                        <Button variant="destructive" size="icon" disabled={!checkedItems.has(item.name)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {renderCategorySection(
+              "Olejki Eteryczne (ml)", 
+              oils, 
+              oilItems, 
+              "ml", 
+              warningThresholds?.oils
             )}
 
-            {others.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-2">
-                  Inne (szt/kpl)
-                  {warningThresholds?.others !== undefined && (
-                    <span className="text-sm text-gray-500 ml-2">
-                      (Próg ostrzegawczy: {warningThresholds.others}szt/kpl)
-                    </span>
-                  )}
-                </h3>
-                <div className="space-y-2">
-                  {others.map(item => (
-                    <div key={item.name} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Checkbox
-                          id={`check-${item.name}`}
-                          checked={checkedItems.has(item.name)}
-                          onCheckedChange={() => handleCheck(item.name)}
-                        />
-                        <label
-                          htmlFor={`check-${item.name}`}
-                          className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          {item.name}
-                        </label>
-                        <Badge variant="outline" className="ml-2">
-                          Potrzeba: {item.neededAmount} {item.unit}
-                        </Badge>
-                        <Badge variant="secondary" className="ml-2">
-                          Obecnie: {item.currentAmount} {item.unit}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center">
-                        <Input
-                          type="number"
-                          placeholder="Ilość do kupienia"
-                          className="w-24 mr-2"
-                          value={customAmounts[item.name] !== undefined ? customAmounts[item.name] : Math.max(0, item.neededAmount - item.currentAmount)}
-                          onChange={(e) => handleCustomAmountChange(item.name, parseFloat(e.target.value))}
-                        />
-                        <Button variant="destructive" size="icon" disabled={!checkedItems.has(item.name)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {renderCategorySection(
+              "Inne (szt/kpl)", 
+              others, 
+              otherItems, 
+              "szt/kpl", 
+              warningThresholds?.others
             )}
 
             {shoppingItems.length === 0 && <p>Brak składników do wyświetlenia na liście zakupów.</p>}
