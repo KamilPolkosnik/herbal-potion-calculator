@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Copy } from 'lucide-react';
 import { SalesTransaction } from '@/hooks/useSales';
@@ -19,7 +18,23 @@ const CorrectionInvoiceGenerator: React.FC<CorrectionInvoiceGeneratorProps> = ({
   companySettings, 
   originalInvoiceNumber 
 }) => {
-  const { getInvoiceNumber } = useInvoiceNumbering();
+  const { getCorrectionNumber, assignCorrectionNumber } = useInvoiceNumbering();
+  const [correctionNumber, setCorrectionNumber] = useState<string>('');
+
+  useEffect(() => {
+    const loadCorrectionNumber = async () => {
+      let number = getCorrectionNumber(transaction.id);
+      
+      // If no correction number exists, assign one
+      if (number === 'K/000000000') {
+        number = await assignCorrectionNumber(transaction.id);
+      }
+      
+      setCorrectionNumber(number);
+    };
+    
+    loadCorrectionNumber();
+  }, [transaction.id, getCorrectionNumber, assignCorrectionNumber]);
 
   const convertToWords = (amount: number): string => {
     const units = ['', 'jeden', 'dwa', 'trzy', 'cztery', 'pięć', 'sześć', 'siedem', 'osiem', 'dziewięć'];
@@ -111,7 +126,7 @@ const CorrectionInvoiceGenerator: React.FC<CorrectionInvoiceGeneratorProps> = ({
         const matchWithPrice = part.match(/^(\d+)x (.+) \[(\d+(?:\.\d{2})?)zł\]$/);
         if (matchWithPrice) {
           return {
-            name: matchWithPrice[2],
+            name: `${matchWithPrice[2]} (zwrot)`,
             quantity: -parseInt(matchWithPrice[1]), // Ujemna ilość
             unitPrice: -parseFloat(matchWithPrice[3]) // Ujemna cena
           };
@@ -120,14 +135,14 @@ const CorrectionInvoiceGenerator: React.FC<CorrectionInvoiceGeneratorProps> = ({
         const match = part.match(/^(\d+)x (.+)$/);
         if (match) {
           return {
-            name: match[2],
+            name: `${match[2]} (zwrot)`,
             quantity: -parseInt(match[1]), // Ujemna ilość
             unitPrice: -transaction.unit_price // Ujemna cena
           };
         }
         
         return {
-          name: part,
+          name: `${part} (zwrot)`,
           quantity: -1, // Ujemna ilość
           unitPrice: -transaction.unit_price // Ujemna cena
         };
@@ -136,21 +151,18 @@ const CorrectionInvoiceGenerator: React.FC<CorrectionInvoiceGeneratorProps> = ({
       items = itemsWithPrices;
     } else {
       items = [{
-        name: transaction.composition_name,
+        name: `${transaction.composition_name} (zwrot)`,
         quantity: -transaction.quantity, // Ujemna ilość
         unitPrice: -transaction.unit_price // Ujemna cena
       }];
     }
-
-    // Generuj nowy numer faktury korygującej
-    const newCorrectionNumber = Date.now().toString().slice(-9).padStart(9, '0');
 
     const invoiceContent = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Faktura Korygująca ${newCorrectionNumber}</title>
+    <title>Faktura Korygująca ${correctionNumber}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
         .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
@@ -189,7 +201,7 @@ const CorrectionInvoiceGenerator: React.FC<CorrectionInvoiceGeneratorProps> = ({
         </div>
     </div>
     
-    <div class="invoice-title">FAKTURA KORYGUJĄCA ${newCorrectionNumber}</div>
+    <div class="invoice-title">FAKTURA KORYGUJĄCA ${correctionNumber}</div>
     <div class="correction-reference">Do faktury: ${originalInvoiceNumber}</div>
     <div class="original-mark">${isOriginal ? 'ORYGINAŁ' : 'KOPIA'}</div>
     
