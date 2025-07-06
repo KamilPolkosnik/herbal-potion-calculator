@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,8 +19,6 @@ export interface Transaction {
   buyer_tax_id: string | null;
   buyer_address: string | null;
 }
-
-export type SalesTransaction = Transaction;
 
 export interface BuyerData {
   name?: string;
@@ -71,12 +68,12 @@ export const useSales = () => {
     compositionName: string,
     quantity: number,
     unitPrice: number,
-    buyerData: BuyerData = {},
-    saleDate?: Date
+    buyerData: BuyerData = {}
   ) => {
     try {
       const totalPrice = quantity * unitPrice;
 
+      // Create buyer address if address components exist
       let buyerAddress = null;
       if (buyerData.street || buyerData.house_number || buyerData.city || buyerData.postal_code) {
         const addressParts = [
@@ -89,26 +86,22 @@ export const useSales = () => {
         buyerAddress = addressParts.join(', ');
       }
 
-      const transactionData: any = {
-        composition_id: compositionId,
-        composition_name: compositionName,
-        quantity: quantity,
-        unit_price: unitPrice,
-        total_price: totalPrice,
-        buyer_name: buyerData.name || null,
-        buyer_email: buyerData.email || null,
-        buyer_phone: buyerData.phone || null,
-        buyer_tax_id: buyerData.tax_id || null,
-        buyer_address: buyerAddress
-      };
-
-      if (saleDate) {
-        transactionData.created_at = saleDate.toISOString();
-      }
-
       const { data: transaction, error } = await supabase
         .from('sales_transactions')
-        .insert(transactionData)
+        .insert([
+          {
+            composition_id: compositionId,
+            composition_name: compositionName,
+            quantity: quantity,
+            unit_price: unitPrice,
+            total_price: totalPrice,
+            buyer_name: buyerData.name || null,
+            buyer_email: buyerData.email || null,
+            buyer_phone: buyerData.phone || null,
+            buyer_tax_id: buyerData.tax_id || null,
+            buyer_address: buyerAddress
+          },
+        ])
         .select()
         .single();
 
@@ -119,7 +112,7 @@ export const useSales = () => {
         description: `Sprzedaż dla ${compositionName} została zarejestrowana`,
       });
 
-      await loadTransactions();
+      await loadTransactions(); // Refresh transactions list
       return transaction;
     } catch (error) {
       console.error('Error processing sale:', error);
@@ -146,7 +139,7 @@ export const useSales = () => {
         description: "Transakcja została cofnięta",
       });
 
-      await loadTransactions();
+      await loadTransactions(); // Refresh transactions list
     } catch (error) {
       console.error('Error reversing transaction:', error);
       toast({
@@ -171,7 +164,7 @@ export const useSales = () => {
         description: "Transakcja została usunięta",
       });
 
-      await loadTransactions();
+      await loadTransactions(); // Refresh transactions list
     } catch (error) {
       console.error('Error deleting transaction:', error);
       toast({
@@ -211,6 +204,7 @@ export const useSales = () => {
           continue;
         }
 
+        // Check if units are compatible
         if (currentIngredient.unit !== ingredient.unit) {
           console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${currentIngredient.unit}, wymagane w ${ingredient.unit}`);
           missingIngredients.push(
@@ -254,13 +248,16 @@ export const useSales = () => {
       console.log('Buyer data:', buyerData);
       console.log('Sale date:', saleDate);
 
+      // Calculate total quantity and price
       const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
       const totalPrice = cartItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
       
+      // Create composition name by combining all items
       const compositionName = cartItems.map(item => 
         `${item.quantity}x ${item.compositionName}${item.unitPrice > 0 ? ` [${item.unitPrice.toFixed(2)}zł]` : ''}`
       ).join(', ');
 
+      // Create buyer address if address components exist
       let buyerAddress = null;
       if (buyerData.street || buyerData.house_number || buyerData.city || buyerData.postal_code) {
         const addressParts = [
@@ -273,13 +270,15 @@ export const useSales = () => {
         buyerAddress = addressParts.join(', ');
       }
 
+      // Use the first composition ID for the main transaction
       const mainCompositionId = cartItems[0].compositionId;
 
+      // Insert the transaction record with custom date if provided
       const transactionData: any = {
         composition_id: mainCompositionId,
         composition_name: compositionName,
         quantity: totalQuantity,
-        unit_price: totalPrice / totalQuantity,
+        unit_price: totalPrice / totalQuantity, // Average unit price
         total_price: totalPrice,
         buyer_name: buyerData.name || null,
         buyer_email: buyerData.email || null,
@@ -288,6 +287,7 @@ export const useSales = () => {
         buyer_address: buyerAddress
       };
 
+      // Add custom date if provided
       if (saleDate) {
         transactionData.created_at = saleDate.toISOString();
       }
@@ -302,6 +302,7 @@ export const useSales = () => {
 
       console.log('Transaction created:', transaction);
 
+      // Create ingredient usage records for all cart items
       const allIngredientUsage: Array<{
         transaction_id: string;
         ingredient_name: string;
@@ -309,6 +310,7 @@ export const useSales = () => {
         unit: string;
       }> = [];
 
+      // Collect all ingredient usage from cart items
       cartItems.forEach(cartItem => {
         cartItem.ingredients.forEach(ingredient => {
           const totalUsed = ingredient.amount * cartItem.quantity;
@@ -321,6 +323,7 @@ export const useSales = () => {
         });
       });
 
+      // Insert ingredient usage records
       if (allIngredientUsage.length > 0) {
         const { error: usageError } = await supabase
           .from('transaction_ingredient_usage')
@@ -330,8 +333,10 @@ export const useSales = () => {
         console.log('Ingredient usage records created:', allIngredientUsage.length);
       }
 
+      // Update ingredient amounts and create movements
       const ingredientUpdates: Record<string, { totalUsed: number; unit: string }> = {};
       
+      // Aggregate ingredient usage
       allIngredientUsage.forEach(usage => {
         const key = usage.ingredient_name;
         if (!ingredientUpdates[key]) {
@@ -340,10 +345,12 @@ export const useSales = () => {
         ingredientUpdates[key].totalUsed += usage.quantity_used;
       });
 
-      for (const [ingredientName, updateData] of Object.entries(ingredientUpdates)) {
-        const { totalUsed, unit } = updateData;
+      // Update ingredient amounts and create movement records
+      for (const [ingredientName, { totalUsed, unit }] of Object.entries(ingredientUpdates)) {
+        // Convert to base unit for amount update
         const totalUsedInBaseUnit = convertToBaseUnit(totalUsed, unit);
         
+        // Update ingredient amount
         const { error: updateError } = await supabase.rpc('update_ingredient_amount', {
           ingredient_name: ingredientName,
           amount_change: -totalUsedInBaseUnit
@@ -351,6 +358,7 @@ export const useSales = () => {
 
         if (updateError) throw updateError;
 
+        // Create movement record with original unit
         const { error: movementError } = await supabase
           .from('ingredient_movements')
           .insert({
@@ -368,6 +376,7 @@ export const useSales = () => {
 
       console.log('Ingredient amounts updated for cart sale');
 
+      // Refresh transactions list
       await loadTransactions();
 
       return transaction;
