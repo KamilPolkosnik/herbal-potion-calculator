@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
@@ -53,7 +54,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       console.log('Znalezione składniki w zestawach:', uniqueIngredients);
       setUsedIngredients(uniqueIngredients);
 
-      // Load units from ingredients table first
+      // Load units from ingredients table - this is now the source of truth after migrations
       const { data: ingredientsData, error: ingredientsError } = await supabase
         .from('ingredients')
         .select('name, unit');
@@ -63,62 +64,17 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         return;
       }
 
-      // Load units from composition_ingredients table
-      const { data: compositionIngredientsData, error: compositionError } = await supabase
-        .from('composition_ingredients')
-        .select('ingredient_name, unit')
-        .in('ingredient_name', uniqueIngredients);
-
-      if (compositionError) {
-        console.error('Błąd podczas ładowania jednostek z composition_ingredients:', compositionError);
-        return;
-      }
-
       const unitsMap: Record<string, string> = {};
       
-      // First, create maps for both sources
-      const ingredientsUnitsMap: Record<string, string> = {};
-      const compositionUnitsMap: Record<string, string> = {};
-      
+      // Create units map from ingredients table
       ingredientsData?.forEach(item => {
-        ingredientsUnitsMap[item.name] = item.unit;
+        unitsMap[item.name] = item.unit;
       });
 
-      compositionIngredientsData?.forEach(item => {
-        compositionUnitsMap[item.ingredient_name] = item.unit;
-      });
-
-      // For each unique ingredient, determine the correct unit - po migracji SQL powinny być zsynchronizowane
+      // Apply fallback logic for ingredients not in the ingredients table
       uniqueIngredients.forEach(ingredientName => {
-        const ingredientUnit = ingredientsUnitsMap[ingredientName];
-        const compositionUnit = compositionUnitsMap[ingredientName];
-        
-        console.log(`Składnik: ${ingredientName}`);
-        console.log(`- Jednostka w ingredients: ${ingredientUnit}`);
-        console.log(`- Jednostka w composition_ingredients: ${compositionUnit}`);
-        
-        if (ingredientUnit && compositionUnit) {
-          // Both exist - after SQL migration they should match
-          if (ingredientUnit === compositionUnit) {
-            unitsMap[ingredientName] = ingredientUnit;
-            console.log(`- Używam zgodnej jednostki: ${ingredientUnit}`);
-          } else {
-            // Units don't match - this shouldn't happen after SQL migration, but handle gracefully
-            console.warn(`- NIEZGODNOŚĆ JEDNOSTEK po migracji! ingredients: ${ingredientUnit}, composition: ${compositionUnit}`);
-            unitsMap[ingredientName] = ingredientUnit; // Use ingredients table as source of truth after migration
-            console.log(`- Używam jednostki z ingredients jako źródło prawdy: ${ingredientUnit}`);
-          }
-        } else if (ingredientUnit) {
-          // Only in ingredients table
-          unitsMap[ingredientName] = ingredientUnit;
-          console.log(`- Używam jednostki z ingredients: ${ingredientUnit}`);
-        } else if (compositionUnit) {
-          // Only in composition_ingredients table
-          unitsMap[ingredientName] = compositionUnit;
-          console.log(`- Używam jednostki z composition_ingredients: ${compositionUnit}`);
-        } else {
-          // Neither exists - use fallback logic
-          console.log(`- Brak jednostki w obu tabelach, używam logiki fallback`);
+        if (!unitsMap[ingredientName]) {
+          console.log(`Składnik ${ingredientName} nie istnieje w tabeli ingredients, używam logiki fallback`);
           if (ingredientName.toLowerCase().includes('olejek')) {
             unitsMap[ingredientName] = 'ml';
           } else if (ingredientName.toLowerCase().includes('worek') || 
@@ -129,12 +85,14 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
           } else {
             unitsMap[ingredientName] = 'g';
           }
-          console.log(`- Jednostka domyślna: ${unitsMap[ingredientName]}`);
+          console.log(`Jednostka domyślna dla ${ingredientName}: ${unitsMap[ingredientName]}`);
+        } else {
+          console.log(`Składnik ${ingredientName}: ${unitsMap[ingredientName]}`);
         }
       });
       
       setIngredientUnits(unitsMap);
-      console.log('Finalna mapa jednostek składników po migracji:', unitsMap);
+      console.log('Finalna mapa jednostek składników:', unitsMap);
       
     } catch (error) {
       console.error('Błąd podczas ładowania składników:', error);

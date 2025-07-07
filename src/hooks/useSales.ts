@@ -278,7 +278,7 @@ export const useSales = () => {
       const mainCompositionId = cartItems[0].compositionId;
 
       // Prepare the transaction insert object with proper typing
-      const transactionInsert: any = {
+      const transactionInsert: Record<string, any> = {
         composition_id: mainCompositionId,
         composition_name: compositionName,
         quantity: totalQuantity,
