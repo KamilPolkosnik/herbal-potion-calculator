@@ -53,6 +53,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       console.log('Znalezione składniki w zestawach:', uniqueIngredients);
       setUsedIngredients(uniqueIngredients);
 
+      // Load units from ingredients table first
       const { data: ingredientsData, error: ingredientsError } = await supabase
         .from('ingredients')
         .select('name, unit');
@@ -62,12 +63,34 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         return;
       }
 
+      // Load units from composition_ingredients table
+      const { data: compositionIngredientsData, error: compositionError } = await supabase
+        .from('composition_ingredients')
+        .select('ingredient_name, unit')
+        .in('ingredient_name', uniqueIngredients);
+
+      if (compositionError) {
+        console.error('Błąd podczas ładowania jednostek z composition_ingredients:', compositionError);
+        return;
+      }
+
       const unitsMap: Record<string, string> = {};
+      
+      // First, add units from ingredients table (higher priority)
       ingredientsData?.forEach(item => {
         unitsMap[item.name] = item.unit;
-        console.log(`Składnik: ${item.name}, Jednostka: ${item.unit}`);
+        console.log(`Składnik z ingredients: ${item.name}, Jednostka: ${item.unit}`);
       });
 
+      // Then, add units from composition_ingredients for missing ingredients
+      compositionIngredientsData?.forEach(item => {
+        if (!unitsMap[item.ingredient_name]) {
+          unitsMap[item.ingredient_name] = item.unit;
+          console.log(`Składnik z composition_ingredients: ${item.ingredient_name}, Jednostka: ${item.unit}`);
+        }
+      });
+
+      // Only use fallback logic for ingredients that have no unit in database
       uniqueIngredients.forEach(ingredientName => {
         if (!unitsMap[ingredientName]) {
           if (ingredientName.toLowerCase().includes('olejek')) {
@@ -84,7 +107,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       });
       
       setIngredientUnits(unitsMap);
-      console.log('Mapa jednostek składników:', unitsMap);
+      console.log('Finalna mapa jednostek składników:', unitsMap);
       
     } catch (error) {
       console.error('Błąd podczas ładowania składników:', error);
