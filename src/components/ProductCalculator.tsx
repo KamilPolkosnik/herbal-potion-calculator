@@ -187,7 +187,7 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                       </ul>
                     </div>
                   )}
-
+                            <div className="grid grid-cols-1 gap-3 mb-4">
                     
                     <div className="bg-green-50 p-3 rounded-lg">
                       <p className="text-sm font-medium text-gray-700 mb-1">
