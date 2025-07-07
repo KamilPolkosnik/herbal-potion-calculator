@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -84,20 +85,61 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
 
       if (ingredientsError) throw ingredientsError;
 
-      // Load ingredient units
+      // Load ingredient units from both tables
       const uniqueIngredients = [...new Set(ingredientsData?.map(item => item.ingredient_name) || [])];
-      const { data: ingredientUnitsData, error: unitsError } = await supabase
+      
+      // Load units from ingredients table first (higher priority)
+      const { data: ingredientUnitsFromIngredients, error: unitsError } = await supabase
         .from('ingredients')
         .select('name, unit')
         .in('name', uniqueIngredients);
 
-      if (!unitsError && ingredientUnitsData) {
-        const unitsMap: Record<string, string> = {};
-        ingredientUnitsData.forEach(item => {
+      // Load units from composition_ingredients table
+      const { data: ingredientUnitsFromComposition, error: compositionUnitsError } = await supabase
+        .from('composition_ingredients')
+        .select('ingredient_name, unit')
+        .in('ingredient_name', uniqueIngredients);
+
+      const unitsMap: Record<string, string> = {};
+      
+      // First, add units from ingredients table (higher priority)
+      if (!unitsError && ingredientUnitsFromIngredients) {
+        ingredientUnitsFromIngredients.forEach(item => {
           unitsMap[item.name] = item.unit;
+          console.log(`ShoppingList - Składnik z ingredients: ${item.name}, Jednostka: ${item.unit}`);
         });
-        setIngredientUnits(unitsMap);
       }
+
+      // Then, add units from composition_ingredients for missing ingredients
+      if (!compositionUnitsError && ingredientUnitsFromComposition) {
+        ingredientUnitsFromComposition.forEach(item => {
+          if (!unitsMap[item.ingredient_name]) {
+            unitsMap[item.ingredient_name] = item.unit;
+            console.log(`ShoppingList - Składnik z composition_ingredients: ${item.ingredient_name}, Jednostka: ${item.unit}`);
+          }
+        });
+      }
+
+      // Only use fallback logic for ingredients that have no unit in database
+      uniqueIngredients.forEach(ingredientName => {
+        if (!unitsMap[ingredientName]) {
+          if (ingredientName.toLowerCase().includes('olejek')) {
+            unitsMap[ingredientName] = 'ml';
+          } else if (ingredientName.toLowerCase().includes('worek') || 
+                     ingredientName.toLowerCase().includes('woreczek') || 
+                     ingredientName.toLowerCase().includes('pojemnik') ||
+                     ingredientName.toLowerCase().includes('etykieta') ||
+                     ingredientName.toLowerCase().includes('szt')) {
+            unitsMap[ingredientName] = 'szt';
+          } else {
+            unitsMap[ingredientName] = 'g';
+          }
+          console.log(`ShoppingList - Jednostka domyślna για ${ingredientName}: ${unitsMap[ingredientName]}`);
+        }
+      });
+
+      setIngredientUnits(unitsMap);
+      console.log('ShoppingList - Finalna mapa jednostek składników:', unitsMap);
 
       // Grupuj składniki według composition_id
       const ingredientsByComposition: Record<string, CompositionIngredient[]> = {};
@@ -201,20 +243,28 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     const others: [string, number][] = [];
 
     Object.entries(neededIngredients).forEach(([ingredient, amount]) => {
+      // Use the actual unit from the database instead of fallback logic
       const unit = ingredientUnits[ingredient] || 'g';
+      
+      console.log(`ShoppingList - Kategoryzuję składnik: ${ingredient}, jednostka: ${unit}`);
       
       if (unit === 'ml') {
         oils.push([ingredient, amount]);
+        console.log(`ShoppingList - ${ingredient} dodany do olejków (ml)`);
       } else if (unit === 'g') {
         herbs.push([ingredient, amount]);
-      } else if (unit === 'szt') {
+        console.log(`ShoppingList - ${ingredient} dodany do ziół (g)`);
+      } else if (unit === 'szt' || unit === 'kpl') {
         others.push([ingredient, amount]);
+        console.log(`ShoppingList - ${ingredient} dodany do innych (${unit})`);
       } else {
         // fallback for any other units
         others.push([ingredient, amount]);
+        console.log(`ShoppingList - ${ingredient} dodany do innych (fallback - ${unit})`);
       }
     });
 
+    console.log('ShoppingList - Wyniki kategoryzacji:', { herbs, oils, others });
     return { herbs, oils, others };
   };
 
