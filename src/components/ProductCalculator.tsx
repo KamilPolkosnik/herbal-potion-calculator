@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -85,7 +86,7 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
         const availableDrops = available * 20;
         possibleSets = Math.floor(availableDrops / ingredient.amount);
       } else {
-        // Dla gramów
+        // Dla gramów i sztuk
         possibleSets = Math.floor(available / ingredient.amount);
       }
 
@@ -105,19 +106,42 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
     const ingredientsList = compositionIngredients[compositionId] || [];
     let totalCost = 0;
     
+    console.log(`Obliczanie kosztu dla zestawu ${compositionId}:`);
+    
     for (const ingredient of ingredientsList) {
       const price = prices[ingredient.ingredient_name] || 0;
+      let ingredientCost = 0;
+      
+      console.log(`- Składnik: ${ingredient.ingredient_name}`);
+      console.log(`  Ilość potrzebna: ${ingredient.amount} ${ingredient.unit}`);
+      console.log(`  Cena składnika: ${price} zł`);
       
       if (ingredient.unit === 'krople') {
-        // Przelicz krople na ml i pomnóż przez cenę za ml
+        // Przelicz krople na ml: 20 kropel = 1ml
         const mlNeeded = ingredient.amount / 20;
-        totalCost += mlNeeded * price;
+        ingredientCost = mlNeeded * price;
+        console.log(`  Przeliczenie: ${ingredient.amount} kropli = ${mlNeeded} ml`);
+        console.log(`  Koszt: ${mlNeeded} ml × ${price} zł/ml = ${ingredientCost} zł`);
+      } else if (ingredient.unit === 'g') {
+        // Cena za gram - price to cena za 100g lub za 1g?
+        // Sprawdźmy jak są wprowadzane ceny - czy za 100g czy za 1g
+        ingredientCost = (ingredient.amount * price) / 100; // Zakładam, że cena jest za 100g
+        console.log(`  Koszt: ${ingredient.amount}g × ${price} zł/100g = ${ingredientCost} zł`);
+      } else if (ingredient.unit === 'szt') {
+        // Dla sztuk - cena bezpośrednio
+        ingredientCost = ingredient.amount * price;
+        console.log(`  Koszt: ${ingredient.amount} szt × ${price} zł/szt = ${ingredientCost} zł`);
       } else {
-        // Dla gramów - cena jest za 100g
-        totalCost += (ingredient.amount * price) / 100;
+        // Domyślnie - cena bezpośrednio
+        ingredientCost = ingredient.amount * price;
+        console.log(`  Koszt (domyślnie): ${ingredient.amount} × ${price} = ${ingredientCost} zł`);
       }
+      
+      totalCost += ingredientCost;
+      console.log(`  Koszt składnika: ${ingredientCost} zł`);
     }
     
+    console.log(`Całkowity koszt zestawu: ${totalCost} zł`);
     return totalCost;
   };
 
