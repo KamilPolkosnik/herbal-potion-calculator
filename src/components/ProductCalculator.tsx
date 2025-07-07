@@ -14,7 +14,6 @@ interface Composition {
   name: string;
   description: string;
   color: string;
-  sale_price: number;
 }
 
 interface CompositionIngredient {
@@ -23,9 +22,7 @@ interface CompositionIngredient {
   unit: string;
 }
 
-const VAT_RATE = 0.23; // 23% VAT
-
-const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, prices }) => {
+const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients }) => {
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [compositionIngredients, setCompositionIngredients] = useState<Record<string, CompositionIngredient[]>>({});
   const [loading, setLoading] = useState(true);
@@ -45,7 +42,6 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
 
       if (ingredientsError) throw ingredientsError;
 
-      // Grupuj składniki według composition_id
       const ingredientsByComposition: Record<string, CompositionIngredient[]> = {};
       ingredientsData?.forEach((ingredient) => {
         if (!ingredientsByComposition[ingredient.composition_id]) {
@@ -54,7 +50,7 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
         ingredientsByComposition[ingredient.composition_id].push({
           ingredient_name: ingredient.ingredient_name,
           amount: ingredient.amount,
-          unit: ingredient.unit
+          unit: ingredient.unit,
         });
       });
 
@@ -75,17 +71,15 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
     const ingredientsList = compositionIngredients[compositionId] || [];
     let minSets = Infinity;
     const limitingIngredients: string[] = [];
-    
+
     for (const ingredient of ingredientsList) {
       const available = ingredients[ingredient.ingredient_name] || 0;
       let possibleSets = 0;
 
       if (ingredient.unit === 'krople') {
-        // Przelicz ml na krople: 1ml = 20 kropel
         const availableDrops = available * 20;
         possibleSets = Math.floor(availableDrops / ingredient.amount);
       } else {
-        // Dla gramów
         possibleSets = Math.floor(available / ingredient.amount);
       }
 
@@ -97,45 +91,8 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
         limitingIngredients.push(ingredient.ingredient_name);
       }
     }
-    
+
     return { sets: minSets === Infinity ? 0 : minSets, limitingIngredients };
-  };
-
-  const calculateCostPerSet = (compositionId: string) => {
-    const ingredientsList = compositionIngredients[compositionId] || [];
-    let totalCost = 0;
-    
-    for (const ingredient of ingredientsList) {
-      const price = prices[ingredient.ingredient_name] || 0;
-      
-      if (ingredient.unit === 'krople') {
-        // Przelicz krople na ml i pomnóż przez cenę za ml
-        const mlNeeded = ingredient.amount / 20;
-        totalCost += mlNeeded * price;
-      } else {
-        // Dla gramów - cena jest za 100g
-        totalCost += (ingredient.amount * price) / 100;
-      }
-    }
-    
-    return totalCost;
-  };
-
-  const calculateProfit = (costPerSet: number, salePrice: number) => {
-    return salePrice - costPerSet;
-  };
-
-  const calculateProfitMargin = (costPerSet: number, salePrice: number) => {
-    if (salePrice === 0) return 0;
-    return ((salePrice - costPerSet) / salePrice) * 100;
-  };
-
-  const calculateNetPrice = (grossPrice: number) => {
-    return grossPrice / (1 + VAT_RATE);
-  };
-
-  const calculateVATAmount = (grossPrice: number) => {
-    return grossPrice - calculateNetPrice(grossPrice);
   };
 
   if (loading) {
@@ -151,32 +108,24 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {compositions.map((composition) => {
           const { sets, limitingIngredients } = calculateAvailableSets(composition.id);
-          const costPerSet = calculateCostPerSet(composition.id);
-          const salePriceGross = composition.sale_price || 0;
-          const salePriceNet = calculateNetPrice(salePriceGross);
-          const vatAmount = calculateVATAmount(salePriceGross);
-          const profit = calculateProfit(costPerSet, salePriceNet); // Zysk na cenie netto
-          const profitMargin = calculateProfitMargin(costPerSet, salePriceNet);
           const ingredientsList = compositionIngredients[composition.id] || [];
-          
+
           return (
             <Card key={composition.id} className="overflow-hidden">
               <CardHeader className={`${composition.color} text-white`}>
                 <CardTitle className="text-lg">{composition.name}</CardTitle>
                 <p className="text-sm opacity-90">{composition.description}</p>
               </CardHeader>
-              
+
               <CardContent className="p-6">
                 <div className="mb-4">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-2xl font-bold text-gray-800">
-                      {sets} zestawów
-                    </span>
-                    <Badge variant={sets > 0 ? "default" : "destructive"}>
-                      {sets > 0 ? "Dostępne" : "Brak"}
+                    <span className="text-2xl font-bold text-gray-800">{sets} zestawów</span>
+                    <Badge variant={sets > 0 ? 'default' : 'destructive'}>
+                      {sets > 0 ? 'Dostępne' : 'Brak'}
                     </Badge>
                   </div>
-                  
+
                   {sets === 0 && limitingIngredients.length > 0 && (
                     <div className="text-sm text-red-600 mb-3">
                       <p className="font-medium">Ograniczające składniki:</p>
@@ -187,10 +136,8 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                       </ul>
                     </div>
                   )}
-                    )}
-                  </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   <h4 className="font-semibold text-gray-700">Składniki:</h4>
                   {ingredientsList.map((ingredient, index) => {
@@ -198,23 +145,22 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                     let needed = ingredient.amount;
                     let availableForCalc = available;
                     let percentage = 0;
-                    
+
                     if (ingredient.unit === 'krople') {
-                      availableForCalc = available * 20; // ml na krople
+                      availableForCalc = available * 20;
                       percentage = Math.min((availableForCalc / needed) * 100, 100);
                     } else {
                       percentage = Math.min((available / needed) * 100, 100);
                     }
-                    
+
                     return (
                       <div key={index} className="space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="capitalize">{ingredient.ingredient_name}</span>
-                          <span className={availableForCalc >= needed ? "text-green-600" : "text-red-600"}>
-                            {ingredient.unit === 'krople' 
+                          <span className={availableForCalc >= needed ? 'text-green-600' : 'text-red-600'}>
+                            {ingredient.unit === 'krople'
                               ? `${Math.floor(availableForCalc)} / ${needed} kropel`
-                              : `${available}${ingredient.unit} / ${needed}${ingredient.unit}`
-                            }
+                              : `${available}${ingredient.unit} / ${needed}${ingredient.unit}`}
                           </span>
                         </div>
                         <Progress value={percentage} className="h-2" />
@@ -227,7 +173,7 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
           );
         })}
       </div>
-      
+
       {compositions.length === 0 && (
         <div className="text-center py-8">
           <p className="text-gray-500">Brak zestawów. Dodaj nowe zestawy w zakładce "Zarządzanie".</p>
