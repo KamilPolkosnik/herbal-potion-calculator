@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -276,7 +277,7 @@ export const useSales = () => {
       // Use the first composition ID for the main transaction
       const mainCompositionId = cartItems[0].compositionId;
 
-      // Insert the transaction record with custom date if provided
+      // Prepare the transaction insert object with proper typing
       const transactionInsert: any = {
         composition_id: mainCompositionId,
         composition_name: compositionName,
@@ -290,9 +291,12 @@ export const useSales = () => {
         buyer_address: buyerAddress
       };
 
+      // Add custom date only if provided
       if (saleDate) {
         transactionInsert.created_at = saleDate.toISOString();
       }
+
+      console.log('Transaction insert object:', transactionInsert);
 
       const { data: transaction, error: transactionError } = await supabase
         .from('sales_transactions')
@@ -300,7 +304,10 @@ export const useSales = () => {
         .select()
         .single();
 
-      if (transactionError) throw transactionError;
+      if (transactionError) {
+        console.error('Transaction error:', transactionError);
+        throw transactionError;
+      }
 
       console.log('Transaction created:', transaction);
 
@@ -331,7 +338,10 @@ export const useSales = () => {
           .from('transaction_ingredient_usage')
           .insert(allIngredientUsage);
 
-        if (usageError) throw usageError;
+        if (usageError) {
+          console.error('Usage error:', usageError);
+          throw usageError;
+        }
         console.log('Ingredient usage records created:', allIngredientUsage.length);
       }
 
@@ -358,7 +368,10 @@ export const useSales = () => {
           amount_change: -totalUsedInBaseUnit
         });
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Update error for', ingredientName, ':', updateError);
+          throw updateError;
+        }
 
         // Create movement record with original unit
         const { error: movementError } = await supabase
@@ -373,7 +386,10 @@ export const useSales = () => {
             notes: `Sprzedaż: ${compositionName}`
           });
 
-        if (movementError) throw movementError;
+        if (movementError) {
+          console.error('Movement error for', ingredientName, ':', movementError);
+          throw movementError;
+        }
       }
 
       console.log('Ingredient amounts updated for cart sale');
