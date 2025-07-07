@@ -39,6 +39,7 @@ export interface BuyerData {
 export const useSales = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
 
   const loadTransactions = async () => {
@@ -74,7 +75,15 @@ export const useSales = () => {
     unitPrice: number,
     buyerData: BuyerData = {}
   ) => {
+    if (processing) {
+      console.log('Sale already in progress, skipping...');
+      return null;
+    }
+
     try {
+      setProcessing(true);
+      console.log('Starting sale process for:', compositionName);
+      
       const totalPrice = quantity * unitPrice;
 
       // Create buyer address if address components exist
@@ -111,6 +120,8 @@ export const useSales = () => {
 
       if (error) throw error;
 
+      console.log('Sale transaction created successfully:', transaction.id);
+
       toast({
         title: "Sukces",
         description: `Sprzedaż dla ${compositionName} została zarejestrowana`,
@@ -126,21 +137,113 @@ export const useSales = () => {
         variant: "destructive",
       });
       return null;
+    } finally {
+      setProcessing(false);
     }
   };
 
   const reverseTransaction = async (transactionId: string) => {
+    if (processing) {
+      console.log('Another operation in progress, skipping reverse...');
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
+      setProcessing(true);
+      console.log('Starting transaction reversal for:', transactionId);
+
+      // First, get the transaction details to ensure it exists and isn't already reversed
+      const { data: existingTransaction, error: fetchError } = await supabase
         .from('sales_transactions')
-        .update({ is_reversed: true })
+        .select('*')
+        .eq('id', transactionId)
+        .eq('is_reversed', false)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching transaction:', fetchError);
+        throw new Error('Nie można znaleźć transakcji lub została już cofnięta');
+      }
+
+      if (!existingTransaction) {
+        throw new Error('Transakcja nie istnieje lub została już cofnięta');
+      }
+
+      // Get all ingredient usage for this transaction
+      const { data: ingredientUsage, error: usageError } = await supabase
+        .from('transaction_ingredient_usage')
+        .select('*')
+        .eq('transaction_id', transactionId);
+
+      if (usageError) {
+        console.error('Error fetching ingredient usage:', usageError);
+        throw usageError;
+      }
+
+      console.log('Found ingredient usage records:', ingredientUsage?.length || 0);
+
+      // Mark transaction as reversed
+      const { error: reverseError } = await supabase
+        .from('sales_transactions')
+        .update({ 
+          is_reversed: true,
+          reversed_at: new Date().toISOString()
+        })
         .eq('id', transactionId);
 
-      if (error) throw error;
+      if (reverseError) {
+        console.error('Error marking transaction as reversed:', reverseError);
+        throw reverseError;
+      }
+
+      console.log('Transaction marked as reversed');
+
+      // Restore ingredients to stock
+      if (ingredientUsage && ingredientUsage.length > 0) {
+        for (const usage of ingredientUsage) {
+          console.log(`Restoring ${usage.quantity_used}${usage.unit} of ${usage.ingredient_name}`);
+          
+          // Convert to base unit for amount update
+          const quantityInBaseUnit = convertToBaseUnit(usage.quantity_used, usage.unit);
+          
+          // Restore ingredient amount using the database function
+          const { error: updateError } = await supabase.rpc('update_ingredient_amount', {
+            ingredient_name: usage.ingredient_name,
+            amount_change: quantityInBaseUnit // Positive value to add back to stock
+          });
+
+          if (updateError) {
+            console.error('Error updating ingredient amount:', usage.ingredient_name, updateError);
+            throw updateError;
+          }
+
+          // Create reversal movement record
+          const { error: movementError } = await supabase
+            .from('ingredient_movements')
+            .insert({
+              ingredient_name: usage.ingredient_name,
+              movement_type: 'reversal',
+              quantity_change: usage.quantity_used, // Positive value in original unit
+              unit: usage.unit,
+              reference_id: transactionId,
+              reference_type: 'sale_reversal',
+              notes: `Cofnięcie sprzedaży: ${existingTransaction.composition_name}`
+            });
+
+          if (movementError) {
+            console.error('Error creating movement record:', usage.ingredient_name, movementError);
+            throw movementError;
+          }
+
+          console.log(`Successfully restored ${usage.quantity_used}${usage.unit} of ${usage.ingredient_name}`);
+        }
+      }
+
+      console.log('Transaction reversal completed successfully');
 
       toast({
         title: "Sukces",
-        description: "Transakcja została cofnięta",
+        description: "Transakcja została cofnięta i składniki przywrócone do magazynu",
       });
 
       await loadTransactions(); // Refresh transactions list
@@ -148,14 +251,24 @@ export const useSales = () => {
       console.error('Error reversing transaction:', error);
       toast({
         title: "Błąd",
-        description: "Nie udało się cofnąć transakcji",
+        description: error instanceof Error ? error.message : "Nie udało się cofnąć transakcji",
         variant: "destructive",
       });
+    } finally {
+      setProcessing(false);
     }
   };
 
   const deleteTransaction = async (transactionId: string) => {
+    if (processing) {
+      console.log('Another operation in progress, skipping delete...');
+      return;
+    }
+
     try {
+      setProcessing(true);
+      console.log('Deleting transaction:', transactionId);
+
       const { error } = await supabase
         .from('sales_transactions')
         .delete()
@@ -176,6 +289,8 @@ export const useSales = () => {
         description: "Nie udało się usunąć transakcji",
         variant: "destructive",
       });
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -247,10 +362,19 @@ export const useSales = () => {
     buyerData: BuyerData = {},
     saleDate?: Date
   ) => {
+    if (processing) {
+      console.log('Sale already in progress, skipping cart sale...');
+      throw new Error('Sprzedaż już w toku, proszę czekać...');
+    }
+
     try {
-      console.log('Processing cart sale with items:', cartItems);
-      console.log('Buyer data:', buyerData);
-      console.log('Sale date:', saleDate);
+      setProcessing(true);
+      console.log('Processing cart sale with items:', cartItems.length);
+      
+      // Validate that we have items to process
+      if (!cartItems || cartItems.length === 0) {
+        throw new Error('Brak produktów do sprzedaży');
+      }
 
       // Calculate total quantity and price
       const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -260,6 +384,13 @@ export const useSales = () => {
       const compositionName = cartItems.map(item => 
         `${item.quantity}x ${item.compositionName}${item.unitPrice > 0 ? ` [${item.unitPrice.toFixed(2)}zł]` : ''}`
       ).join(', ');
+
+      console.log('Cart sale summary:', {
+        totalQuantity,
+        totalPrice,
+        compositionName,
+        itemCount: cartItems.length
+      });
 
       // Create buyer address if address components exist
       let buyerAddress = null;
@@ -282,7 +413,7 @@ export const useSales = () => {
         composition_id: mainCompositionId,
         composition_name: compositionName,
         quantity: totalQuantity,
-        unit_price: totalPrice / totalQuantity, // Average unit price
+        unit_price: totalQuantity > 0 ? totalPrice / totalQuantity : 0, // Average unit price
         total_price: totalPrice,
         buyer_name: buyerData.name || null,
         buyer_email: buyerData.email || null,
@@ -292,8 +423,9 @@ export const useSales = () => {
         ...(saleDate && { created_at: saleDate.toISOString() })
       };
 
-      console.log('Transaction data:', transactionData);
+      console.log('Creating transaction with data:', transactionData);
 
+      // Create the main transaction
       const { data: transaction, error: transactionError } = await supabase
         .from('sales_transactions')
         .insert(transactionData)
@@ -305,7 +437,7 @@ export const useSales = () => {
         throw transactionError;
       }
 
-      console.log('Transaction created:', transaction);
+      console.log('Transaction created successfully:', transaction.id);
 
       // Create ingredient usage records for all cart items
       const allIngredientUsage: Array<{
@@ -316,7 +448,8 @@ export const useSales = () => {
       }> = [];
 
       // Collect all ingredient usage from cart items
-      cartItems.forEach(cartItem => {
+      cartItems.forEach((cartItem, itemIndex) => {
+        console.log(`Processing cart item ${itemIndex + 1}:`, cartItem.compositionName);
         cartItem.ingredients.forEach(ingredient => {
           const totalUsed = ingredient.amount * cartItem.quantity;
           allIngredientUsage.push({
@@ -325,8 +458,11 @@ export const useSales = () => {
             quantity_used: totalUsed,
             unit: ingredient.unit
           });
+          console.log(`- ${ingredient.name}: ${totalUsed}${ingredient.unit}`);
         });
       });
+
+      console.log('Total ingredient usage records to create:', allIngredientUsage.length);
 
       // Insert ingredient usage records
       if (allIngredientUsage.length > 0) {
@@ -338,13 +474,13 @@ export const useSales = () => {
           console.error('Usage error:', usageError);
           throw usageError;
         }
-        console.log('Ingredient usage records created:', allIngredientUsage.length);
+        console.log('Ingredient usage records created successfully');
       }
 
       // Update ingredient amounts and create movements
       const ingredientUpdates: Record<string, { totalUsed: number; unit: string }> = {};
       
-      // Aggregate ingredient usage
+      // Aggregate ingredient usage by name
       allIngredientUsage.forEach(usage => {
         const key = usage.ingredient_name;
         if (!ingredientUpdates[key]) {
@@ -353,15 +489,19 @@ export const useSales = () => {
         ingredientUpdates[key].totalUsed += usage.quantity_used;
       });
 
+      console.log('Aggregated ingredient updates:', Object.keys(ingredientUpdates).length);
+
       // Update ingredient amounts and create movement records
       for (const [ingredientName, { totalUsed, unit }] of Object.entries(ingredientUpdates)) {
+        console.log(`Updating ${ingredientName}: -${totalUsed}${unit}`);
+        
         // Convert to base unit for amount update
         const totalUsedInBaseUnit = convertToBaseUnit(totalUsed, unit);
         
-        // Update ingredient amount
+        // Update ingredient amount (subtract from stock)
         const { error: updateError } = await supabase.rpc('update_ingredient_amount', {
           ingredient_name: ingredientName,
-          amount_change: -totalUsedInBaseUnit
+          amount_change: -totalUsedInBaseUnit // Negative value to subtract from stock
         });
 
         if (updateError) {
@@ -375,7 +515,7 @@ export const useSales = () => {
           .insert({
             ingredient_name: ingredientName,
             movement_type: 'sale',
-            quantity_change: -totalUsed,
+            quantity_change: -totalUsed, // Negative value in original unit
             unit: unit,
             reference_id: transaction.id,
             reference_type: 'sale_transaction',
@@ -386,9 +526,11 @@ export const useSales = () => {
           console.error('Movement error for', ingredientName, ':', movementError);
           throw movementError;
         }
+
+        console.log(`Successfully updated ${ingredientName}`);
       }
 
-      console.log('Ingredient amounts updated for cart sale');
+      console.log('Cart sale completed successfully');
 
       // Refresh transactions list
       await loadTransactions();
@@ -397,6 +539,8 @@ export const useSales = () => {
     } catch (error) {
       console.error('Error processing cart sale:', error);
       throw error;
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -407,6 +551,7 @@ export const useSales = () => {
   return {
     transactions,
     loading,
+    processing,
     processSale,
     reverseTransaction,
     deleteTransaction,

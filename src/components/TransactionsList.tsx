@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronDown, ChevronRight, Undo2, ShoppingCart, Calendar, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Undo2, ShoppingCart, Calendar, Trash2, Loader2 } from 'lucide-react';
 import { useSales } from '@/hooks/useSales';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,16 +20,23 @@ interface TransactionsListProps {
 }
 
 const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => {
-  const { transactions, loading, reverseTransaction, deleteTransaction, refreshTransactions } = useSales();
+  const { transactions, loading, processing, reverseTransaction, deleteTransaction, refreshTransactions } = useSales();
   const { settings: companySettings } = useCompanySettings();
   const { user } = useAuth();
   const { toast } = useToast();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set());
+  const [operatingTransactions, setOperatingTransactions] = useState<Set<string>>(new Set());
 
   const handleReverse = async (transactionId: string, compositionName: string) => {
+    if (operatingTransactions.has(transactionId) || processing) {
+      return;
+    }
+
     try {
+      setOperatingTransactions(prev => new Set(prev).add(transactionId));
+      
       await reverseTransaction(transactionId);
       
       toast({
@@ -53,11 +59,23 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
         description: "Nie udało się cofnąć transakcji",
         variant: "destructive",
       });
+    } finally {
+      setOperatingTransactions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(transactionId);
+        return newSet;
+      });
     }
   };
 
   const handleDelete = async (transactionId: string, compositionName: string) => {
+    if (operatingTransactions.has(transactionId) || processing) {
+      return;
+    }
+
     try {
+      setOperatingTransactions(prev => new Set(prev).add(transactionId));
+      
       await deleteTransaction(transactionId);
       
       toast({
@@ -79,6 +97,12 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
         title: "Błąd",
         description: "Nie udało się usunąć transakcji",
         variant: "destructive",
+      });
+    } finally {
+      setOperatingTransactions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(transactionId);
+        return newSet;
       });
     }
   };
@@ -202,6 +226,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
         <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
           <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
           <span className="break-words">Historia Transakcji</span>
+          {processing && <Loader2 className="w-4 h-4 animate-spin" />}
         </CardTitle>
         
         {/* Date Range Filter */}
@@ -337,10 +362,17 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
+                                    disabled={operatingTransactions.has(group.transaction.id) || processing}
                                     className="text-xs px-1 py-1 h-6 w-full min-w-0"
                                   >
-                                    <Undo2 className="w-3 h-3 mr-1 shrink-0" />
-                                    <span className="truncate">Cofnij</span>
+                                    {operatingTransactions.has(group.transaction.id) ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Undo2 className="w-3 h-3 mr-1 shrink-0" />
+                                        <span className="truncate">Cofnij</span>
+                                      </>
+                                    )}
                                   </Button>
                                 </>
                               ) : (
@@ -356,10 +388,17 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                                       variant="destructive"
                                       size="sm"
                                       onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
+                                      disabled={operatingTransactions.has(group.transaction.id) || processing}
                                       className="text-xs px-1 py-1 h-6 w-full min-w-0"
                                     >
-                                      <Trash2 className="w-3 h-3 mr-1 shrink-0" />
-                                      <span className="truncate">Usuń</span>
+                                      {operatingTransactions.has(group.transaction.id) ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <>
+                                          <Trash2 className="w-3 h-3 mr-1 shrink-0" />
+                                          <span className="truncate">Usuń</span>
+                                        </>
+                                      )}
                                     </Button>
                                   )}
                                 </>
