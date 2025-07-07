@@ -189,20 +189,6 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                   )}
                             <div className="grid grid-cols-1 gap-3 mb-4">
                     
-                    <div className="bg-green-50 p-3 rounded-lg">
-                      <p className="text-sm font-medium text-gray-700 mb-1">
-                        Cena sprzedaży:
-                      </p>
-                      <div className="space-y-1">
-                        <p className="text-lg font-bold text-green-600">
-                          {salePriceGross.toFixed(2)} zł brutto
-                        </p>
-                        <p className="text-sm text-green-500">
-                          {salePriceNet.toFixed(2)} zł netto + {vatAmount.toFixed(2)} zł VAT
-                        </p>
-                      </div>
-                    </div>
-                    
                     {salePriceGross > 0 && (
                       <>
                         <div className="bg-blue-50 p-3 rounded-lg">
