@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +20,9 @@ export interface Transaction {
   buyer_tax_id: string | null;
   buyer_address: string | null;
 }
+
+// Export SalesTransaction as alias for backward compatibility
+export type SalesTransaction = Transaction;
 
 export interface BuyerData {
   name?: string;
