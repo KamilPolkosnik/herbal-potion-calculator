@@ -14,27 +14,32 @@ export const useIngredientCategories = (ingredients: string[], ingredientUnits: 
         
         console.log(`Kategoryzuję składnik: ${ingredient}, jednostka: ${unit}`);
         
+        // Normalizuj jednostkę (usuń kropki, spacje)
+        const normalizedUnit = unit ? unit.toLowerCase().trim().replace('.', '') : '';
+        
         // Olejki muszą mieć jednostkę "ml" I zawierać "olejek" w nazwie
-        if (unit === 'ml' && ingredient.toLowerCase().includes('olejek')) {
+        if (normalizedUnit === 'ml' && ingredient.toLowerCase().includes('olejek')) {
           oils.push(ingredient);
           console.log(`${ingredient} dodany do olejków (ml + nazwa zawiera 'olejek')`);
-        } else if (unit === 'szt' || unit === 'kpl') {
+        } else if (normalizedUnit === 'szt' || normalizedUnit === 'sztuki' || normalizedUnit === 'pieces') {
           others.push(ingredient);
           console.log(`${ingredient} dodany do innych (${unit})`);
-        } else if (unit === 'g') {
+        } else if (normalizedUnit === 'g' || normalizedUnit === 'gram' || normalizedUnit === 'gramy') {
           herbs.push(ingredient);
-          console.log(`${ingredient} dodany do ziół (g)`);
+          console.log(`${ingredient} dodany do ziół (${unit})`);
         } else {
-          // Jeśli jednostka nie jest zdefiniowana, użyj logiki fallback
-          console.log(`Jednostka nie zdefiniowana dla ${ingredient}, używam logiki fallback`);
-          if (ingredient.toLowerCase().includes('olejek')) {
+          // Jeśli jednostka nie jest zdefiniowana lub nierozpoznana, użyj logiki fallback na podstawie nazwy
+          console.log(`Jednostka nie zdefiniowana lub nierozpoznana dla ${ingredient} (${unit}), używam logiki fallback`);
+          
+          const lowerName = ingredient.toLowerCase();
+          if (lowerName.includes('olejek')) {
             oils.push(ingredient);
             console.log(`${ingredient} dodany do olejków (fallback - nazwa zawiera 'olejek')`);
-          } else if (ingredient.toLowerCase().includes('worek') || 
-                     ingredient.toLowerCase().includes('woreczek') || 
-                     ingredient.toLowerCase().includes('pojemnik') ||
-                     ingredient.toLowerCase().includes('etykieta') ||
-                     ingredient.toLowerCase().includes('szt')) {
+          } else if (lowerName.includes('worek') || 
+                     lowerName.includes('woreczek') || 
+                     lowerName.includes('pojemnik') ||
+                     lowerName.includes('etykieta') ||
+                     lowerName.includes('szt')) {
             others.push(ingredient);
             console.log(`${ingredient} dodany do innych (fallback - nazwa zawiera słowo kluczowe)`);
           } else {

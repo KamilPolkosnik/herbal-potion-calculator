@@ -76,33 +76,60 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
 
       const unitsMap: Record<string, string> = {};
       
-      // First, add units from ingredients table (higher priority)
+      // First, create maps for both sources
+      const ingredientsUnitsMap: Record<string, string> = {};
+      const compositionUnitsMap: Record<string, string> = {};
+      
       ingredientsData?.forEach(item => {
-        unitsMap[item.name] = item.unit;
-        console.log(`Składnik z ingredients: ${item.name}, Jednostka: ${item.unit}`);
+        ingredientsUnitsMap[item.name] = item.unit;
       });
 
-      // Then, add units from composition_ingredients for missing ingredients
       compositionIngredientsData?.forEach(item => {
-        if (!unitsMap[item.ingredient_name]) {
-          unitsMap[item.ingredient_name] = item.unit;
-          console.log(`Składnik z composition_ingredients: ${item.ingredient_name}, Jednostka: ${item.unit}`);
-        }
+        compositionUnitsMap[item.ingredient_name] = item.unit;
       });
 
-      // Only use fallback logic for ingredients that have no unit in database
+      // For each unique ingredient, determine the correct unit
       uniqueIngredients.forEach(ingredientName => {
-        if (!unitsMap[ingredientName]) {
+        const ingredientUnit = ingredientsUnitsMap[ingredientName];
+        const compositionUnit = compositionUnitsMap[ingredientName];
+        
+        console.log(`Składnik: ${ingredientName}`);
+        console.log(`- Jednostka w ingredients: ${ingredientUnit}`);
+        console.log(`- Jednostka w composition_ingredients: ${compositionUnit}`);
+        
+        if (ingredientUnit && compositionUnit) {
+          // Both exist - check if they match
+          if (ingredientUnit === compositionUnit) {
+            unitsMap[ingredientName] = ingredientUnit;
+            console.log(`- Używam zgodnej jednostki: ${ingredientUnit}`);
+          } else {
+            // Units don't match - prefer composition_ingredients for active ingredients
+            console.warn(`- NIEZGODNOŚĆ JEDNOSTEK! ingredients: ${ingredientUnit}, composition: ${compositionUnit}`);
+            unitsMap[ingredientName] = compositionUnit;
+            console.log(`- Używam jednostki z composition_ingredients: ${compositionUnit}`);
+          }
+        } else if (ingredientUnit) {
+          // Only in ingredients table
+          unitsMap[ingredientName] = ingredientUnit;
+          console.log(`- Używam jednostki z ingredients: ${ingredientUnit}`);
+        } else if (compositionUnit) {
+          // Only in composition_ingredients table
+          unitsMap[ingredientName] = compositionUnit;
+          console.log(`- Używam jednostki z composition_ingredients: ${compositionUnit}`);
+        } else {
+          // Neither exists - use fallback logic
+          console.log(`- Brak jednostki w obu tabelach, używam logiki fallback`);
           if (ingredientName.toLowerCase().includes('olejek')) {
             unitsMap[ingredientName] = 'ml';
           } else if (ingredientName.toLowerCase().includes('worek') || 
                      ingredientName.toLowerCase().includes('woreczek') || 
-                     ingredientName.toLowerCase().includes('pojemnik')) {
+                     ingredientName.toLowerCase().includes('pojemnik') ||
+                     ingredientName.toLowerCase().includes('etykieta')) {
             unitsMap[ingredientName] = 'szt';
           } else {
             unitsMap[ingredientName] = 'g';
           }
-          console.log(`Jednostka domyślna dla ${ingredientName}: ${unitsMap[ingredientName]}`);
+          console.log(`- Jednostka domyślna: ${unitsMap[ingredientName]}`);
         }
       });
       

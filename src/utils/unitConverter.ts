@@ -21,7 +21,7 @@ export const convertToBaseUnit = (amount: number, unit: string): number => {
       return amount;
     default:
       console.warn(`Unknown unit: ${unit}, treating as base unit`);
-      return amount;
+      return amount; // Always return a number, not undefined
   }
 };
 
