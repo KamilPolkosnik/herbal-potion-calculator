@@ -58,7 +58,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
       const { data: compIngs, error: ingErr } = await supabase.from('composition_ingredients').select('*');
       if (ingErr) throw ingErr;
 
-      // Load units
+      // Load units logic (same as before)
       const unique = [...new Set(compIngs.map(i => i.ingredient_name))];
       const { data: unitsFromIng } = await supabase.from('ingredients').select('name, unit').in('name', unique);
       const { data: unitsFromComp } = await supabase.from('composition_ingredients').select('ingredient_name, unit').in('ingredient_name', unique);
@@ -95,7 +95,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
   const updatePrice = async (name: string, price: number) => { if (onPriceUpdate) await onPriceUpdate(name, price); };
   const getPrice = (name: string) => prices[name] ?? 0;
 
-  // Needed ingredients
+  // Calculate needed ingredients
   const needed: Record<string, number> = {};
   compositions.forEach(c => {
     const qty = quantities[c.id] || 0;
@@ -109,7 +109,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     }
   });
 
-  // Categorize
+  // Categorize into herbs, oils, others
   const herbs: [string, number][] = [];
   const oils: [string, number][] = [];
   const others: [string, number][] = [];
@@ -129,7 +129,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     return sum + (amt * price) / 100;
   }, 0);
 
-  // Revenue and profit (gross)
+  // Potential revenue and profit (gross)
   const potentialRevenue = compositions.reduce((sum, c) => sum + ((quantities[c.id] || 0) * c.sale_price), 0);
   const grossProfit = potentialRevenue - totalCost;
 
@@ -139,7 +139,9 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     sessionStorage.removeItem('shopping-list-checked');
   };
 
-  const generatePDF = () => { /* existing PDF logic */ };
+  const generatePDF = () => {
+    // existing PDF logic
+  };
 
   if (loading) return <div className="flex justify-center items-center p-8"><div className="text-lg">Ładowanie zestawów...</div></div>;
 
@@ -177,7 +179,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
         </CardContent>
       </Card>
 
-      {Object.keys(needed).length>0 && (
+      {Object.keys(needed).length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -188,8 +190,83 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
             </div>
           </CardHeader>
           <CardContent>
-            {/* Ingredient sections (herbs, oils, others) unchanged */}
-            {/* ... */}
+            {herbs.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe (g)</h3>
+              <div className="space-y-2">
+                {herbs.map(([ing, amt]) => (
+                  <div key={ing} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ing] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        id={`herb-${ing}`}
+                        checked={checkedIngredients[ing]||false}
+                        onCheckedChange={()=>toggleCheck(ing)}
+                      />
+                      <div className="flex-1 flex justify-between items-center">
+                        <span className={`capitalize text-sm ${checkedIngredients[ing] ? 'line-through text-gray-500' : ''}`}>{ing}</span>
+                        <Badge variant="outline">{amt.toFixed(1)} g</Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-6">
+                      <Input type="number" step="0.01" value={getPrice(ing)} onChange={e=>updatePrice(ing,parseFloat(e.target.value)||0)} className="w-20 h-7 text-xs" placeholder="0.00"/>
+                      <span className="text-xs text-gray-600">zł/100g</span>
+                      <span className="text-sm text-gray-600 ml-auto">={( (amt * getPrice(ing)/100) ).toFixed(2)} zł</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>)}
+
+            {oils.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne (ml)</h3>
+              <div className="space-y-2">
+                {oils.map(([ing, amt]) => (
+                  <div key={ing} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ing] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <Checkbox id={`oil-${ing}`} checked={checkedIngredients[ing]||false} onCheckedChange={()=>toggleCheck(ing)}/>
+                      <div className="flex-1 flex justify-between items-center">
+                        <span className={`capitalize text-sm ${checkedIngredients[ing] ? 'line-through text-gray-500' : ''}`}>{ing.replace('olejek ', '')}</span>
+                        <Badge variant="outline">{amt.toFixed(1)} ml</Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-6">
+                      <Input type="number" step="0.01" value={getPrice(ing)} onChange={e=>updatePrice(ing,parseFloat(e.target.value)||0)} className="w-20 h-7 text-xs" placeholder="0.00"/>
+                      <span className="text-xs text-gray-600">zł/10ml</span>
+                      <span className="text-sm text-gray-600 ml-auto">={( calculateOilPrice(amt, getPrice(ing)) ).toFixed(2)} zł</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>)}
+
+            {others.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-700 mb-3">Inne (szt)</h3>
+              <div className="space-y-2">
+                {others.map(([ing, amt]) => {
+                  const unit = ingredientUnits[ing]||'szt';
+                  const display = unit==='szt'?amt.toFixed(0):amt.toFixed(1);
+                  return (
+                    <div key={ing} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ing] ? 'bg-green-50 border-green-200':''} bg-gray-50 border-gray-200`}>
+                      <div className="flex items-center gap-3">
+                        <Checkbox id={`other-${ing}`} checked={checkedIngredients[ing]||false} onCheckedChange={()=>toggleCheck(ing)}/>
+                        <div className="flex-1 flex justify-between items-center">
+                          <span className={`capitalize text-sm ${checkedIngredients[ing] ? 'line-through text-gray-500':''}`}>{ing}</span>
+                          <Badge variant="outline">{display} {unit}</Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-6">
+                        <Input type="number" step="0.01" value={getPrice(ing)} onChange={e=>updatePrice(ing,parseFloat(e.target.value)||0)} className="w-20 h-7 text-xs" placeholder="0.00"/>
+                        <span className="text-xs text-gray-600">zł/{unit}</span>
+                        <span className="text-sm text-gray-600 ml-auto">={( (amt * getPrice(ing)) ).toFixed(2)} zł</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>)}
+
             <div className="mt-6 space-y-3">
               <div className="p-4 bg-red-50 rounded-lg">
                 <div className="flex justify-between items-center">
@@ -205,7 +282,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                 </div>
               </div>
 
-              {grossProfit>=0 && (
+              {grossProfit >= 0 && (
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold text-blue-800">Potencjalny zysk brutto:</span>
