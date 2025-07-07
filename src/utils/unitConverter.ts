@@ -19,9 +19,12 @@ export const convertToBaseUnit = (amount: number, unit: string): number => {
     case 'sztuki':
     case 'pieces':
       return amount;
+    case 'kpl':
+    case 'komplet':
+      return amount;
     default:
       console.warn(`Unknown unit: ${unit}, treating as base unit`);
-      return amount; // Always return a number, not undefined
+      return amount;
   }
 };
 
@@ -42,6 +45,8 @@ export const getBaseUnit = (unit: string): string => {
     case 'szt':
     case 'sztuki':
     case 'pieces':
+    case 'kpl':
+    case 'komplet':
       return 'szt';
     default:
       return unit;

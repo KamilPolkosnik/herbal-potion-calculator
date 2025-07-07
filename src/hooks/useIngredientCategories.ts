@@ -21,7 +21,7 @@ export const useIngredientCategories = (ingredients: string[], ingredientUnits: 
         if (normalizedUnit === 'ml' && ingredient.toLowerCase().includes('olejek')) {
           oils.push(ingredient);
           console.log(`${ingredient} dodany do olejków (ml + nazwa zawiera 'olejek')`);
-        } else if (normalizedUnit === 'szt' || normalizedUnit === 'sztuki' || normalizedUnit === 'pieces') {
+        } else if (normalizedUnit === 'szt' || normalizedUnit === 'sztuki' || normalizedUnit === 'pieces' || normalizedUnit === 'kpl' || normalizedUnit === 'komplet') {
           others.push(ingredient);
           console.log(`${ingredient} dodany do innych (${unit})`);
         } else if (normalizedUnit === 'g' || normalizedUnit === 'gram' || normalizedUnit === 'gramy') {

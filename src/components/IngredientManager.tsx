@@ -88,7 +88,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         compositionUnitsMap[item.ingredient_name] = item.unit;
       });
 
-      // For each unique ingredient, determine the correct unit
+      // For each unique ingredient, determine the correct unit - po migracji SQL powinny być zsynchronizowane
       uniqueIngredients.forEach(ingredientName => {
         const ingredientUnit = ingredientsUnitsMap[ingredientName];
         const compositionUnit = compositionUnitsMap[ingredientName];
@@ -98,15 +98,15 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         console.log(`- Jednostka w composition_ingredients: ${compositionUnit}`);
         
         if (ingredientUnit && compositionUnit) {
-          // Both exist - check if they match
+          // Both exist - after SQL migration they should match
           if (ingredientUnit === compositionUnit) {
             unitsMap[ingredientName] = ingredientUnit;
             console.log(`- Używam zgodnej jednostki: ${ingredientUnit}`);
           } else {
-            // Units don't match - prefer composition_ingredients for active ingredients
-            console.warn(`- NIEZGODNOŚĆ JEDNOSTEK! ingredients: ${ingredientUnit}, composition: ${compositionUnit}`);
-            unitsMap[ingredientName] = compositionUnit;
-            console.log(`- Używam jednostki z composition_ingredients: ${compositionUnit}`);
+            // Units don't match - this shouldn't happen after SQL migration, but handle gracefully
+            console.warn(`- NIEZGODNOŚĆ JEDNOSTEK po migracji! ingredients: ${ingredientUnit}, composition: ${compositionUnit}`);
+            unitsMap[ingredientName] = ingredientUnit; // Use ingredients table as source of truth after migration
+            console.log(`- Używam jednostki z ingredients jako źródło prawdy: ${ingredientUnit}`);
           }
         } else if (ingredientUnit) {
           // Only in ingredients table
@@ -134,7 +134,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       });
       
       setIngredientUnits(unitsMap);
-      console.log('Finalna mapa jednostek składników:', unitsMap);
+      console.log('Finalna mapa jednostek składników po migracji:', unitsMap);
       
     } catch (error) {
       console.error('Błąd podczas ładowania składników:', error);
