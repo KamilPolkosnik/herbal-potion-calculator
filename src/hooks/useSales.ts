@@ -278,7 +278,19 @@ export const useSales = () => {
       const mainCompositionId = cartItems[0].compositionId;
 
       // Insert the transaction record with custom date if provided
-      const transactionData: any = {
+      const transactionData: {
+        composition_id: string;
+        composition_name: string;
+        quantity: number;
+        unit_price: number;
+        total_price: number;
+        buyer_name: string | null;
+        buyer_email: string | null;
+        buyer_phone: string | null;
+        buyer_tax_id: string | null;
+        buyer_address: string | null;
+        created_at?: string;
+      } = {
         composition_id: mainCompositionId,
         composition_name: compositionName,
         quantity: totalQuantity,
