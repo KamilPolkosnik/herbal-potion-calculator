@@ -187,7 +187,64 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients, pric
                       </ul>
                     </div>
                   )}
-                                  
+                            <div className="grid grid-cols-1 gap-3 mb-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Koszt jednego zestawu:
+                      </p>
+                      <p className="text-lg font-bold text-red-600">
+                        {costPerSet.toFixed(2)} zł
+                      </p>
+                    </div>
+                    
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Cena sprzedaży:
+                      </p>
+                      <div className="space-y-1">
+                        <p className="text-lg font-bold text-green-600">
+                          {salePriceGross.toFixed(2)} zł brutto
+                        </p>
+                        <p className="text-sm text-green-500">
+                          {salePriceNet.toFixed(2)} zł netto + {vatAmount.toFixed(2)} zł VAT
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {salePriceGross > 0 && (
+                      <>
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <p className="text-sm font-medium text-gray-700 mb-1">
+                            Zysk na zestawie (netto):
+                          </p>
+                          <p className={`text-lg font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                            {profit.toFixed(2)} zł ({profitMargin.toFixed(1)}%)
+                          </p>
+                        </div>
+                        
+                        {sets > 0 && (
+                          <div className="bg-purple-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-gray-700 mb-1">
+                              Potencjalny przychód:
+                            </p>
+                            <div className="space-y-1">
+                              <p className="text-lg font-bold text-purple-600">
+                                {(sets * salePriceGross).toFixed(2)} zł brutto
+                              </p>
+                              <p className="text-sm text-purple-500">
+                                {(sets * salePriceNet).toFixed(2)} zł netto
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                Zysk: {(sets * profit).toFixed(2)} zł
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                
                 <div className="space-y-3">
                   <h4 className="font-semibold text-gray-700">Składniki:</h4>
                   {ingredientsList.map((ingredient, index) => {
