@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { FileDown, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateOilPrice } from '@/utils/unitConverter';
 
 interface ShoppingListProps {
   prices: Record<string, number>;
@@ -248,9 +249,10 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
       
       console.log(`ShoppingList - Kategoryzuję składnik: ${ingredient}, jednostka: ${unit}`);
       
-      if (unit === 'ml') {
+      // Olejki muszą mieć jednostkę "ml" I zawierać "olejek" w nazwie
+      if (unit === 'ml' && ingredient.toLowerCase().includes('olejek')) {
         oils.push([ingredient, amount]);
-        console.log(`ShoppingList - ${ingredient} dodany do olejków (ml)`);
+        console.log(`ShoppingList - ${ingredient} dodany do olejków (ml + nazwa zawiera 'olejek')`);
       } else if (unit === 'g') {
         herbs.push([ingredient, amount]);
         console.log(`ShoppingList - ${ingredient} dodany do ziół (g)`);
@@ -448,8 +450,9 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     const price = getIngredientPrice(ingredient);
     const unit = ingredientUnits[ingredient] || 'g';
     
-    if (unit === 'ml') {
-      return sum + (amount * price); // olejki w ml
+    if (unit === 'ml' && ingredient.toLowerCase().includes('olejek')) {
+      // Olejki: cena w zł/10ml, konwertuj na ml
+      return sum + calculateOilPrice(amount, price);
     } else if (unit === 'szt') {
       return sum + (amount * price); // sztuki
     } else {
@@ -610,7 +613,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                           />
                           <span className="text-xs text-gray-600">zł/10ml</span>
                           <span className="text-sm text-gray-600 ml-auto">
-                            = {(amount * getIngredientPrice(ingredient)).toFixed(2)} zł
+                            = {calculateOilPrice(amount, getIngredientPrice(ingredient)).toFixed(2)} zł
                           </span>
                         </div>
                       </div>

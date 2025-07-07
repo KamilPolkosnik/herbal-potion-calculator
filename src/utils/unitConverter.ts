@@ -63,3 +63,15 @@ export const formatUnitDisplay = (amount: number, unit: string): string => {
   
   return `${amount}${unit}`;
 };
+
+// Calculate price for oils based on 10ml pricing
+export const calculateOilPrice = (amount: number, pricePerTenMl: number): number => {
+  // amount is in ml, price is per 10ml
+  return (amount / 10) * pricePerTenMl;
+};
+
+// Convert price from zł/10ml to display format
+export const getOilPriceDisplay = (pricePerTenMl: number, amount: number): string => {
+  const totalPrice = calculateOilPrice(amount, pricePerTenMl);
+  return totalPrice.toFixed(2);
+};

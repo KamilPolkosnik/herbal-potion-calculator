@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -208,7 +207,7 @@ export const useSales = () => {
           continue;
         }
 
-        // Check if units are compatible
+        // Check if units are compatible - both should be ml for oils now
         if (currentIngredient.unit !== ingredient.unit) {
           console.warn(`Niezgodność jednostek dla ${ingredient.ingredient_name}: dostępne w ${currentIngredient.unit}, wymagane w ${ingredient.unit}`);
           missingIngredients.push(

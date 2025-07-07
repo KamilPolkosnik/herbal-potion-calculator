@@ -14,10 +14,10 @@ export const useIngredientCategories = (ingredients: string[], ingredientUnits: 
         
         console.log(`Kategoryzuję składnik: ${ingredient}, jednostka: ${unit}`);
         
-        // Kategoryzuj na podstawie rzeczywistej jednostki składnika
-        if (unit === 'ml') {
+        // Olejki muszą mieć jednostkę "ml" I zawierać "olejek" w nazwie
+        if (unit === 'ml' && ingredient.toLowerCase().includes('olejek')) {
           oils.push(ingredient);
-          console.log(`${ingredient} dodany do olejków (ml)`);
+          console.log(`${ingredient} dodany do olejków (ml + nazwa zawiera 'olejek')`);
         } else if (unit === 'szt' || unit === 'kpl') {
           others.push(ingredient);
           console.log(`${ingredient} dodany do innych (${unit})`);
