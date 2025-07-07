@@ -697,8 +697,8 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
               {totalPotentialRevenueNet > totalCost && (
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold text-blue-800">Potencjalny zysk netto:</span>
-                    <span className="text-2xl font-bold text-blue-600">{(totalPotentialRevenueNet - totalCost).toFixed(2)} zł</span>
+                    <span className="text-lg font-semibold text-blue-800">Potencjalny zysk brutto:</span>
+                    <span className="text-2xl font-bold text-blue-600">{(totalPotentialRevenueGross - totalCost).toFixed(2)} zł</span>
                   </div>
                 </div>
               )}
