@@ -385,7 +385,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_ingredient_amount: {
+        Args: { ingredient_name: string; amount_change: number }
+        Returns: undefined
+      }
     }
     Enums: {
       movement_type: "purchase" | "sale" | "reversal" | "adjustment"
