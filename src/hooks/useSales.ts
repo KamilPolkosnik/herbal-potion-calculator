@@ -278,19 +278,7 @@ export const useSales = () => {
       const mainCompositionId = cartItems[0].compositionId;
 
       // Insert the transaction record with custom date if provided
-      const transactionData: {
-        composition_id: string;
-        composition_name: string;
-        quantity: number;
-        unit_price: number;
-        total_price: number;
-        buyer_name: string | null;
-        buyer_email: string | null;
-        buyer_phone: string | null;
-        buyer_tax_id: string | null;
-        buyer_address: string | null;
-        created_at?: string;
-      } = {
+      const transactionData = {
         composition_id: mainCompositionId,
         composition_name: compositionName,
         quantity: totalQuantity,
@@ -300,13 +288,9 @@ export const useSales = () => {
         buyer_email: buyerData.email || null,
         buyer_phone: buyerData.phone || null,
         buyer_tax_id: buyerData.tax_id || null,
-        buyer_address: buyerAddress
+        buyer_address: buyerAddress,
+        ...(saleDate && { created_at: saleDate.toISOString() })
       };
-
-      // Add custom date if provided
-      if (saleDate) {
-        transactionData.created_at = saleDate.toISOString();
-      }
 
       const { data: transaction, error: transactionError } = await supabase
         .from('sales_transactions')
