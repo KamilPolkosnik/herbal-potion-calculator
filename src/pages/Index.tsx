@@ -223,43 +223,7 @@ const Index = () => {
                     ) : (
                       <div className="flex justify-center">
                         <div className="w-full max-w-6xl">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-                            <div className="bg-green-100 p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden">
-                              <h3 className="text-xs sm:text-sm md:text-base font-semibold text-green-800 mb-1 sm:mb-2 leading-tight break-words">
-                                Wartość Surowców
-                              </h3>
-                              <p className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-green-600 break-words">
-                                {rawMaterialsValue.toFixed(2)} zł
-                              </p>
-                            </div>
-                            
-                            <div className="bg-blue-100 p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden">
-                              <h3 className="text-xs sm:text-sm md:text-base font-semibold text-blue-800 mb-1 sm:mb-2 leading-tight break-words">
-                                Wartość Olejków
-                              </h3>
-                              <p className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-blue-600 break-words">
-                                {oilsValue.toFixed(2)} zł
-                              </p>
-                            </div>
-                            
-                            <div className="bg-orange-100 p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden">
-                              <h3 className="text-xs sm:text-sm md:text-base font-semibold text-orange-800 mb-1 sm:mb-2 leading-tight break-words">
-                                Wartość Innych
-                              </h3>
-                              <p className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-orange-600 break-words">
-                                {othersValue.toFixed(2)} zł
-                              </p>
-                            </div>
-                            
-                            <div className="bg-purple-100 p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden">
-                              <h3 className="text-xs sm:text-sm md:text-base font-semibold text-purple-800 mb-1 sm:mb-2 leading-tight break-words">
-                                Wartość Całkowita
-                              </h3>
-                              <p className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-purple-600 break-words">
-                                {totalValue.toFixed(2)} zł
-                              </p>
-                            </div>
-
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                             <div className="bg-emerald-100 p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden">
                               <h3 className="text-xs sm:text-sm md:text-base font-semibold text-emerald-800 mb-1 sm:mb-2 leading-tight break-words">
                                 Całkowita Sprzedaż
@@ -269,9 +233,18 @@ const Index = () => {
                               </p>
                             </div>
 
+                            <div className="bg-blue-100 p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden">
+                              <h3 className="text-xs sm:text-sm md:text-base font-semibold text-blue-800 mb-1 sm:mb-2 leading-tight break-words">
+                                Całkowity Dochód
+                              </h3>
+                              <p className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-blue-600 break-words">
+                                {(totalSales - monthlyCosts).toFixed(2)} zł
+                              </p>
+                            </div>
+
                             <div className={`p-2 sm:p-3 md:p-4 rounded-lg text-center min-w-0 overflow-hidden ${estimatedProfit >= 0 ? 'bg-cyan-100' : 'bg-red-100'}`}>
                               <h3 className={`text-xs sm:text-sm md:text-base font-semibold mb-1 sm:mb-2 leading-tight break-words ${estimatedProfit >= 0 ? 'text-cyan-800' : 'text-red-800'}`}>
-                                Szacunkowy Zysk
+                                Całkowity Zysk
                               </h3>
                               <p className={`text-xs sm:text-sm md:text-base lg:text-lg font-bold break-words ${estimatedProfit >= 0 ? 'text-cyan-600' : 'text-red-600'}`}>
                                 {estimatedProfit.toFixed(2)} zł
