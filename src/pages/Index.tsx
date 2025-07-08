@@ -31,6 +31,7 @@ const Index = () => {
     totalValue, 
     totalSales,
     monthlyCosts,
+    estimatedCosts,
     estimatedProfit,
     loading: summaryLoading, 
     refreshSummary 
@@ -238,7 +239,7 @@ const Index = () => {
                                 Całkowity Dochód
                               </h3>
                               <p className="text-xs sm:text-sm md:text-base lg:text-lg font-bold text-blue-600 break-words">
-                                {(totalSales - monthlyCosts).toFixed(2)} zł
+                                {(totalSales - estimatedCosts).toFixed(2)} zł
                               </p>
                             </div>
 
