@@ -8,15 +8,82 @@ import { useSales } from '@/hooks/useSales';
 import { useIngredients } from '@/hooks/useIngredients';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
+import { calculateOilPrice } from '@/utils/unitConverter';
 
 const SalesStatistics: React.FC = () => {
   const { transactions, loading, refreshTransactions } = useSales();
   const { ingredients, prices } = useIngredients();
+  const [compositionIngredients, setCompositionIngredients] = useState<Record<string, any[]>>({});
+  const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
   
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [reportType, setReportType] = useState<'monthly' | 'yearly'>('monthly');
+
+  // Load composition ingredients and units
+  useEffect(() => {
+    const loadCompositionData = async () => {
+      try {
+        // Load composition ingredients
+        const { data: ingredientsData, error: ingredientsError } = await supabase
+          .from('composition_ingredients')
+          .select('*');
+
+        if (ingredientsError) throw ingredientsError;
+
+        // Group ingredients by composition_id
+        const ingredientsByComposition: Record<string, any[]> = {};
+        ingredientsData?.forEach((ingredient) => {
+          if (!ingredientsByComposition[ingredient.composition_id]) {
+            ingredientsByComposition[ingredient.composition_id] = [];
+          }
+          ingredientsByComposition[ingredient.composition_id].push(ingredient);
+        });
+
+        setCompositionIngredients(ingredientsByComposition);
+
+        // Load ingredient units
+        const uniqueIngredients = [...new Set(ingredientsData?.map(item => item.ingredient_name) || [])];
+        
+        const { data: ingredientUnitsFromIngredients, error: unitsError } = await supabase
+          .from('ingredients')
+          .select('name, unit')
+          .in('name', uniqueIngredients);
+
+        const unitsMap: Record<string, string> = {};
+        
+        if (!unitsError && ingredientUnitsFromIngredients) {
+          ingredientUnitsFromIngredients.forEach(item => {
+            unitsMap[item.name] = item.unit;
+          });
+        }
+
+        // Add fallback units for missing ingredients
+        uniqueIngredients.forEach(ingredientName => {
+          if (!unitsMap[ingredientName]) {
+            if (ingredientName.toLowerCase().includes('olejek')) {
+              unitsMap[ingredientName] = 'ml';
+            } else if (ingredientName.toLowerCase().includes('worek') || 
+                       ingredientName.toLowerCase().includes('woreczek') || 
+                       ingredientName.toLowerCase().includes('pojemnik') ||
+                       ingredientName.toLowerCase().includes('etykieta')) {
+              unitsMap[ingredientName] = 'szt';
+            } else {
+              unitsMap[ingredientName] = 'g';
+            }
+          }
+        });
+
+        setIngredientUnits(unitsMap);
+      } catch (error) {
+        console.error('Error loading composition data:', error);
+      }
+    };
+
+    loadCompositionData();
+  }, []);
 
   // Nasłuchuj zdarzenia odświeżania statystyk sprzedaży
   useEffect(() => {
@@ -290,11 +357,50 @@ const SalesStatistics: React.FC = () => {
   const totalQuantity = filteredTransactions.reduce((sum, t) => sum + t.quantity, 0);
   const averageOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-  // Calculate total costs (ingredients used in sold compositions)
+  // Calculate real cost of ingredients used in sold compositions
+  const calculateTransactionCost = (transaction: any) => {
+    const compositionId = transaction.composition_id;
+    const quantity = transaction.quantity;
+    
+    // Get ingredients for this composition
+    const ingredients = compositionIngredients[compositionId] || [];
+    
+    let totalCost = 0;
+    
+    ingredients.forEach(ingredient => {
+      const ingredientName = ingredient.ingredient_name;
+      const amount = ingredient.amount * quantity; // Total amount needed for this quantity
+      const price = prices[ingredientName] || 0;
+      const unit = ingredientUnits[ingredientName] || ingredient.unit;
+      
+      console.log(`SalesStatistics - Składnik: ${ingredientName}, Ilość: ${amount}, Cena: ${price}, Jednostka: ${unit}`);
+      
+      // Calculate cost based on unit type (same logic as in ShoppingList)
+      if (unit === 'ml' && ingredientName.toLowerCase().includes('olejek')) {
+        // Essential oils: price per 10ml, convert to ml
+        const cost = calculateOilPrice(amount, price);
+        totalCost += cost;
+        console.log(`SalesStatistics - Olejek ${ingredientName}: ${cost.toFixed(2)} zł`);
+      } else if (unit === 'szt') {
+        // Pieces: direct multiplication
+        const cost = amount * price;
+        totalCost += cost;
+        console.log(`SalesStatistics - Sztuki ${ingredientName}: ${cost.toFixed(2)} zł`);
+      } else {
+        // Herbs and others: price per 100g
+        const cost = (amount * price) / 100;
+        totalCost += cost;
+        console.log(`SalesStatistics - Zioła ${ingredientName}: ${cost.toFixed(2)} zł`);
+      }
+    });
+    
+    console.log(`SalesStatistics - Łączny koszt transakcji ${transaction.composition_name} (${quantity} szt.): ${totalCost.toFixed(2)} zł`);
+    return totalCost;
+  };
+
   const totalCosts = filteredTransactions.reduce((sum, transaction) => {
-    // For simplicity, we'll estimate cost as 30% of revenue
-    // In a real scenario, you'd calculate actual ingredient costs used
-    return sum + (transaction.total_price * 0.3);
+    const transactionCost = calculateTransactionCost(transaction);
+    return sum + transactionCost;
   }, 0);
 
   const totalProfit = totalRevenue - totalCosts;
