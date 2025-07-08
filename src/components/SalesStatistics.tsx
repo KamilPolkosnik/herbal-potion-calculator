@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { useIngredients } from '@/hooks/useIngredients';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateOilPrice } from '@/utils/unitConverter';
+import { calculateOilPrice, convertToBaseUnit } from '@/utils/unitConverter';
 
 const SalesStatistics: React.FC = () => {
   const { transactions, loading, refreshTransactions } = useSales();
@@ -367,31 +366,47 @@ const SalesStatistics: React.FC = () => {
     
     let totalCost = 0;
     
+    console.log(`SalesStatistics - Calculating cost for composition: ${transaction.composition_name} (${quantity} szt.)`);
+    
     ingredients.forEach(ingredient => {
       const ingredientName = ingredient.ingredient_name;
-      const amount = ingredient.amount * quantity; // Total amount needed for this quantity
+      let amount = ingredient.amount * quantity; // Total amount needed for this quantity
       const price = prices[ingredientName] || 0;
-      const unit = ingredientUnits[ingredientName] || ingredient.unit;
+      const compositionUnit = ingredient.unit; // Unit from composition
+      const ingredientUnit = ingredientUnits[ingredientName] || 'g'; // Unit from ingredients table
       
-      console.log(`SalesStatistics - Składnik: ${ingredientName}, Ilość: ${amount}, Cena: ${price}, Jednostka: ${unit}`);
+      console.log(`SalesStatistics - Składnik: ${ingredientName}`);
+      console.log(`  - Ilość z kompozycji: ${amount} ${compositionUnit}`);
+      console.log(`  - Jednostka w ingredients: ${ingredientUnit}`);
+      console.log(`  - Cena: ${price}`);
+      
+      // Check if this is an essential oil and needs unit conversion
+      const isOil = ingredientName.toLowerCase().includes('olejek');
+      
+      if (compositionUnit === 'krople' && ingredientUnit === 'ml' && isOil) {
+        // Convert drops to ml for oils
+        const convertedAmount = convertToBaseUnit(amount, compositionUnit);
+        console.log(`  - Konwersja z ${amount} kropli na ${convertedAmount} ml`);
+        amount = convertedAmount;
+      }
       
       // Calculate cost based on unit type (same logic as in ShoppingList)
-      if (unit === 'ml' && ingredientName.toLowerCase().includes('olejek')) {
+      let cost = 0;
+      if (isOil && ingredientUnit === 'ml') {
         // Essential oils: price per 10ml, convert to ml
-        const cost = calculateOilPrice(amount, price);
-        totalCost += cost;
-        console.log(`SalesStatistics - Olejek ${ingredientName}: ${cost.toFixed(2)} zł`);
-      } else if (unit === 'szt') {
+        cost = calculateOilPrice(amount, price);
+        console.log(`  - Olejek: koszt = ${cost.toFixed(4)} zł (${amount}ml × ${price}/10ml)`);
+      } else if (ingredientUnit === 'szt') {
         // Pieces: direct multiplication
-        const cost = amount * price;
-        totalCost += cost;
-        console.log(`SalesStatistics - Sztuki ${ingredientName}: ${cost.toFixed(2)} zł`);
+        cost = amount * price;
+        console.log(`  - Sztuki: koszt = ${cost.toFixed(4)} zł (${amount} × ${price})`);
       } else {
         // Herbs and others: price per 100g
-        const cost = (amount * price) / 100;
-        totalCost += cost;
-        console.log(`SalesStatistics - Zioła ${ingredientName}: ${cost.toFixed(2)} zł`);
+        cost = (amount * price) / 100;
+        console.log(`  - Zioła: koszt = ${cost.toFixed(4)} zł (${amount} × ${price}/100)`);
       }
+      
+      totalCost += cost;
     });
     
     console.log(`SalesStatistics - Łączny koszt transakcji ${transaction.composition_name} (${quantity} szt.): ${totalCost.toFixed(2)} zł`);
