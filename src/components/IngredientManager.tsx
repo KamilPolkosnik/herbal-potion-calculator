@@ -6,6 +6,8 @@ import { useIngredientCategories } from '@/hooks/useIngredientCategories';
 import { useIngredientCompositions } from '@/hooks/useIngredientCompositions';
 import { useWarningThresholds } from '@/hooks/useWarningThresholds';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Save } from 'lucide-react';
 import IngredientFilters from './IngredientFilters';
 import IngredientInfoBox from './IngredientInfoBox';
 import IngredientSection from './IngredientSection';
@@ -25,6 +27,8 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
   const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
   const [loadingIngredients, setLoadingIngredients] = useState(true);
   const [filters, setFilters] = useState({ searchTerm: '', selectedComposition: '', lowStock: false });
+  const [pendingChanges, setPendingChanges] = useState<Record<string, { amount?: number; price?: number }>>({});
+  const [saving, setSaving] = useState(false);
 
   // Convert compositionUsage to the format expected by IngredientSection
   const convertCompositionUsage = (usage: typeof compositionUsage): Record<string, number> => {
@@ -166,19 +170,48 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     await Promise.all([loadUsedIngredients(), refreshData(), refreshCompositionUsage()]);
   };
 
-  const handleIngredientUpdate = async (ingredient: string, value: number) => {
-    await updateIngredient(ingredient, value);
-    if (onDataChange) {
-      await onDataChange();
+  const handlePendingAmountChange = (ingredient: string, value: number) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [ingredient]: { ...prev[ingredient], amount: value }
+    }));
+  };
+
+  const handlePendingPriceChange = (ingredient: string, value: number) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [ingredient]: { ...prev[ingredient], price: value }
+    }));
+  };
+
+  const handleSaveAll = async () => {
+    setSaving(true);
+    try {
+      const updatePromises = Object.entries(pendingChanges).map(async ([ingredient, changes]) => {
+        const promises = [];
+        if (changes.amount !== undefined) {
+          promises.push(updateIngredient(ingredient, changes.amount));
+        }
+        if (changes.price !== undefined) {
+          promises.push(updatePrice(ingredient, changes.price));
+        }
+        return Promise.all(promises);
+      });
+
+      await Promise.all(updatePromises);
+      setPendingChanges({});
+      
+      if (onDataChange) {
+        await onDataChange();
+      }
+    } catch (error) {
+      console.error('Error saving changes:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handlePriceUpdate = async (ingredient: string, value: number) => {
-    await updatePrice(ingredient, value);
-    if (onDataChange) {
-      await onDataChange();
-    }
-  };
+  const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
   const handleFilterChange = (newFilters: { searchTerm: string; selectedComposition: string; lowStock: boolean }) => {
     setFilters(newFilters);
@@ -219,16 +252,30 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
           
           <IngredientInfoBox onRefresh={handleRefresh} isLoading={loadingIngredients} />
           
+          {hasPendingChanges && (
+            <div className="flex justify-center mb-4">
+              <Button 
+                onClick={handleSaveAll}
+                disabled={saving}
+                className="px-6 py-2"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? 'Zapisywanie...' : 'Zapisz wszystkie zmiany'}
+              </Button>
+            </div>
+          )}
+          
           <IngredientSection
             title="Surowce Ziołowe (g)"
             items={herbs}
             ingredients={ingredients}
             prices={prices}
             ingredientUnits={ingredientUnits}
-            onAmountUpdate={handleIngredientUpdate}
-            onPriceUpdate={handlePriceUpdate}
+            onAmountUpdate={handlePendingAmountChange}
+            onPriceUpdate={handlePendingPriceChange}
             compositionUsage={{}} // Remove usage display
             warningThresholds={warningThresholds}
+            pendingChanges={pendingChanges}
           />
           
           <IngredientSection
@@ -237,10 +284,11 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredients={ingredients}
             prices={prices}
             ingredientUnits={ingredientUnits}
-            onAmountUpdate={handleIngredientUpdate}
-            onPriceUpdate={handlePriceUpdate}
+            onAmountUpdate={handlePendingAmountChange}
+            onPriceUpdate={handlePendingPriceChange}
             compositionUsage={{}} // Remove usage display
             warningThresholds={warningThresholds}
+            pendingChanges={pendingChanges}
           />
           
           <IngredientSection
@@ -249,10 +297,11 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredients={ingredients}
             prices={prices}
             ingredientUnits={ingredientUnits}
-            onAmountUpdate={handleIngredientUpdate}
-            onPriceUpdate={handlePriceUpdate}
+            onAmountUpdate={handlePendingAmountChange}
+            onPriceUpdate={handlePendingPriceChange}
             compositionUsage={{}} // Remove usage display
             warningThresholds={warningThresholds}
+            pendingChanges={pendingChanges}
           />
         </TabsContent>
         

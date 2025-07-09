@@ -17,6 +17,7 @@ interface IngredientSectionProps {
     oils: number;
     others: number;
   };
+  pendingChanges?: Record<string, { amount?: number; price?: number }>;
 }
 
 const IngredientSection: React.FC<IngredientSectionProps> = ({
@@ -28,7 +29,8 @@ const IngredientSection: React.FC<IngredientSectionProps> = ({
   onAmountUpdate,
   onPriceUpdate,
   compositionUsage,
-  warningThresholds
+  warningThresholds,
+  pendingChanges
 }) => {
   if (items.length === 0) {
     return null;
@@ -52,6 +54,8 @@ const IngredientSection: React.FC<IngredientSectionProps> = ({
               onPriceUpdate={onPriceUpdate}
               compositionUsage={compositionUsage}
               warningThresholds={warningThresholds}
+              pendingAmount={pendingChanges?.[ingredient]?.amount}
+              pendingPrice={pendingChanges?.[ingredient]?.price}
             />
           ))}
         </div>

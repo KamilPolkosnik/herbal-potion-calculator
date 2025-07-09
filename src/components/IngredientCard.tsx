@@ -2,9 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, Save, Info } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface IngredientCardProps {
@@ -20,6 +19,8 @@ interface IngredientCardProps {
     oils: number;
     others: number;
   };
+  pendingAmount?: number;
+  pendingPrice?: number;
 }
 
 const IngredientCard: React.FC<IngredientCardProps> = ({
@@ -29,23 +30,21 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
   unit,
   onAmountUpdate,
   onPriceUpdate,
-  warningThresholds
+  warningThresholds,
+  pendingAmount,
+  pendingPrice
 }) => {
-  const [localAmount, setLocalAmount] = useState(amount.toString());
-  const [localPrice, setLocalPrice] = useState(price.toString());
-  const [amountChanged, setAmountChanged] = useState(false);
-  const [priceChanged, setPriceChanged] = useState(false);
+  const [localAmount, setLocalAmount] = useState((pendingAmount ?? amount).toString());
+  const [localPrice, setLocalPrice] = useState((pendingPrice ?? price).toString());
   const [compositions, setCompositions] = useState<Array<{ name: string; amount: number }>>([]);
 
   useEffect(() => {
-    setLocalAmount(amount.toString());
-    setAmountChanged(false);
-  }, [amount]);
+    setLocalAmount((pendingAmount ?? amount).toString());
+  }, [amount, pendingAmount]);
 
   useEffect(() => {
-    setLocalPrice(price.toString());
-    setPriceChanged(false);
-  }, [price]);
+    setLocalPrice((pendingPrice ?? price).toString());
+  }, [price, pendingPrice]);
 
   useEffect(() => {
     const loadCompositions = async () => {
@@ -79,24 +78,14 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
 
   const handleAmountChange = (value: string) => {
     setLocalAmount(value);
-    setAmountChanged(parseFloat(value) !== amount);
+    const numValue = parseFloat(value) || 0;
+    onAmountUpdate(name, numValue);
   };
 
   const handlePriceChange = (value: string) => {
     setLocalPrice(value);
-    setPriceChanged(parseFloat(value) !== price);
-  };
-
-  const handleSaveAmount = () => {
-    const newAmount = parseFloat(localAmount) || 0;
-    onAmountUpdate(name, newAmount);
-    setAmountChanged(false);
-  };
-
-  const handleSavePrice = () => {
-    const newPrice = parseFloat(localPrice) || 0;
-    onPriceUpdate(name, newPrice);
-    setPriceChanged(false);
+    const numValue = parseFloat(value) || 0;
+    onPriceUpdate(name, numValue);
   };
 
   const getWarningThreshold = () => {
@@ -156,15 +145,6 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
               />
             </div>
             <span className="text-xs text-gray-500 min-w-[30px]">{unit}</span>
-            <Button
-              size="sm"
-              variant={amountChanged ? "default" : "outline"}
-              onClick={handleSaveAmount}
-              disabled={!amountChanged}
-              className="px-2"
-            >
-              <Save className="h-3 w-3" />
-            </Button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -178,15 +158,6 @@ const IngredientCard: React.FC<IngredientCardProps> = ({
               />
             </div>
             <span className="text-xs text-gray-500 min-w-[30px]">zł</span>
-            <Button
-              size="sm"
-              variant={priceChanged ? "default" : "outline"}
-              onClick={handleSavePrice}
-              disabled={!priceChanged}
-              className="px-2"
-            >
-              <Save className="h-3 w-3" />
-            </Button>
           </div>
         </div>
       </CardContent>
