@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { useIngredientCategories } from '@/hooks/useIngredientCategories';
+import { useIngredientCategories, Category } from '@/hooks/useIngredientCategories';
 import { IngredientSection } from './IngredientSection';
-import type { Category } from './IngredientCard';
 
 interface IngredientManagerProps {
   allIngredients: string[];
@@ -54,13 +53,48 @@ export const IngredientManager: React.FC<IngredientManagerProps> = ({
     : undefined;
 
   return (
-    <div>
-      <h2>Surowce ziołowe</h2>
-      <IngredientSection
-        ingredients={herbs}
-        ingredientUnits={ingredientUnits}
-        ingredientAmounts={amounts}
-        ingredientPrices={prices}
-        ingredientCategories={ingredientCategories}
-        onCategoryChange={handleCategoryChange}
-        onAmountUpdate={handleAmountUpdate}
+    <>
+      <section>
+        <h2 className="text-xl font-bold mb-2">Surowce ziołowe</h2>
+        <IngredientSection
+          ingredients={herbs}
+          ingredientUnits={ingredientUnits}
+          ingredientAmounts={amounts}
+          ingredientPrices={prices}
+          ingredientCategories={ingredientCategories}
+          onCategoryChange={handleCategoryChange}
+          onAmountUpdate={handleAmountUpdate}
+          onPriceUpdate={handlePriceUpdate}
+        />
+      </section>
+
+      <section>
+        <h2 className="text-xl font-bold mb-2">Olejki</h2>
+        <IngredientSection
+          ingredients={oils}
+          ingredientUnits={ingredientUnits}
+          ingredientAmounts={amounts}
+          ingredientPrices={prices}
+          ingredientCategories={ingredientCategories}
+          onCategoryChange={handleCategoryChange}
+          onAmountUpdate={handleAmountUpdate}
+          onPriceUpdate={handlePriceUpdate}
+        />
+      </section>
+
+      <section>
+        <h2 className="text-xl font-bold mb-2">Inne</h2>
+        <IngredientSection
+          ingredients={others}
+          ingredientUnits={ingredientUnits}
+          ingredientAmounts={amounts}
+          ingredientPrices={prices}
+          ingredientCategories={ingredientCategories}
+          onCategoryChange={handleCategoryChange}
+          onAmountUpdate={handleAmountUpdate}
+          onPriceUpdate={handlePriceUpdate}
+        />
+      </section>
+    </>
+  );
+};
