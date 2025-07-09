@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
@@ -7,7 +6,7 @@ import { useIngredientCompositions } from '@/hooks/useIngredientCompositions';
 import { useWarningThresholds } from '@/hooks/useWarningThresholds';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Save } from 'lucide-react';
+import { Save, RefreshCw } from 'lucide-react';
 import IngredientFilters from './IngredientFilters';
 import IngredientInfoBox from './IngredientInfoBox';
 import IngredientSection from './IngredientSection';
@@ -30,7 +29,6 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
   const [pendingChanges, setPendingChanges] = useState<Record<string, { amount?: number; price?: number }>>({});
   const [saving, setSaving] = useState(false);
 
-  // Convert compositionUsage to the format expected by IngredientSection
   const convertCompositionUsage = (usage: typeof compositionUsage): Record<string, number> => {
     const converted: Record<string, number> = {};
     Object.entries(usage).forEach(([ingredientName, compositions]) => {
@@ -58,7 +56,6 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       console.log('Znalezione składniki w zestawach:', uniqueIngredients);
       setUsedIngredients(uniqueIngredients);
 
-      // Load units from ingredients table - this is now the source of truth after migrations
       const { data: ingredientsData, error: ingredientsError } = await supabase
         .from('ingredients')
         .select('name, unit');
@@ -70,12 +67,10 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
 
       const unitsMap: Record<string, string> = {};
       
-      // Create units map from ingredients table
       ingredientsData?.forEach(item => {
         unitsMap[item.name] = item.unit;
       });
 
-      // Apply fallback logic for ingredients not in the ingredients table
       uniqueIngredients.forEach(ingredientName => {
         if (!unitsMap[ingredientName]) {
           console.log(`Składnik ${ingredientName} nie istnieje w tabeli ingredients, używam logiki fallback`);
@@ -211,6 +206,12 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     }
   };
 
+  const handleDiscardChanges = () => {
+    setPendingChanges({});
+    // Refresh data to reset any local changes
+    refreshData();
+  };
+
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
   const handleFilterChange = (newFilters: { searchTerm: string; selectedComposition: string; lowStock: boolean }) => {
@@ -252,18 +253,32 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
           
           <IngredientInfoBox onRefresh={handleRefresh} isLoading={loadingIngredients} />
           
-          {hasPendingChanges && (
-            <div className="flex justify-center mb-4">
-              <Button 
-                onClick={handleSaveAll}
-                disabled={saving}
-                className="px-6 py-2"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Zapisywanie...' : 'Zapisz wszystkie zmiany'}
-              </Button>
-            </div>
-          )}
+          <div className="flex justify-center gap-3 mb-4 p-4 bg-muted/30 rounded-lg border">
+            <Button 
+              onClick={handleSaveAll}
+              disabled={saving || !hasPendingChanges}
+              className="px-6 py-2"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? 'Zapisywanie...' : `Zapisz zmiany${hasPendingChanges ? ` (${Object.keys(pendingChanges).length})` : ''}`}
+            </Button>
+            
+            <Button 
+              onClick={handleDiscardChanges}
+              variant="outline"
+              disabled={!hasPendingChanges}
+              className="px-6 py-2"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Anuluj zmiany
+            </Button>
+            
+            {hasPendingChanges && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                Niezapisane zmiany: {Object.keys(pendingChanges).length}
+              </div>
+            )}
+          </div>
           
           <IngredientSection
             title="Surowce Ziołowe (g)"
@@ -273,7 +288,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handlePendingAmountChange}
             onPriceUpdate={handlePendingPriceChange}
-            compositionUsage={{}} // Remove usage display
+            compositionUsage={{}}
             warningThresholds={warningThresholds}
             pendingChanges={pendingChanges}
           />
@@ -286,7 +301,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handlePendingAmountChange}
             onPriceUpdate={handlePendingPriceChange}
-            compositionUsage={{}} // Remove usage display
+            compositionUsage={{}}
             warningThresholds={warningThresholds}
             pendingChanges={pendingChanges}
           />
@@ -299,7 +314,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
             ingredientUnits={ingredientUnits}
             onAmountUpdate={handlePendingAmountChange}
             onPriceUpdate={handlePendingPriceChange}
-            compositionUsage={{}} // Remove usage display
+            compositionUsage={{}}
             warningThresholds={warningThresholds}
             pendingChanges={pendingChanges}
           />
