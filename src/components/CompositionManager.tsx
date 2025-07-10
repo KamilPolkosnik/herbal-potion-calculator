@@ -118,7 +118,7 @@ const CompositionManager: React.FC<CompositionManagerProps> = ({ onDataChange })
     try {
       const { data, error } = await supabase
         .from('composition_ingredients')
-        .select('*')
+        .select('ingredient_name, amount, unit, category')
         .eq('composition_id', compositionId);
       
       if (error) {
@@ -224,7 +224,7 @@ const CompositionManager: React.FC<CompositionManagerProps> = ({ onDataChange })
           ingredient_name: ingredientName,
           amount: newIngredient.amount,
           unit: unit,
-          category: newIngredient.category // Zapisz wybraną kategorię
+          category: newIngredient.category
         }]);
 
       if (error) {
