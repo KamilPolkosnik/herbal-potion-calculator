@@ -56,6 +56,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
       console.log('Znalezione składniki w zestawach:', uniqueIngredients);
       setUsedIngredients(uniqueIngredients);
 
+      // Pobierz składniki z ich jednostkami z tabeli ingredients
       const { data: ingredientsData, error: ingredientsError } = await supabase
         .from('ingredients')
         .select('name, unit');
@@ -65,26 +66,58 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
         return;
       }
 
+      // Pobierz kategorie składników z composition_ingredients
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('composition_ingredients')
+        .select('ingredient_name, category');
+
+      if (categoriesError) {
+        console.error('Błąd podczas ładowania kategorii składników:', categoriesError);
+        return;
+      }
+
       const unitsMap: Record<string, string> = {};
       
+      // Najpierw ustaw jednostki z tabeli ingredients
       ingredientsData?.forEach(item => {
         unitsMap[item.name] = item.unit;
       });
 
+      // Dla składników bez jednostki w tabeli ingredients, użyj kategorii do określenia jednostki
       uniqueIngredients.forEach(ingredientName => {
         if (!unitsMap[ingredientName]) {
-          console.log(`Składnik ${ingredientName} nie istnieje w tabeli ingredients, używam logiki fallback`);
-          if (ingredientName.toLowerCase().includes('olejek')) {
-            unitsMap[ingredientName] = 'ml';
-          } else if (ingredientName.toLowerCase().includes('worek') || 
-                     ingredientName.toLowerCase().includes('woreczek') || 
-                     ingredientName.toLowerCase().includes('pojemnik') ||
-                     ingredientName.toLowerCase().includes('etykieta')) {
-            unitsMap[ingredientName] = 'szt';
+          console.log(`Składnik ${ingredientName} nie istnieje w tabeli ingredients, używam kategorii`);
+          
+          // Znajdź kategorię składnika z composition_ingredients
+          const categoryData = categoriesData?.find(item => item.ingredient_name === ingredientName);
+          
+          if (categoryData) {
+            switch (categoryData.category) {
+              case 'olejek':
+                unitsMap[ingredientName] = 'ml';
+                break;
+              case 'inne':
+                unitsMap[ingredientName] = 'szt';
+                break;
+              default: // 'zioło'
+                unitsMap[ingredientName] = 'g';
+                break;
+            }
+            console.log(`Jednostka na podstawie kategorii dla ${ingredientName}: ${unitsMap[ingredientName]} (kategoria: ${categoryData.category})`);
           } else {
-            unitsMap[ingredientName] = 'g';
+            // Fallback do starej logiki jeśli nie ma kategorii
+            if (ingredientName.toLowerCase().includes('olejek')) {
+              unitsMap[ingredientName] = 'ml';
+            } else if (ingredientName.toLowerCase().includes('worek') || 
+                       ingredientName.toLowerCase().includes('woreczek') || 
+                       ingredientName.toLowerCase().includes('pojemnik') ||
+                       ingredientName.toLowerCase().includes('etykieta')) {
+              unitsMap[ingredientName] = 'szt';
+            } else {
+              unitsMap[ingredientName] = 'g';
+            }
+            console.log(`Jednostka domyślna dla ${ingredientName}: ${unitsMap[ingredientName]}`);
           }
-          console.log(`Jednostka domyślna dla ${ingredientName}: ${unitsMap[ingredientName]}`);
         } else {
           console.log(`Składnik ${ingredientName}: ${unitsMap[ingredientName]}`);
         }
