@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredients } from '@/hooks/useIngredients';
-import { useIngredientCategories } from '@/hooks/useIngredientCategories';
+import { useIngredientCategoriesFromDB } from '@/hooks/useIngredientCategoriesFromDB';
 import { useIngredientCompositions } from '@/hooks/useIngredientCompositions';
 import { useWarningThresholds } from '@/hooks/useWarningThresholds';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -218,7 +218,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     setFilters(newFilters);
   };
 
-  const { herbs, oils, others } = useIngredientCategories(filteredIngredients, ingredientUnits);
+  const { herbs, oils, others } = useIngredientCategoriesFromDB(filteredIngredients);
 
   const warningThresholds = thresholds ? {
     herbs: thresholds.herbs_threshold,

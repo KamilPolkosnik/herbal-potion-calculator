@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ interface CompositionIngredient {
   ingredient_name: string;
   amount: number;
   unit: string;
+  category: string;
 }
 
 interface CompositionManagerProps {
@@ -221,7 +223,8 @@ const CompositionManager: React.FC<CompositionManagerProps> = ({ onDataChange })
           composition_id: selectedComposition,
           ingredient_name: ingredientName,
           amount: newIngredient.amount,
-          unit: unit
+          unit: unit,
+          category: newIngredient.category // Zapisz wybraną kategorię
         }]);
 
       if (error) {
@@ -645,6 +648,9 @@ const CompositionManager: React.FC<CompositionManagerProps> = ({ onDataChange })
                       <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{ingredient.ingredient_name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {ingredient.category}
+                          </Badge>
                           {editingIngredient === ingredient.ingredient_name ? (
                             <div className="flex items-center gap-2">
                               <Input

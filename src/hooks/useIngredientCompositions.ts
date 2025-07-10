@@ -8,6 +8,7 @@ interface CompositionUsage {
     name: string;
     amount: number;
     unit: string;
+    category: string;
   }>;
 }
 
@@ -19,13 +20,14 @@ export const useIngredientCompositions = () => {
     try {
       setLoading(true);
       
-      // Pobierz wszystkie składniki z zestawów wraz z informacjami o zestawach
+      // Pobierz wszystkie składniki z zestawów wraz z informacjami o zestawach i kategorniach
       const { data, error } = await supabase
         .from('composition_ingredients')
         .select(`
           ingredient_name,
           amount,
           unit,
+          category,
           compositions!inner(id, name)
         `);
 
@@ -45,12 +47,13 @@ export const useIngredientCompositions = () => {
           id: item.compositions.id,
           name: item.compositions.name,
           amount: item.amount,
-          unit: item.unit
+          unit: item.unit,
+          category: item.category || 'zioło' // fallback dla starych danych
         });
       });
 
       setCompositionUsage(usage);
-      console.log('Załadowano informacje o użyciu składników:', usage);
+      console.log('Załadowano informacje o użyciu składników z kategoriami:', usage);
     } catch (error) {
       console.error('Błąd podczas ładowania informacji o użyciu składników:', error);
     } finally {
