@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import WarningThresholdSettings from './WarningThresholdSettings';
 
 const CompanySettings: React.FC = () => {
-  const { settings, loading, updateSettings } = useCompanySettings();
+  const { settings, loading, updateSettings, refreshSettings } = useCompanySettings();
   const { user } = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -125,6 +125,9 @@ const CompanySettings: React.FC = () => {
         bank_name: formData.bank_name,
         show_ues_generator: formData.show_ues_generator
       });
+
+      // Odśwież ustawienia aby zmiana była widoczna od razu w innych komponentach
+      await refreshSettings();
       
       toast({
         title: "Sukces",
