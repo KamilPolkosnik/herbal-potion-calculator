@@ -129,6 +129,11 @@ const CompanySettings: React.FC = () => {
       // Odśwież ustawienia aby zmiana była widoczna od razu w innych komponentach
       await refreshSettings();
       
+      // Wyślij event do okna aby inne komponenty mogły się odświeżyć
+      window.dispatchEvent(new CustomEvent('companySettingsUpdated', {
+        detail: { show_ues_generator: formData.show_ues_generator }
+      }));
+      
       toast({
         title: "Sukces",
         description: "Ustawienia firmy zostały zapisane",

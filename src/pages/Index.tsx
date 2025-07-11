@@ -23,7 +23,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('ingredients');
   const { ingredients, prices, loading, refreshData } = useIngredients();
   const { user, loading: authLoading } = useAuth();
-  const { settings } = useCompanySettings();
+  const { settings, refreshSettings } = useCompanySettings();
   const { 
     rawMaterialsValue, 
     oilsValue, 
@@ -54,6 +54,20 @@ const Index = () => {
       window.removeEventListener('refreshSummary', handleRefreshSummary);
     };
   }, [refreshSummary]);
+
+  // Nasłuchuj zdarzenia zmiany ustawień firmy
+  useEffect(() => {
+    const handleCompanySettingsUpdated = () => {
+      console.log('Company settings updated, refreshing...');
+      refreshSettings();
+    };
+
+    window.addEventListener('companySettingsUpdated', handleCompanySettingsUpdated);
+    
+    return () => {
+      window.removeEventListener('companySettingsUpdated', handleCompanySettingsUpdated);
+    };
+  }, [refreshSettings]);
 
   if (authLoading) {
     return (
