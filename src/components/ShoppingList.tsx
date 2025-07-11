@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -104,50 +103,46 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
 
       const unitsMap: Record<string, string> = {};
       
-      // First, add units from ingredients table (higher priority)
-      if (!unitsError && ingredientUnitsFromIngredients) {
-        ingredientUnitsFromIngredients.forEach(item => {
-          unitsMap[item.name] = item.unit;
-          console.log(`ShoppingList - Składnik z ingredients: ${item.name}, Jednostka: ${item.unit}`);
-        });
-      }
-
-      // Then, add units from composition_ingredients for missing ingredients, using category to determine unit
-      if (!compositionUnitsError && ingredientUnitsFromComposition) {
-        ingredientUnitsFromComposition.forEach(item => {
-          if (!unitsMap[item.ingredient_name]) {
-            // Use category to determine unit
-            switch (item.category) {
-              case 'olejek':
-                unitsMap[item.ingredient_name] = 'ml';
-                break;
-              case 'inne':
-                unitsMap[item.ingredient_name] = 'szt';
-                break;
-              default: // 'zioło'
-                unitsMap[item.ingredient_name] = 'g';
-                break;
-            }
-            console.log(`ShoppingList - Składnik z composition_ingredients: ${item.ingredient_name}, Jednostka: ${unitsMap[item.ingredient_name]} (kategoria: ${item.category})`);
-          }
-        });
-      }
-
-      // Only use fallback logic for ingredients that have no unit in database
+      // Dla każdego składnika, najpierw sprawdź kategorię z composition_ingredients
       uniqueIngredients.forEach(ingredientName => {
-        if (!unitsMap[ingredientName]) {
-          if (ingredientName.toLowerCase().includes('olejek')) {
-            unitsMap[ingredientName] = 'ml';
-          } else if (ingredientName.toLowerCase().includes('worek') || 
-                     ingredientName.toLowerCase().includes('woreczek') || 
-                     ingredientName.toLowerCase().includes('pojemnik') ||
-                     ingredientName.toLowerCase().includes('etykieta') ||
-                     ingredientName.toLowerCase().includes('szt')) {
-            unitsMap[ingredientName] = 'szt';
-          } else {
-            unitsMap[ingredientName] = 'g';
+        // Znajdź kategorię składnika z composition_ingredients
+        const categoryData = ingredientUnitsFromComposition?.find(item => item.ingredient_name === ingredientName);
+        
+        if (categoryData) {
+          // Użyj kategorii do określenia jednostki - ma pierwszeństwo
+          switch (categoryData.category) {
+            case 'olejek':
+              unitsMap[ingredientName] = 'ml';
+              break;
+            case 'inne':
+              unitsMap[ingredientName] = 'szt';
+              break;
+            default: // 'zioło'
+              unitsMap[ingredientName] = 'g';
+              break;
           }
-          console.log(`ShoppingList - Jednostka domyślna για ${ingredientName}: ${unitsMap[ingredientName]}`);
+          console.log(`ShoppingList - Jednostka na podstawie kategorii dla ${ingredientName}: ${unitsMap[ingredientName]} (kategoria: ${categoryData.category})`);
+        } else {
+          // Jeśli nie ma kategorii, sprawdź jednostkę z tabeli ingredients
+          const ingredientData = ingredientUnitsFromIngredients?.find(item => item.name === ingredientName);
+          if (ingredientData) {
+            unitsMap[ingredientName] = ingredientData.unit;
+            console.log(`ShoppingList - Jednostka z tabeli ingredients dla ${ingredientName}: ${unitsMap[ingredientName]}`);
+          } else {
+            // Fallback do starej logiki jeśli składnik nie istnieje w żadnej tabeli
+            if (ingredientName.toLowerCase().includes('olejek')) {
+              unitsMap[ingredientName] = 'ml';
+            } else if (ingredientName.toLowerCase().includes('worek') || 
+                       ingredientName.toLowerCase().includes('woreczek') || 
+                       ingredientName.toLowerCase().includes('pojemnik') ||
+                       ingredientName.toLowerCase().includes('etykieta') ||
+                       ingredientName.toLowerCase().includes('szt')) {
+              unitsMap[ingredientName] = 'szt';
+            } else {
+              unitsMap[ingredientName] = 'g';
+            }
+            console.log(`ShoppingList - Jednostka domyślna dla ${ingredientName}: ${unitsMap[ingredientName]}`);
+          }
         }
       });
 
