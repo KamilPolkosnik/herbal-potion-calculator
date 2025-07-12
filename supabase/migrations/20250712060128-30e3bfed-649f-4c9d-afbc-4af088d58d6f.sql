@@ -29,18 +29,18 @@ CREATE POLICY "Enable all access for cost_invoices"
   USING (true) 
   WITH CHECK (true);
 
--- Polityki dla storage bucket cost-invoices
-CREATE POLICY "Allow authenticated users to upload cost invoices"
+-- Polityki dla storage bucket cost-invoices (zezwalamy na wszystko dla wszystkich)
+CREATE POLICY "Allow all users to upload cost invoices"
   ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'cost-invoices' AND auth.role() = 'authenticated');
+  WITH CHECK (bucket_id = 'cost-invoices');
 
-CREATE POLICY "Allow authenticated users to view cost invoices"
+CREATE POLICY "Allow all users to view cost invoices"
   ON storage.objects FOR SELECT
-  USING (bucket_id = 'cost-invoices' AND auth.role() = 'authenticated');
+  USING (bucket_id = 'cost-invoices');
 
-CREATE POLICY "Allow authenticated users to delete cost invoices"
+CREATE POLICY "Allow all users to delete cost invoices"
   ON storage.objects FOR DELETE
-  USING (bucket_id = 'cost-invoices' AND auth.role() = 'authenticated');
+  USING (bucket_id = 'cost-invoices');
 
 -- Dodaj trigger do aktualizacji updated_at
 CREATE TRIGGER update_cost_invoices_updated_at
