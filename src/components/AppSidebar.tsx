@@ -13,7 +13,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign, Users } from 'lucide-react';
+import { Package, Calculator, Settings, ShoppingCart, TrendingUp, LogOut, DollarSign, Users, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface AppSidebarProps {
@@ -87,6 +87,11 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ activeTab, onTabChange }) => {
       id: 'shopping',
       title: 'Lista Zakupów',
       icon: ShoppingCart,
+    },
+    {
+      id: 'cost-invoices',
+      title: 'Faktury Kosztowe',
+      icon: FileText,
     },
     {
       id: 'summary',

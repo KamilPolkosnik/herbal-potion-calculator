@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
@@ -13,6 +14,7 @@ import SalesStatistics from '@/components/SalesStatistics';
 import CompanySettings from '@/components/CompanySettings';
 import UserManagement from '@/components/UserManagement';
 import UESReportGenerator from '@/components/UESReportGenerator';
+import CostInvoicesManager from '@/components/CostInvoicesManager';
 import { useIngredients } from '@/hooks/useIngredients';
 import { useAuth } from '@/hooks/useAuth';
 import { useSummaryData } from '@/hooks/useSummaryData';
@@ -165,6 +167,22 @@ const Index = () => {
               </CardHeader>
               <CardContent className="px-2 sm:px-6">
                 <SalesManager onDataChange={refreshSummary} />
+              </CardContent>
+            </Card>
+          </div>
+        );
+
+      case 'cost-invoices':
+        return (
+          <div className="w-full">
+            <Card className="w-full">
+              <CardHeader>
+                <CardTitle className="text-lg sm:text-xl md:text-2xl text-center text-orange-700 px-2">
+                  Faktury Kosztowe
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2 sm:px-6">
+                <CostInvoicesManager />
               </CardContent>
             </Card>
           </div>

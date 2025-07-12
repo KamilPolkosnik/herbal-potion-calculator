@@ -154,6 +154,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_invoices: {
+        Row: {
+          amount: number | null
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          invoice_month: number
+          invoice_year: number
+          mime_type: string
+          original_name: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          invoice_month: number
+          invoice_year: number
+          mime_type: string
+          original_name: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          invoice_month?: number
+          invoice_year?: number
+          mime_type?: string
+          original_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ingredient_movements: {
         Row: {
           created_at: string
