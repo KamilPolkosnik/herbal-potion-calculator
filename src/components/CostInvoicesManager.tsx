@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,12 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Upload, Download, Trash2, Filter } from 'lucide-react';
+import { Upload, Download, Trash2, Filter, Eye } from 'lucide-react';
 import { useCostInvoices } from '@/hooks/useCostInvoices';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const CostInvoicesManager = () => {
-  const { invoices, loading, uploadInvoice, downloadInvoice, deleteInvoice } = useCostInvoices();
+  const { invoices, loading, uploadInvoice, downloadInvoice, previewInvoice, deleteInvoice } = useCostInvoices();
+  const isMobile = useIsMobile();
   
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -22,9 +23,10 @@ const CostInvoicesManager = () => {
   const [amount, setAmount] = useState('');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   
-  // Filtry
-  const [filterMonth, setFilterMonth] = useState<string>('all');
-  const [filterYear, setFilterYear] = useState<string>('all');
+  // Filtry - ustaw domyślnie aktualny miesiąc i rok
+  const currentDate = new Date();
+  const [filterMonth, setFilterMonth] = useState<string>((currentDate.getMonth() + 1).toString());
+  const [filterYear, setFilterYear] = useState<string>(currentDate.getFullYear().toString());
 
   const months = [
     { value: 1, label: 'Styczeń' },
@@ -94,32 +96,33 @@ const CostInvoicesManager = () => {
   const availableYears = [...new Set(invoices.map(inv => inv.invoice_year))].sort((a, b) => b - a);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 p-2 md:p-6">
       {/* Header z przyciskiem dodawania */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Faktury Kosztowe</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-800">Faktury Kosztowe</h2>
         <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700">
+            <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto text-sm">
               <Upload className="w-4 h-4 mr-2" />
               Dodaj Fakturę
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md mx-2">
             <DialogHeader>
               <DialogTitle>Dodaj Nową Fakturę</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="file">Plik faktury</Label>
+                <Label htmlFor="file" className="text-sm">Plik faktury</Label>
                 <Input
                   id="file"
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png,.gif"
                   onChange={handleFileSelect}
+                  className="text-sm"
                 />
                 {selectedFile && (
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-xs text-gray-600 mt-1">
                     Wybrany plik: {selectedFile.name} ({formatFileSize(selectedFile.size)})
                   </p>
                 )}
@@ -127,9 +130,9 @@ const CostInvoicesManager = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="month">Miesiąc</Label>
+                  <Label htmlFor="month" className="text-sm">Miesiąc</Label>
                   <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -143,9 +146,9 @@ const CostInvoicesManager = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="year">Rok</Label>
+                  <Label htmlFor="year" className="text-sm">Rok</Label>
                   <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-                    <SelectTrigger>
+                    <SelectTrigger className="text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -160,7 +163,7 @@ const CostInvoicesManager = () => {
               </div>
 
               <div>
-                <Label htmlFor="amount">Kwota (opcjonalne)</Label>
+                <Label htmlFor="amount" className="text-sm">Kwota (opcjonalne)</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -168,23 +171,25 @@ const CostInvoicesManager = () => {
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  className="text-sm"
                 />
               </div>
 
               <div>
-                <Label htmlFor="description">Opis (opcjonalny)</Label>
+                <Label htmlFor="description" className="text-sm">Opis (opcjonalny)</Label>
                 <Textarea
                   id="description"
                   placeholder="Opis faktury..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  className="text-sm min-h-[80px]"
                 />
               </div>
 
               <Button 
                 onClick={handleUpload} 
                 disabled={!selectedFile}
-                className="w-full"
+                className="w-full text-sm"
               >
                 Prześlij Fakturę
               </Button>
@@ -195,18 +200,18 @@ const CostInvoicesManager = () => {
 
       {/* Filtry */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Filter className="w-4 h-4" />
             Filtry
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Miesiąc</Label>
+              <Label className="text-sm">Miesiąc</Label>
               <Select value={filterMonth} onValueChange={setFilterMonth}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -221,9 +226,9 @@ const CostInvoicesManager = () => {
             </div>
 
             <div>
-              <Label>Rok</Label>
+              <Label className="text-sm">Rok</Label>
               <Select value={filterYear} onValueChange={setFilterYear}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,16 +247,16 @@ const CostInvoicesManager = () => {
 
       {/* Lista faktur */}
       <Card>
-        <CardHeader>
-          <CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">
             Lista Faktur ({filteredInvoices.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 md:p-6">
           {loading ? (
-            <div className="text-center py-8">Ładowanie faktur...</div>
+            <div className="text-center py-8 text-sm">Ładowanie faktur...</div>
           ) : filteredInvoices.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 text-sm">
               Brak faktur do wyświetlenia
             </div>
           ) : (
@@ -259,54 +264,93 @@ const CostInvoicesManager = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nazwa pliku</TableHead>
-                    <TableHead>Typ</TableHead>
-                    <TableHead>Miesiąc/Rok</TableHead>
-                    <TableHead>Kwota</TableHead>
-                    <TableHead>Rozmiar</TableHead>
-                    <TableHead>Data dodania</TableHead>
-                    <TableHead>Akcje</TableHead>
+                    <TableHead className="text-xs md:text-sm px-2 md:px-4">Nazwa pliku</TableHead>
+                    {!isMobile && <TableHead className="text-xs md:text-sm">Typ</TableHead>}
+                    <TableHead className="text-xs md:text-sm px-2 md:px-4">Miesiąc/Rok</TableHead>
+                    {!isMobile && <TableHead className="text-xs md:text-sm">Kwota</TableHead>}
+                    {!isMobile && <TableHead className="text-xs md:text-sm">Rozmiar</TableHead>}
+                    {!isMobile && <TableHead className="text-xs md:text-sm">Data dodania</TableHead>}
+                    <TableHead className="text-xs md:text-sm px-2 md:px-4">Akcje</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredInvoices.map((invoice) => (
                     <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">
-                        {invoice.original_name}
+                      <TableCell className="font-medium px-2 md:px-4">
+                        <div className="text-xs md:text-sm truncate max-w-[120px] md:max-w-none">
+                          {invoice.original_name}
+                        </div>
                         {invoice.description && (
-                          <div className="text-sm text-gray-500 mt-1">
+                          <div className="text-xs text-gray-500 mt-1 truncate max-w-[120px] md:max-w-none">
                             {invoice.description}
                           </div>
                         )}
+                        {isMobile && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {getFileTypeBadge(invoice.mime_type)}
+                            {invoice.amount && (
+                              <Badge variant="outline" className="text-xs">
+                                {invoice.amount.toFixed(2)} zł
+                              </Badge>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
-                      <TableCell>
-                        {getFileTypeBadge(invoice.mime_type)}
+                      {!isMobile && (
+                        <TableCell>
+                          {getFileTypeBadge(invoice.mime_type)}
+                        </TableCell>
+                      )}
+                      <TableCell className="px-2 md:px-4">
+                        <div className="text-xs md:text-sm">
+                          {months.find(m => m.value === invoice.invoice_month)?.label} {invoice.invoice_year}
+                        </div>
                       </TableCell>
-                      <TableCell>
-                        {months.find(m => m.value === invoice.invoice_month)?.label} {invoice.invoice_year}
-                      </TableCell>
-                      <TableCell>
-                        {invoice.amount ? `${invoice.amount.toFixed(2)} zł` : '-'}
-                      </TableCell>
-                      <TableCell>{formatFileSize(invoice.file_size)}</TableCell>
-                      <TableCell>
-                        {new Date(invoice.created_at).toLocaleDateString('pl-PL')}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
+                      {!isMobile && (
+                        <>
+                          <TableCell>
+                            <div className="text-sm">
+                              {invoice.amount ? `${invoice.amount.toFixed(2)} zł` : '-'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{formatFileSize(invoice.file_size)}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {new Date(invoice.created_at).toLocaleDateString('pl-PL')}
+                            </div>
+                          </TableCell>
+                        </>
+                      )}
+                      <TableCell className="px-2 md:px-4">
+                        <div className="flex flex-col md:flex-row gap-1 md:gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => previewInvoice(invoice)}
+                            className="text-xs p-1 md:p-2"
+                          >
+                            <Eye className="w-3 h-3 md:w-4 md:h-4" />
+                            {!isMobile && <span className="ml-1">Podgląd</span>}
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => downloadInvoice(invoice)}
+                            className="text-xs p-1 md:p-2"
                           >
-                            <Download className="w-4 h-4" />
+                            <Download className="w-3 h-3 md:w-4 md:h-4" />
+                            {!isMobile && <span className="ml-1">Pobierz</span>}
                           </Button>
                           <Button
                             size="sm"
                             variant="destructive"
                             onClick={() => deleteInvoice(invoice)}
+                            className="text-xs p-1 md:p-2"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
+                            {!isMobile && <span className="ml-1">Usuń</span>}
                           </Button>
                         </div>
                       </TableCell>

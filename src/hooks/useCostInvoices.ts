@@ -123,6 +123,29 @@ export const useCostInvoices = () => {
     }
   };
 
+  const previewInvoice = async (invoice: CostInvoice) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('cost-invoices')
+        .download(invoice.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      window.open(url, '_blank');
+      
+      // Clean up the URL after a delay to prevent memory leaks
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      console.error('Error previewing invoice:', error);
+      toast({
+        title: "Błąd",
+        description: "Nie udało się wyświetlić podglądu faktury",
+        variant: "destructive",
+      });
+    }
+  };
+
   const deleteInvoice = async (invoice: CostInvoice) => {
     try {
       // Delete file from storage
@@ -165,6 +188,7 @@ export const useCostInvoices = () => {
     loading,
     uploadInvoice,
     downloadInvoice,
+    previewInvoice,
     deleteInvoice,
     refreshInvoices: fetchInvoices,
   };
