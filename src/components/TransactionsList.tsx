@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,10 +25,38 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
   const { settings: companySettings } = useCompanySettings();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  
+  const currentDate = new Date();
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [expandedTransactions, setExpandedTransactions] = useState<Set<string>>(new Set());
   const [operatingTransactions, setOperatingTransactions] = useState<Set<string>>(new Set());
+
+  const months = [
+    { value: 1, label: 'Styczeń' },
+    { value: 2, label: 'Luty' },
+    { value: 3, label: 'Marzec' },
+    { value: 4, label: 'Kwiecień' },
+    { value: 5, label: 'Maj' },
+    { value: 6, label: 'Czerwiec' },
+    { value: 7, label: 'Lipiec' },
+    { value: 8, label: 'Sierpień' },
+    { value: 9, label: 'Wrzesień' },
+    { value: 10, label: 'Październik' },
+    { value: 11, label: 'Listopad' },
+    { value: 12, label: 'Grudzień' }
+  ];
+
+  // Generate available years from transactions
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    transactions.forEach(transaction => {
+      const year = new Date(transaction.created_at).getFullYear();
+      years.add(year);
+    });
+    years.add(currentDate.getFullYear()); // Add current year if no transactions
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactions, currentDate.getFullYear()]);
 
   const handleReverse = async (transactionId: string, compositionName: string) => {
     if (operatingTransactions.has(transactionId) || processing) {
@@ -110,23 +139,20 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
   const filteredTransactions = useMemo(() => {
     let filtered = [...transactions];
 
-    if (dateFrom) {
-      const fromDate = new Date(dateFrom);
-      fromDate.setHours(0, 0, 0, 0);
-      filtered = filtered.filter(t => new Date(t.created_at) >= fromDate);
-    }
-
-    if (dateTo) {
-      const toDate = new Date(dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(t => new Date(t.created_at) <= toDate);
-    }
+    // Filter by selected year and month
+    filtered = filtered.filter(t => {
+      const transactionDate = new Date(t.created_at);
+      const transactionYear = transactionDate.getFullYear();
+      const transactionMonth = transactionDate.getMonth() + 1;
+      
+      return transactionYear === selectedYear && transactionMonth === selectedMonth;
+    });
 
     // Sort by creation date (newest first for display)
     return filtered.sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [transactions, dateFrom, dateTo]);
+  }, [transactions, selectedYear, selectedMonth]);
 
   // Grupuj transakcje z wieloma pozycjami
   const groupedTransactions = useMemo(() => {
@@ -208,8 +234,8 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
   };
 
   const clearFilters = () => {
-    setDateFrom('');
-    setDateTo('');
+    setSelectedYear(currentDate.getFullYear());
+    setSelectedMonth(currentDate.getMonth() + 1);
   };
 
   if (loading) {
@@ -229,28 +255,38 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
           {processing && <Loader2 className="w-4 h-4 animate-spin" />}
         </CardTitle>
         
-        {/* Date Range Filter */}
+        {/* Month and Year Filter */}
         <div className="flex flex-col gap-2 sm:gap-3 items-start w-full">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
             <div className="w-full min-w-0">
-              <Label htmlFor="dateFrom" className="text-xs sm:text-sm break-words">Data Od:</Label>
-              <Input
-                id="dateFrom"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full text-xs sm:text-sm"
-              />
+              <Label htmlFor="yearSelect" className="text-xs sm:text-sm break-words">Rok:</Label>
+              <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                <SelectTrigger className="w-full text-xs sm:text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableYears.map(year => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="w-full min-w-0">
-              <Label htmlFor="dateTo" className="text-xs sm:text-sm break-words">Data Do:</Label>
-              <Input
-                id="dateTo"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full text-xs sm:text-sm"
-              />
+              <Label htmlFor="monthSelect" className="text-xs sm:text-sm break-words">Miesiąc:</Label>
+              <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                <SelectTrigger className="w-full text-xs sm:text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map(month => (
+                    <SelectItem key={month.value} value={month.value.toString()}>
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <Button
@@ -266,7 +302,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       <CardContent className="px-1 py-2 sm:px-2 sm:py-3 md:px-4 md:py-4">
         {groupedTransactions.length === 0 ? (
           <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm md:text-base break-words">
-            {dateFrom || dateTo ? 'Brak transakcji w wybranym zakresie dat' : 'Brak transakcji do wyświetlenia'}
+            Brak transakcji w wybranym miesiącu
           </div>
         ) : (
           <div className="w-full overflow-x-auto">

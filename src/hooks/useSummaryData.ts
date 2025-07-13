@@ -23,19 +23,25 @@ export const useSummaryData = () => {
 
       if (dataError) throw dataError;
 
-      // Pobierz wszystkie sprzedaże (tylko aktywne)
+      // Pobierz wszystkie sprzedaże (tylko aktywne) z bieżącego miesiąca
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1;
+      const currentYear = currentDate.getFullYear();
+      
+      // Utwórz zakres dat dla bieżącego miesiąca
+      const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
+      const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+
       const { data: salesData, error: salesError } = await supabase
         .from('sales_transactions')
         .select('total_price')
-        .eq('is_reversed', false);
+        .eq('is_reversed', false)
+        .gte('created_at', startOfMonth.toISOString())
+        .lte('created_at', endOfMonth.toISOString());
 
       if (salesError) throw salesError;
 
       // Pobierz koszty miesięczne za obecny miesiąc i rok
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth() + 1;
-      const currentYear = currentDate.getFullYear();
-
       const { data: costsData, error: costsError } = await supabase
         .from('monthly_costs')
         .select('amount')
@@ -44,11 +50,13 @@ export const useSummaryData = () => {
 
       if (costsError) throw costsError;
 
-      // Pobierz transakcje sprzedaży z kompozycjami i składnikami
+      // Pobierz transakcje sprzedaży z kompozycjami i składnikami (tylko z bieżącego miesiąca)
       const { data: transactionsData, error: transactionsError } = await supabase
         .from('sales_transactions')
         .select('*')
-        .eq('is_reversed', false);
+        .eq('is_reversed', false)
+        .gte('created_at', startOfMonth.toISOString())
+        .lte('created_at', endOfMonth.toISOString());
 
       if (transactionsError) throw transactionsError;
 
