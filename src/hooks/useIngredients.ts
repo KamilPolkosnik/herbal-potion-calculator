@@ -43,15 +43,57 @@ export const useIngredients = () => {
     }
   };
 
-  const determineUnit = (name: string) => {
-    if (name.toLowerCase().includes('olejek')) {
-      return 'ml';
-    } else if (name.toLowerCase().includes('woreczek') || 
-               name.toLowerCase().includes('worek') || 
-               name.toLowerCase().includes('pojemnik')) {
-      return 'szt';
-    } else {
-      return 'g';
+  const determineUnit = async (name: string) => {
+    try {
+      // Najpierw sprawdź kategorię składnika z composition_ingredients
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('composition_ingredients')
+        .select('category')
+        .eq('ingredient_name', name)
+        .limit(1)
+        .single();
+
+      if (!categoryError && categoryData) {
+        // Użyj kategorii do określenia jednostki
+        switch (categoryData.category) {
+          case 'olejek':
+            return 'ml';
+          case 'inne':
+            return 'szt';
+          default: // 'zioło'
+            return 'g';
+        }
+      }
+
+      // Jeśli nie znaleziono kategorii, sprawdź jednostkę z tabeli ingredients
+      const { data: ingredientData, error: ingredientError } = await supabase
+        .from('ingredients')
+        .select('unit')
+        .eq('name', name)
+        .single();
+
+      if (!ingredientError && ingredientData) {
+        return ingredientData.unit;
+      }
+
+      // Fallback do starej logiki
+      if (name.toLowerCase().includes('olejek')) {
+        return 'ml';
+      } else if (name.toLowerCase().includes('woreczek') || 
+                 name.toLowerCase().includes('worek') || 
+                 name.toLowerCase().includes('pojemnik') ||
+                 name.toLowerCase().includes('etykieta') ||
+                 name.toLowerCase().includes('metka') ||
+                 name.toLowerCase().includes('torba') ||
+                 name.toLowerCase().includes('torebka') ||
+                 name.toLowerCase().includes('butelka')) {
+        return 'szt';
+      } else {
+        return 'g';
+      }
+    } catch (error) {
+      console.error('Error determining unit for ingredient:', name, error);
+      return 'g'; // fallback
     }
   };
 
@@ -73,7 +115,7 @@ export const useIngredients = () => {
       if (existingIngredient && !fetchError) {
         unitToUse = existingIngredient.unit;
       } else {
-        unitToUse = determineUnit(name);
+        unitToUse = await determineUnit(name);
       }
 
       const { error } = await supabase
@@ -126,7 +168,7 @@ export const useIngredients = () => {
       if (existingIngredient && !fetchError) {
         unitToUse = existingIngredient.unit;
       } else {
-        unitToUse = determineUnit(name);
+        unitToUse = await determineUnit(name);
       }
 
       const { error } = await supabase
