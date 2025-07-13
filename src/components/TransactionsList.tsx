@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -240,28 +239,28 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center p-4 sm:p-8">
-        <div className="text-base sm:text-lg">Ładowanie transakcji...</div>
+      <div className="flex justify-center items-center p-2 sm:p-4">
+        <div className="text-xs sm:text-sm">Ładowanie transakcji...</div>
       </div>
     );
   }
 
   return (
     <Card className="w-full min-w-0 overflow-hidden">
-      <CardHeader className="px-2 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6">
-        <CardTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg break-words">
-          <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+      <CardHeader className="px-1 py-2 sm:px-3 sm:py-3">
+        <CardTitle className="flex items-center gap-1 text-xs sm:text-sm break-words">
+          <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
           <span className="break-words">Historia Transakcji</span>
-          {processing && <Loader2 className="w-4 h-4 animate-spin" />}
+          {processing && <Loader2 className="w-3 h-3 animate-spin" />}
         </CardTitle>
         
         {/* Month and Year Filter */}
-        <div className="flex flex-col gap-2 sm:gap-3 items-start w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+        <div className="flex flex-col gap-1 sm:gap-2 items-start w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 w-full">
             <div className="w-full min-w-0">
-              <Label htmlFor="yearSelect" className="text-xs sm:text-sm break-words">Rok:</Label>
+              <Label htmlFor="yearSelect" className="text-xs break-words">Rok:</Label>
               <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
-                <SelectTrigger className="w-full text-xs sm:text-sm">
+                <SelectTrigger className="w-full text-xs h-8">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -274,9 +273,9 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
               </Select>
             </div>
             <div className="w-full min-w-0">
-              <Label htmlFor="monthSelect" className="text-xs sm:text-sm break-words">Miesiąc:</Label>
+              <Label htmlFor="monthSelect" className="text-xs break-words">Miesiąc:</Label>
               <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
-                <SelectTrigger className="w-full text-xs sm:text-sm">
+                <SelectTrigger className="w-full text-xs h-8">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -292,52 +291,52 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
           <Button
             variant="outline"
             onClick={clearFilters}
-            className="w-full sm:w-auto text-xs sm:text-sm"
+            className="w-full text-xs h-8"
           >
-            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 shrink-0" />
+            <Calendar className="w-3 h-3 mr-1 shrink-0" />
             <span className="break-words">Wyczyść filtry</span>
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="px-1 py-2 sm:px-2 sm:py-3 md:px-4 md:py-4">
+      <CardContent className="px-1 py-1 sm:px-2 sm:py-2">
         {groupedTransactions.length === 0 ? (
-          <div className="text-center py-6 sm:py-8 text-gray-500 text-xs sm:text-sm md:text-base break-words">
+          <div className="text-center py-4 text-gray-500 text-xs break-words">
             Brak transakcji w wybranym miesiącu
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
-            <ScrollArea className="h-64 sm:h-80 md:h-96 w-full">
-              <div className="min-w-[320px]">
+            <ScrollArea className="h-48 sm:h-64 w-full">
+              <div className="min-w-[350px]">
                 <Table className="w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs font-medium px-1 w-16">Nr</TableHead>
-                      <TableHead className="text-xs font-medium px-1 hidden sm:table-cell w-20">Data</TableHead>
-                      <TableHead className="text-xs font-medium px-1 min-w-0">Zestaw</TableHead>
-                      <TableHead className="text-xs font-medium px-1 hidden md:table-cell w-24">Kupujący</TableHead>
-                      <TableHead className="text-xs font-medium px-1 w-12">Ilość</TableHead>
-                      <TableHead className="text-xs font-medium px-1 hidden sm:table-cell w-16">Cena jedn.</TableHead>
-                      <TableHead className="text-xs font-medium px-1 w-16">Łącznie</TableHead>
-                      <TableHead className="text-xs font-medium px-1 hidden lg:table-cell w-16">Status</TableHead>
-                      <TableHead className="text-xs font-medium px-1 w-20">Akcje</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 w-[40px]">Nr</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 hidden sm:table-cell w-[60px]">Data</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 min-w-0 w-[80px]">Zestaw</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 hidden md:table-cell w-[60px]">Kupujący</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 w-[30px]">Ilość</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 hidden sm:table-cell w-[40px]">Cena jedn.</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 w-[40px]">Łącznie</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 hidden lg:table-cell w-[40px]">Status</TableHead>
+                      <TableHead className="text-xs font-medium px-0.5 w-[50px]">Akcje</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {groupedTransactions.map((group) => (
                       <React.Fragment key={group.id}>
                         <TableRow>
-                          <TableCell className="font-mono text-xs px-1">
-                            <span className="block w-full truncate">
+                          <TableCell className="font-mono text-xs px-0.5">
+                            <span className="block w-full truncate text-xs">
                               {group.transaction.invoice_number.toString().padStart(9, '0')}
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs px-1 hidden sm:table-cell">
-                            <span className="block w-full truncate">
+                          <TableCell className="text-xs px-0.5 hidden sm:table-cell">
+                            <span className="block w-full truncate text-xs">
                               {format(new Date(group.transaction.created_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs px-1 min-w-0">
-                            <div className="flex items-center gap-1 min-w-0 w-full">
+                          <TableCell className="text-xs px-0.5 min-w-0">
+                            <div className="flex items-center gap-0.5 min-w-0 w-full">
                               <span className="truncate text-xs break-words flex-1 min-w-0">
                                 {group.mainItem}
                               </span>
@@ -346,46 +345,46 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => toggleExpanded(group.id)}
-                                  className="h-4 w-4 p-0 shrink-0"
+                                  className="h-3 w-3 p-0 shrink-0"
                                 >
                                   {expandedTransactions.has(group.id) ? (
-                                    <ChevronDown className="h-3 w-3" />
+                                    <ChevronDown className="h-2 w-2" />
                                   ) : (
-                                    <ChevronRight className="h-3 w-3" />
+                                    <ChevronRight className="h-2 w-2" />
                                   )}
                                 </Button>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-xs px-1 hidden md:table-cell">
-                            <span className="break-words block w-full truncate">
+                          <TableCell className="text-xs px-0.5 hidden md:table-cell">
+                            <span className="break-words block w-full truncate text-xs">
                               {group.transaction.buyer_name || 'Klient indywidualny'}
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs px-1">
-                            <span className="block w-full truncate">
+                          <TableCell className="text-xs px-0.5">
+                            <span className="block w-full truncate text-xs">
                               {group.transaction.quantity} szt.
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs px-1 hidden sm:table-cell">
-                            <span className="block w-full truncate">
+                          <TableCell className="text-xs px-0.5 hidden sm:table-cell">
+                            <span className="block w-full truncate text-xs">
                               {group.transaction.unit_price.toFixed(2)} zł
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs font-medium px-1">
-                            <span className="block w-full truncate">
+                          <TableCell className="text-xs font-medium px-0.5">
+                            <span className="block w-full truncate text-xs">
                               {group.transaction.total_price.toFixed(2)} zł
                             </span>
                           </TableCell>
-                          <TableCell className="hidden lg:table-cell px-1">
+                          <TableCell className="hidden lg:table-cell px-0.5">
                             {group.transaction.is_reversed ? (
                               <span className="text-red-600 font-medium text-xs block w-full truncate">Cofnięta</span>
                             ) : (
                               <span className="text-green-600 font-medium text-xs block w-full truncate">Aktywna</span>
                             )}
                           </TableCell>
-                          <TableCell className="px-1 w-20">
-                            <div className="flex flex-col gap-1 w-full min-w-0">
+                          <TableCell className="px-0.5 w-[50px]">
+                            <div className="flex flex-col gap-0.5 w-full min-w-0">
                               {!group.transaction.is_reversed ? (
                                 // Przyciski dla aktywnych transakcji
                                 <>
@@ -399,14 +398,14 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                                     size="sm"
                                     onClick={() => handleReverse(group.transaction.id, group.transaction.composition_name)}
                                     disabled={operatingTransactions.has(group.transaction.id) || processing}
-                                    className="text-xs px-1 py-1 h-6 w-full min-w-0"
+                                    className="text-xs px-0.5 py-0.5 h-5 w-full min-w-0"
                                   >
                                     {operatingTransactions.has(group.transaction.id) ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
                                     ) : (
                                       <>
-                                        <Undo2 className="w-3 h-3 mr-1 shrink-0" />
-                                        <span className="truncate">Cofnij</span>
+                                        <Undo2 className="w-2.5 h-2.5 mr-0.5 shrink-0" />
+                                        <span className="truncate text-xs">Cofnij</span>
                                       </>
                                     )}
                                   </Button>
@@ -425,14 +424,14 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                                       size="sm"
                                       onClick={() => handleDelete(group.transaction.id, group.transaction.composition_name)}
                                       disabled={operatingTransactions.has(group.transaction.id) || processing}
-                                      className="text-xs px-1 py-1 h-6 w-full min-w-0"
+                                      className="text-xs px-0.5 py-0.5 h-5 w-full min-w-0"
                                     >
                                       {operatingTransactions.has(group.transaction.id) ? (
-                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
                                       ) : (
                                         <>
-                                          <Trash2 className="w-3 h-3 mr-1 shrink-0" />
-                                          <span className="truncate">Usuń</span>
+                                          <Trash2 className="w-2.5 h-2.5 mr-0.5 shrink-0" />
+                                          <span className="truncate text-xs">Usuń</span>
                                         </>
                                       )}
                                     </Button>
@@ -444,13 +443,13 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                         </TableRow>
                         {group.isMultiItem && expandedTransactions.has(group.id) && (
                           <TableRow>
-                            <TableCell colSpan={9} className="bg-gray-50 p-2 sm:p-4">
-                              <div className="text-xs sm:text-sm w-full overflow-x-auto">
-                                <p className="font-medium mb-1 sm:mb-2">Szczegóły pozycji:</p>
-                                <div className="space-y-1 w-full">
+                            <TableCell colSpan={9} className="bg-gray-50 p-1 sm:p-2">
+                              <div className="text-xs w-full overflow-x-auto">
+                                <p className="font-medium mb-1">Szczegóły pozycji:</p>
+                                <div className="space-y-0.5 w-full">
                                   {group.items.map((item, index) => (
-                                    <div key={index} className="flex justify-between items-center gap-2 w-full min-w-0">
-                                      <span className="truncate break-words min-w-0 flex-1">{item.name}</span>
+                                    <div key={index} className="flex justify-between items-center gap-1 w-full min-w-0">
+                                      <span className="truncate break-words min-w-0 flex-1 text-xs">{item.name}</span>
                                       <span className="whitespace-nowrap shrink-0 text-xs">
                                         {item.quantity} szt. × {item.price.toFixed(2)} zł
                                       </span>
