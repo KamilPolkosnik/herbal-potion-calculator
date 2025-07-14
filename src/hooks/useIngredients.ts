@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIngredientMovements } from './useIngredientMovements';
+import { useBatchOperations } from './useBatchOperations';
 
 export interface Ingredient {
   id: string;
@@ -16,6 +16,7 @@ export const useIngredients = () => {
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const { recordMovement } = useIngredientMovements();
+  const { getCurrentBatchId } = useBatchOperations();
 
   const loadIngredients = async () => {
     try {
@@ -136,12 +137,14 @@ export const useIngredients = () => {
 
       // Zapisz ruch magazynowy jeśli była zmiana
       if (quantityChange !== 0) {
+        const batchId = getCurrentBatchId();
+        
         await recordMovement(
           name,
           quantityChange > 0 ? 'purchase' : 'adjustment',
           quantityChange,
           unitToUse,
-          undefined,
+          batchId,
           'manual_update',
           `Ręczna aktualizacja: ${previousAmount} → ${amount}`
         );

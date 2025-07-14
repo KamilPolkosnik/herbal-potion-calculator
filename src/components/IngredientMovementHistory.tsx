@@ -19,7 +19,7 @@ interface IngredientMovementHistoryProps {
 
 interface GroupedTransaction {
   id: string;
-  type: 'sale' | 'reversal' | 'individual';
+  type: 'sale' | 'reversal' | 'batch' | 'individual';
   referenceId?: string;
   movements: Array<{
     id: string;
@@ -85,8 +85,25 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
         }
         
         grouped[key].movements.push(movement);
+      } else if (movement.reference_id && movement.reference_type === 'manual_update') {
+        // Group manual updates by reference_id (batch operations)
+        const key = `batch_${movement.reference_id}`;
+        
+        if (!grouped[key]) {
+          grouped[key] = {
+            id: key,
+            type: 'batch',
+            referenceId: movement.reference_id,
+            movements: [],
+            created_at: movement.created_at,
+            is_archived: movement.is_archived || false,
+            notes: movement.notes
+          };
+        }
+        
+        grouped[key].movements.push(movement);
       } else {
-        // Individual movements (purchase, adjustment, etc.)
+        // Individual movements (purchase, adjustment, etc. without batch)
         grouped[movement.id] = {
           id: movement.id,
           type: 'individual',
@@ -171,6 +188,18 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
       return `Sprzedaż: ${group.movements.length} składników`;
     } else if (group.type === 'reversal') {
       return `Cofnięcie: ${group.movements.length} składników`;
+    } else if (group.type === 'batch') {
+      // Determine the predominant movement type in the batch
+      const purchaseCount = group.movements.filter(m => m.movement_type === 'purchase').length;
+      const adjustmentCount = group.movements.filter(m => m.movement_type === 'adjustment').length;
+      
+      if (purchaseCount > adjustmentCount) {
+        return `Zakup: ${group.movements.length} składników`;
+      } else if (adjustmentCount > purchaseCount) {
+        return `Korekta: ${group.movements.length} składników`;
+      } else {
+        return `Ręczna aktualizacja: ${group.movements.length} składników`;
+      }
     } else {
       return group.movements[0].ingredient_name;
     }
@@ -181,6 +210,16 @@ const IngredientMovementHistory: React.FC<IngredientMovementHistoryProps> = ({ i
       return 'sale';
     } else if (group.type === 'reversal') {
       return 'reversal';
+    } else if (group.type === 'batch') {
+      // Determine the predominant movement type in the batch
+      const purchaseCount = group.movements.filter(m => m.movement_type === 'purchase').length;
+      const adjustmentCount = group.movements.filter(m => m.movement_type === 'adjustment').length;
+      
+      if (purchaseCount > adjustmentCount) {
+        return 'purchase';
+      } else {
+        return 'adjustment';
+      }
     } else {
       return group.movements[0].movement_type;
     }

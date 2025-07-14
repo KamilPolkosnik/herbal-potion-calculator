@@ -4,6 +4,7 @@ import { useIngredients } from '@/hooks/useIngredients';
 import { useIngredientCategoriesFromDB } from '@/hooks/useIngredientCategoriesFromDB';
 import { useIngredientCompositions } from '@/hooks/useIngredientCompositions';
 import { useWarningThresholds } from '@/hooks/useWarningThresholds';
+import { useBatchOperations } from '@/hooks/useBatchOperations';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Save, RefreshCw } from 'lucide-react';
@@ -21,6 +22,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
   const { ingredients, prices, loading, updateIngredient, updatePrice, refreshData } = useIngredients();
   const { compositionUsage, loading: compositionLoading, refreshCompositionUsage } = useIngredientCompositions();
   const { thresholds, loading: thresholdsLoading } = useWarningThresholds();
+  const { startBatch, endBatch } = useBatchOperations();
   const [usedIngredients, setUsedIngredients] = useState<string[]>([]);
   const [filteredIngredients, setFilteredIngredients] = useState<string[]>([]);
   const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
@@ -211,6 +213,8 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
 
   const handleSaveAll = async () => {
     setSaving(true);
+    startBatch(); // Start batch operation
+    
     try {
       const updatePromises = Object.entries(pendingChanges).map(async ([ingredient, changes]) => {
         const promises = [];
@@ -232,6 +236,7 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
     } catch (error) {
       console.error('Error saving changes:', error);
     } finally {
+      endBatch(); // End batch operation
       setSaving(false);
     }
   };
@@ -302,13 +307,15 @@ const IngredientManager: React.FC<IngredientManagerProps> = ({ onDataChange }) =
               <RefreshCw className="w-4 h-4 mr-2" />
               Anuluj zmiany
             </Button>
-            
-            {hasPendingChanges && (
-              <div className="flex items-center text-sm text-muted-foreground">
+          </div>
+          
+          {hasPendingChanges && (
+            <div className="flex justify-center">
+              <div className="text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-lg">
                 Niezapisane zmiany: {Object.keys(pendingChanges).length}
               </div>
-            )}
-          </div>
+            </div>
+          )}
           
           <IngredientSection
             title="Surowce Ziołowe (g)"
