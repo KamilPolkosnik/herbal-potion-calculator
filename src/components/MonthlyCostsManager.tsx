@@ -10,11 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Edit, Trash2, Download, Filter } from 'lucide-react';
 import { useMonthlyCosts, MonthlyCost } from '@/hooks/useMonthlyCosts';
+import { useSummaryData } from '@/hooks/useSummaryData';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 
 const MonthlyCostsManager: React.FC = () => {
   const { costs, loading, addCost, updateCost, deleteCost, fetchCosts } = useMonthlyCosts();
+  const { refreshSummary } = useSummaryData();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<MonthlyCost | null>(null);
@@ -106,6 +108,7 @@ const MonthlyCostsManager: React.FC = () => {
     if (success) {
       setIsAddDialogOpen(false);
       resetForm();
+      await refreshSummary();
     }
   };
 
@@ -138,11 +141,15 @@ const MonthlyCostsManager: React.FC = () => {
       setIsEditDialogOpen(false);
       setEditingCost(null);
       resetForm();
+      await refreshSummary();
     }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteCost(id);
+    const success = await deleteCost(id);
+    if (success) {
+      await refreshSummary();
+    }
   };
 
   const generateReport = () => {
