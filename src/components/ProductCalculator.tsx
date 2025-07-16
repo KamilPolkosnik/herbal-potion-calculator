@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
+import CompositionFilters from './CompositionFilters';
 
 interface ProductCalculatorProps {
   ingredients: Record<string, number>;
@@ -26,6 +28,11 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients }) =>
   const [compositions, setCompositions] = useState<Composition[]>([]);
   const [compositionIngredients, setCompositionIngredients] = useState<Record<string, CompositionIngredient[]>>({});
   const [loading, setLoading] = useState(true);
+  
+  // State dla filtrów i sortowania
+  const [nameFilter, setNameFilter] = useState('');
+  const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('name-asc');
 
   const loadCompositions = async () => {
     try {
@@ -95,6 +102,52 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients }) =>
     return { sets: minSets === Infinity ? 0 : minSets, limitingIngredients };
   };
 
+  // Oblicz dane dla filtrowania i sortowania
+  const compositionsWithSets = useMemo(() => {
+    return compositions.map(composition => {
+      const { sets } = calculateAvailableSets(composition.id);
+      return { ...composition, availableSets: sets };
+    });
+  }, [compositions, compositionIngredients, ingredients]);
+
+  // Filtrowanie i sortowanie
+  const filteredAndSortedCompositions = useMemo(() => {
+    let filtered = compositionsWithSets;
+
+    // Filtrowanie po nazwie
+    if (nameFilter) {
+      filtered = filtered.filter(comp =>
+        comp.name.toLowerCase().includes(nameFilter.toLowerCase()) ||
+        (comp.description && comp.description.toLowerCase().includes(nameFilter.toLowerCase()))
+      );
+    }
+
+    // Filtrowanie po dostępności
+    if (availabilityFilter === 'available') {
+      filtered = filtered.filter(comp => comp.availableSets > 0);
+    } else if (availabilityFilter === 'unavailable') {
+      filtered = filtered.filter(comp => comp.availableSets === 0);
+    }
+
+    // Sortowanie
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'sets-desc':
+          return b.availableSets - a.availableSets;
+        case 'sets-asc':
+          return a.availableSets - b.availableSets;
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [compositionsWithSets, nameFilter, availabilityFilter, sortBy]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -105,8 +158,35 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients }) =>
 
   return (
     <div className="space-y-6">
+      <CompositionFilters
+        nameFilter={nameFilter}
+        onNameFilterChange={setNameFilter}
+        availabilityFilter={availabilityFilter}
+        onAvailabilityFilterChange={setAvailabilityFilter}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+      />
+
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-800">
+          Zestawy ({filteredAndSortedCompositions.length} z {compositions.length})
+        </h2>
+        {(nameFilter || availabilityFilter !== 'all') && (
+          <button
+            onClick={() => {
+              setNameFilter('');
+              setAvailabilityFilter('all');
+              setSortBy('name-asc');
+            }}
+            className="text-sm text-blue-600 hover:text-blue-800"
+          >
+            Wyczyść filtry
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {compositions.map((composition) => {
+        {filteredAndSortedCompositions.map((composition) => {
           const { sets, limitingIngredients } = calculateAvailableSets(composition.id);
           const ingredientsList = compositionIngredients[composition.id] || [];
 
@@ -173,6 +253,12 @@ const ProductCalculator: React.FC<ProductCalculatorProps> = ({ ingredients }) =>
           );
         })}
       </div>
+
+      {filteredAndSortedCompositions.length === 0 && compositions.length > 0 && (
+        <div className="text-center py-8">
+          <p className="text-gray-500">Brak zestawów spełniających kryteria filtrowania.</p>
+        </div>
+      )}
 
       {compositions.length === 0 && (
         <div className="text-center py-8">
