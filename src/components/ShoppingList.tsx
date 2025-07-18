@@ -800,12 +800,54 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
       {Object.keys(neededIngredients).length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-xl text-green-700">
-                Podsumowanie Potrzebnych Składników
-              </CardTitle>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center space-x-2">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <CardTitle className="text-xl text-green-700">
+                  Podsumowanie Potrzebnych Składników
+                </CardTitle>
+                <Button onClick={generateShoppingListPDF} className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Generuj listę zakupów
+                </Button>
+              </div>
+              
+              {/* Filtry kategorii składników */}
+              <div className="border-t pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="show-herbs"
+                      checked={showHerbs}
+                      onCheckedChange={(checked) => setShowHerbs(checked === true)}
+                    />
+                    <Label htmlFor="show-herbs" className="text-sm">
+                      🌿 Zioła
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="show-oils"
+                      checked={showOils}
+                      onCheckedChange={(checked) => setShowOils(checked === true)}
+                    />
+                    <Label htmlFor="show-oils" className="text-sm">
+                      🌸 Olejki
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="show-others"
+                      checked={showOthers}
+                      onCheckedChange={(checked) => setShowOthers(checked === true)}
+                    />
+                    <Label htmlFor="show-others" className="text-sm">
+                      📦 Inne
+                    </Label>
+                  </div>
+                </div>
+                
+                {/* Checkbox "Podział na zestawy" przeniesiony tutaj */}
+                <div className="flex items-center space-x-2 pt-2 border-t">
                   <Checkbox
                     id="show-by-composition"
                     checked={showByComposition}
@@ -815,44 +857,6 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                     Podział na zestawy
                   </Label>
                 </div>
-                <Button onClick={generateShoppingListPDF} className="bg-green-600 hover:bg-green-700">
-                  <FileDown className="w-4 h-4 mr-2" />
-                  Generuj listę zakupów
-                </Button>
-              </div>
-            </div>
-            
-            {/* Filtry kategorii składników */}
-            <div className="flex items-center gap-6 mt-4 pt-4 border-t">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="show-herbs"
-                  checked={showHerbs}
-                  onCheckedChange={(checked) => setShowHerbs(checked === true)}
-                />
-                <Label htmlFor="show-herbs" className="text-sm">
-                  🌿 Zioła
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="show-oils"
-                  checked={showOils}
-                  onCheckedChange={(checked) => setShowOils(checked === true)}
-                />
-                <Label htmlFor="show-oils" className="text-sm">
-                  🌸 Olejki
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="show-others"
-                  checked={showOthers}
-                  onCheckedChange={(checked) => setShowOthers(checked === true)}
-                />
-                <Label htmlFor="show-others" className="text-sm">
-                  📦 Inne
-                </Label>
               </div>
             </div>
           </CardHeader>
