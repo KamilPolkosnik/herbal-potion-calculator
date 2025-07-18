@@ -40,6 +40,9 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
   const [showByComposition, setShowByComposition] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showHerbs, setShowHerbs] = useState(true);
+  const [showOils, setShowOils] = useState(true);
+  const [showOthers, setShowOthers] = useState(true);
 
   // Load shopping list state from sessionStorage
   useEffect(() => {
@@ -298,6 +301,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
   // Użyj hooka do kategoryzacji składników na podstawie bazy danych
   const { herbs, oils, others } = useIngredientCategoriesFromDB(neededIngredientsArray);
 
+  // Filtruj składniki według włączonych kategorii
+  const filteredHerbs = showHerbs ? herbs : [];
+  const filteredOils = showOils ? oils : [];
+  const filteredOthers = showOthers ? others : [];
+
   const generateShoppingListPDF = () => {
     if (Object.keys(neededIngredients).length === 0) {
       alert('Nie ma składników do wygenerowania listy zakupów. Ustaw ilości zestawów.');
@@ -315,50 +323,52 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     <style>
         body { 
             font-family: Arial, sans-serif; 
-            margin: 20px; 
+            margin: 15px; 
             color: #333; 
-            line-height: 1.6;
+            line-height: 1.4;
+            font-size: 12px;
         }
         .header { 
             text-align: center; 
-            margin-bottom: 30px; 
+            margin-bottom: 20px; 
             border-bottom: 2px solid #4CAF50;
-            padding-bottom: 15px;
+            padding-bottom: 10px;
         }
         .header h1 { 
             color: #2E7D32; 
             margin: 0; 
-            font-size: 28px;
+            font-size: 20px;
         }
         .date { 
             color: #666; 
-            margin-top: 10px; 
-            font-size: 14px;
+            margin-top: 8px; 
+            font-size: 11px;
         }
         .section { 
-            margin: 30px 0; 
+            margin: 20px 0; 
         }
         .section-title { 
             background-color: #E8F5E8; 
-            padding: 10px 15px; 
+            padding: 8px 12px; 
             border-left: 4px solid #4CAF50;
-            font-size: 18px; 
+            font-size: 14px; 
             font-weight: bold; 
             color: #2E7D32;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .ingredients-list { 
             display: grid; 
-            gap: 10px; 
+            gap: 6px; 
         }
         .ingredient-item { 
             display: flex; 
             justify-content: space-between; 
             align-items: center;
-            padding: 12px 15px;
+            padding: 8px 12px;
             border: 1px solid #ddd; 
-            border-radius: 5px;
+            border-radius: 4px;
             background-color: #fafafa;
+            font-size: 11px;
         }
         .ingredient-name { 
             font-weight: 500; 
@@ -368,29 +378,30 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
         .ingredient-amount { 
             font-weight: bold; 
             color: #2E7D32;
-            min-width: 80px;
+            min-width: 60px;
             text-align: right;
         }
         .checkbox { 
-            width: 18px; 
-            height: 18px; 
-            margin-right: 15px;
+            width: 14px; 
+            height: 14px; 
+            margin-right: 10px;
             border: 2px solid #4CAF50;
         }
         .footer { 
-            margin-top: 40px; 
+            margin-top: 30px; 
             text-align: center; 
-            font-size: 12px; 
+            font-size: 10px; 
             color: #666; 
             border-top: 1px solid #ddd;
-            padding-top: 15px;
+            padding-top: 10px;
         }
         .summary {
             background-color: #f0f8f0;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 15px 0;
             text-align: center;
+            font-size: 12px;
         }
     </style>
 </head>
@@ -404,11 +415,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
         <strong>Łączna liczba składników: ${Object.keys(neededIngredients).length}</strong>
     </div>
     
-    ${herbs.length > 0 ? `
+    ${filteredHerbs.length > 0 ? `
     <div class="section">
         <div class="section-title">🌿 Surowce Ziołowe (g)</div>
         <div class="ingredients-list">
-            ${herbs.map((ingredient) => `
+            ${filteredHerbs.map((ingredient) => `
                 <div class="ingredient-item">
                     <input type="checkbox" class="checkbox">
                     <span class="ingredient-name">${ingredient}</span>
@@ -419,11 +430,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     </div>
     ` : ''}
     
-    ${oils.length > 0 ? `
+    ${filteredOils.length > 0 ? `
     <div class="section">
         <div class="section-title">🌸 Olejki Eteryczne (ml)</div>
         <div class="ingredients-list">
-            ${oils.map((ingredient) => `
+            ${filteredOils.map((ingredient) => `
                 <div class="ingredient-item">
                     <input type="checkbox" class="checkbox">
                     <span class="ingredient-name">${ingredient.replace('olejek ', '')}</span>
@@ -434,11 +445,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     </div>
     ` : ''}
     
-    ${others.length > 0 ? `
+    ${filteredOthers.length > 0 ? `
     <div class="section">
         <div class="section-title">📦 Inne (szt)</div>
         <div class="ingredients-list">
-            ${others.map((ingredient) => {
+            ${filteredOthers.map((ingredient) => {
               const unit = ingredientUnits[ingredient] || 'szt';
               const amount = neededIngredients[ingredient]; 
               return `
@@ -585,7 +596,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                   <Checkbox
                     id="show-by-composition"
                     checked={showByComposition}
-                    onCheckedChange={setShowByComposition}
+                    onCheckedChange={(checked) => setShowByComposition(checked === true)}
                   />
                   <Label htmlFor="show-by-composition" className="text-sm">
                     Podział na zestawy
@@ -597,10 +608,44 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                 </Button>
               </div>
             </div>
+            
+            {/* Filtry kategorii składników */}
+            <div className="flex items-center gap-6 mt-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="show-herbs"
+                  checked={showHerbs}
+                  onCheckedChange={(checked) => setShowHerbs(checked === true)}
+                />
+                <Label htmlFor="show-herbs" className="text-sm">
+                  🌿 Zioła
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="show-oils"
+                  checked={showOils}
+                  onCheckedChange={(checked) => setShowOils(checked === true)}
+                />
+                <Label htmlFor="show-oils" className="text-sm">
+                  🌸 Olejki
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="show-others"
+                  checked={showOthers}
+                  onCheckedChange={(checked) => setShowOthers(checked === true)}
+                />
+                <Label htmlFor="show-others" className="text-sm">
+                  📦 Inne
+                </Label>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {showByComposition ? (
-              // Widok z podziałem na zestawy
+              // Widok z podziałem na zestawy z kategoriami
               <div className="space-y-6">
                 {Object.entries(neededByComposition).map(([compositionId, { composition, ingredients }]) => (
                   <div key={compositionId} className="border rounded-lg p-4">
@@ -610,51 +655,154 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                       <Badge variant="outline">{quantities[compositionId]} szt.</Badge>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Object.entries(ingredients).map(([ingredientName, amount]) => {
-                        const unit = ingredientUnits[ingredientName] || 'g';
-                        const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
-                        
-                        return (
-                          <div key={ingredientName} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredientName] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                            <div className="flex items-center gap-3">
-                              <Checkbox
-                                id={`comp-${compositionId}-${ingredientName}`}
-                                checked={checkedIngredients[ingredientName] || false}
-                                onCheckedChange={() => toggleIngredientCheck(ingredientName)}
-                              />
-                              <div className="flex-1 flex justify-between items-center">
-                                <span className={`capitalize text-sm ${checkedIngredients[ingredientName] ? 'line-through text-gray-500' : ''}`}>
-                                  {ingredientName.replace('olejek ', '')}
-                                </span>
-                                <Badge variant="outline">{displayAmount} {unit}</Badge>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 ml-6">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={getIngredientPrice(ingredientName)}
-                                onChange={(e) => updatePrice(ingredientName, parseFloat(e.target.value) || 0)}
-                                className="w-20 h-7 text-xs"
-                                placeholder="0.00"
-                              />
-                              <span className="text-xs text-gray-600">
-                                zł/{unit === 'ml' && ingredientName.toLowerCase().includes('olejek') ? '10ml' : unit === 'szt' ? 'szt' : '100g'}
-                              </span>
-                              <span className="text-sm text-gray-600 ml-auto">
-                                = {
-                                  unit === 'ml' && ingredientName.toLowerCase().includes('olejek') 
-                                    ? calculateOilPrice(amount, getIngredientPrice(ingredientName)).toFixed(2)
-                                    : unit === 'szt'
-                                      ? (amount * getIngredientPrice(ingredientName)).toFixed(2)
-                                      : ((amount * getIngredientPrice(ingredientName)) / 100).toFixed(2)
-                                } zł
-                              </span>
-                            </div>
+                    {/* Kategoryzowane składniki dla danego zestawu */}
+                    <div className="space-y-4">
+                      {/* Zioła */}
+                      {showHerbs && Object.entries(ingredients).some(([ingredientName]) => herbs.includes(ingredientName)) && (
+                        <div>
+                          <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            🌿 <span>Surowce Ziołowe (g)</span>
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {Object.entries(ingredients)
+                              .filter(([ingredientName]) => herbs.includes(ingredientName))
+                              .map(([ingredientName, amount]) => {
+                                const unit = ingredientUnits[ingredientName] || 'g';
+                                const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
+                                
+                                return (
+                                  <div key={ingredientName} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredientName] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                                    <div className="flex items-center gap-3">
+                                      <Checkbox
+                                        id={`comp-${compositionId}-${ingredientName}`}
+                                        checked={checkedIngredients[ingredientName] || false}
+                                        onCheckedChange={() => toggleIngredientCheck(ingredientName)}
+                                      />
+                                      <div className="flex-1 flex justify-between items-center">
+                                        <span className={`capitalize text-sm ${checkedIngredients[ingredientName] ? 'line-through text-gray-500' : ''}`}>
+                                          {ingredientName}
+                                        </span>
+                                        <Badge variant="outline">{displayAmount} {unit}</Badge>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 ml-6">
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={getIngredientPrice(ingredientName)}
+                                        onChange={(e) => updatePrice(ingredientName, parseFloat(e.target.value) || 0)}
+                                        className="w-20 h-7 text-xs"
+                                        placeholder="0.00"
+                                      />
+                                      <span className="text-xs text-gray-600">zł/100g</span>
+                                      <span className="text-sm text-gray-600 ml-auto">
+                                        = {((amount * getIngredientPrice(ingredientName)) / 100).toFixed(2)} zł
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                           </div>
-                        );
-                      })}
+                        </div>
+                      )}
+                      
+                      {/* Olejki */}
+                      {showOils && Object.entries(ingredients).some(([ingredientName]) => oils.includes(ingredientName)) && (
+                        <div>
+                          <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            🌸 <span>Olejki Eteryczne (ml)</span>
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {Object.entries(ingredients)
+                              .filter(([ingredientName]) => oils.includes(ingredientName))
+                              .map(([ingredientName, amount]) => {
+                                const unit = ingredientUnits[ingredientName] || 'ml';
+                                const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
+                                
+                                return (
+                                  <div key={ingredientName} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredientName] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                                    <div className="flex items-center gap-3">
+                                      <Checkbox
+                                        id={`comp-${compositionId}-${ingredientName}`}
+                                        checked={checkedIngredients[ingredientName] || false}
+                                        onCheckedChange={() => toggleIngredientCheck(ingredientName)}
+                                      />
+                                      <div className="flex-1 flex justify-between items-center">
+                                        <span className={`capitalize text-sm ${checkedIngredients[ingredientName] ? 'line-through text-gray-500' : ''}`}>
+                                          {ingredientName.replace('olejek ', '')}
+                                        </span>
+                                        <Badge variant="outline">{displayAmount} {unit}</Badge>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 ml-6">
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={getIngredientPrice(ingredientName)}
+                                        onChange={(e) => updatePrice(ingredientName, parseFloat(e.target.value) || 0)}
+                                        className="w-20 h-7 text-xs"
+                                        placeholder="0.00"
+                                      />
+                                      <span className="text-xs text-gray-600">zł/10ml</span>
+                                      <span className="text-sm text-gray-600 ml-auto">
+                                        = {calculateOilPrice(amount, getIngredientPrice(ingredientName)).toFixed(2)} zł
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Inne */}
+                      {showOthers && Object.entries(ingredients).some(([ingredientName]) => others.includes(ingredientName)) && (
+                        <div>
+                          <h4 className="font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            📦 <span>Inne</span>
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {Object.entries(ingredients)
+                              .filter(([ingredientName]) => others.includes(ingredientName))
+                              .map(([ingredientName, amount]) => {
+                                const unit = ingredientUnits[ingredientName] || 'szt';
+                                const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
+                                
+                                return (
+                                  <div key={ingredientName} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredientName] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                                    <div className="flex items-center gap-3">
+                                      <Checkbox
+                                        id={`comp-${compositionId}-${ingredientName}`}
+                                        checked={checkedIngredients[ingredientName] || false}
+                                        onCheckedChange={() => toggleIngredientCheck(ingredientName)}
+                                      />
+                                      <div className="flex-1 flex justify-between items-center">
+                                        <span className={`capitalize text-sm ${checkedIngredients[ingredientName] ? 'line-through text-gray-500' : ''}`}>
+                                          {ingredientName}
+                                        </span>
+                                        <Badge variant="outline">{displayAmount} {unit}</Badge>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 ml-6">
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={getIngredientPrice(ingredientName)}
+                                        onChange={(e) => updatePrice(ingredientName, parseFloat(e.target.value) || 0)}
+                                        className="w-20 h-7 text-xs"
+                                        placeholder="0.00"
+                                      />
+                                      <span className="text-xs text-gray-600">zł/{unit}</span>
+                                      <span className="text-sm text-gray-600 ml-auto">
+                                        = {(amount * getIngredientPrice(ingredientName)).toFixed(2)} zł
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -662,11 +810,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
             ) : (
               // Widok zsumowany (istniejący kod)
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {herbs.length > 0 && (
+                {filteredHerbs.length > 0 && (
                   <div>
                     <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe (g)</h3>
                     <div className="space-y-2">
-                      {herbs.map((ingredient) => {
+                      {filteredHerbs.map((ingredient) => {
                         const amount = neededIngredients[ingredient];
                         return (
                           <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -704,11 +852,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                   </div>
                 )}
                 
-                {oils.length > 0 && (
+                {filteredOils.length > 0 && (
                   <div>
                     <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne (ml)</h3>
                     <div className="space-y-2">
-                      {oils.map((ingredient) => {
+                      {filteredOils.map((ingredient) => {
                         const amount = neededIngredients[ingredient];
                         return (
                           <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -746,11 +894,11 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
                   </div>
                 )}
 
-                {others.length > 0 && (
+                {filteredOthers.length > 0 && (
                   <div>
-                    <h3 className="font-semibold text-gray-700 mb-3">Inne (szt)</h3>
+                    <h3 className="font-semibold text-gray-700 mb-3">Inne</h3>
                     <div className="space-y-2">
-                      {others.map((ingredient) => {
+                      {filteredOthers.map((ingredient) => {
                         const unit = ingredientUnits[ingredient] || 'szt';
                         const amount = neededIngredients[ingredient];
                         const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
