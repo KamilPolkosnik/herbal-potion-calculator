@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { FileDown, Trash2 } from 'lucide-react';
+import { FileDown, Trash2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateOilPrice } from '@/utils/unitConverter';
 import { useIngredientCategoriesFromDB } from '@/hooks/useIngredientCategoriesFromDB';
@@ -38,6 +38,8 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
   const [ingredientUnits, setIngredientUnits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [checkedIngredients, setCheckedIngredients] = useState<Record<string, boolean>>({});
+  const [showByComposition, setShowByComposition] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Load shopping list state from sessionStorage
   useEffect(() => {
@@ -237,6 +239,44 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     return needed;
   };
 
+  // Obliczanie potrzebnych składników z podziałem na zestawy
+  const calculateNeededIngredientsByComposition = () => {
+    const neededByComposition: Record<string, { composition: Composition; ingredients: Record<string, number> }> = {};
+    
+    compositions.forEach((composition) => {
+      const quantity = quantities[composition.id] || 0;
+      if (quantity > 0) {
+        const ingredientsList = compositionIngredients[composition.id] || [];
+        const ingredientsNeeded: Record<string, number> = {};
+        
+        ingredientsList.forEach((ingredient) => {
+          const actualUnit = ingredientUnits[ingredient.ingredient_name] || ingredient.unit;
+          
+          if (ingredient.unit === 'krople') {
+            // Przelicz krople na ml (20 kropel = 1ml)
+            const mlNeeded = (ingredient.amount * quantity) / 20;
+            ingredientsNeeded[ingredient.ingredient_name] = mlNeeded;
+          } else if (actualUnit === 'szt') {
+            // Dla sztuk
+            ingredientsNeeded[ingredient.ingredient_name] = ingredient.amount * quantity;
+          } else {
+            // Dla gramów i ml
+            ingredientsNeeded[ingredient.ingredient_name] = ingredient.amount * quantity;
+          }
+        });
+        
+        if (Object.keys(ingredientsNeeded).length > 0) {
+          neededByComposition[composition.id] = {
+            composition,
+            ingredients: ingredientsNeeded
+          };
+        }
+      }
+    });
+    
+    return neededByComposition;
+  };
+
   const calculateNetPrice = (grossPrice: number) => {
     return grossPrice / (1 + VAT_RATE);
   };
@@ -245,9 +285,15 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     return grossPrice - calculateNetPrice(grossPrice);
   };
 
+  // Filtrowanie zestawów po nazwie
+  const filteredCompositions = compositions.filter(composition =>
+    composition.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Oblicz potrzebne składniki
   const neededIngredients = calculateNeededIngredients();
   const neededIngredientsArray = Object.keys(neededIngredients);
+  const neededByComposition = calculateNeededIngredientsByComposition();
   
   // Użyj hooka do kategoryzacji składników na podstawie bazy danych
   const { herbs, oils, others } = useIngredientCategoriesFromDB(neededIngredientsArray);
@@ -456,6 +502,25 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
 
   return (
     <div className="space-y-6">
+      {/* Pole wyszukiwania */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl text-green-700">Wyszukiwanie Zestawów</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Wyszukaj zestaw po nazwie..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
@@ -473,13 +538,15 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
           </div>
         </CardHeader>
         <CardContent>
-          {compositions.length === 0 ? (
+          {filteredCompositions.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">Brak zestawów. Dodaj nowe zestawy w zakładce "Zarządzanie".</p>
+              <p className="text-gray-500">
+                {searchTerm ? 'Nie znaleziono zestawów pasujących do wyszukiwania.' : 'Brak zestawów. Dodaj nowe zestawy w zakładce "Zarządzanie".'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {compositions.map((composition) => (
+              {filteredCompositions.map((composition) => (
                 <div key={composition.id} className="p-4 border rounded-lg bg-white">
                   <div className={`${composition.color} text-white p-3 rounded-lg mb-3`}>
                     <h3 className="font-semibold">{composition.name}</h3>
@@ -513,143 +580,218 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
               <CardTitle className="text-xl text-green-700">
                 Podsumowanie Potrzebnych Składników
               </CardTitle>
-              <Button onClick={generateShoppingListPDF} className="bg-green-600 hover:bg-green-700">
-                <FileDown className="w-4 h-4 mr-2" />
-                Generuj listę zakupów
-              </Button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="show-by-composition"
+                    checked={showByComposition}
+                    onCheckedChange={setShowByComposition}
+                  />
+                  <Label htmlFor="show-by-composition" className="text-sm">
+                    Podział na zestawy
+                  </Label>
+                </div>
+                <Button onClick={generateShoppingListPDF} className="bg-green-600 hover:bg-green-700">
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Generuj listę zakupów
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {herbs.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe (g)</h3>
-                  <div className="space-y-2">
-                    {herbs.map((ingredient) => {
-                      const amount = neededIngredients[ingredient];
-                      return (
-                        <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                          <div className="flex items-center gap-3">
-                            <Checkbox
-                              id={`herb-${ingredient}`}
-                              checked={checkedIngredients[ingredient] || false}
-                              onCheckedChange={() => toggleIngredientCheck(ingredient)}
-                            />
-                            <div className="flex-1 flex justify-between items-center">
-                              <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
-                                {ingredient}
+            {showByComposition ? (
+              // Widok z podziałem na zestawy
+              <div className="space-y-6">
+                {Object.entries(neededByComposition).map(([compositionId, { composition, ingredients }]) => (
+                  <div key={compositionId} className="border rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className={`${composition.color} w-4 h-4 rounded`}></div>
+                      <h3 className="font-semibold text-lg">{composition.name}</h3>
+                      <Badge variant="outline">{quantities[compositionId]} szt.</Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries(ingredients).map(([ingredientName, amount]) => {
+                        const unit = ingredientUnits[ingredientName] || 'g';
+                        const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
+                        
+                        return (
+                          <div key={ingredientName} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredientName] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                id={`comp-${compositionId}-${ingredientName}`}
+                                checked={checkedIngredients[ingredientName] || false}
+                                onCheckedChange={() => toggleIngredientCheck(ingredientName)}
+                              />
+                              <div className="flex-1 flex justify-between items-center">
+                                <span className={`capitalize text-sm ${checkedIngredients[ingredientName] ? 'line-through text-gray-500' : ''}`}>
+                                  {ingredientName.replace('olejek ', '')}
+                                </span>
+                                <Badge variant="outline">{displayAmount} {unit}</Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-6">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={getIngredientPrice(ingredientName)}
+                                onChange={(e) => updatePrice(ingredientName, parseFloat(e.target.value) || 0)}
+                                className="w-20 h-7 text-xs"
+                                placeholder="0.00"
+                              />
+                              <span className="text-xs text-gray-600">
+                                zł/{unit === 'ml' && ingredientName.toLowerCase().includes('olejek') ? '10ml' : unit === 'szt' ? 'szt' : '100g'}
                               </span>
-                              <Badge variant="outline">{amount.toFixed(1)} g</Badge>
+                              <span className="text-sm text-gray-600 ml-auto">
+                                = {
+                                  unit === 'ml' && ingredientName.toLowerCase().includes('olejek') 
+                                    ? calculateOilPrice(amount, getIngredientPrice(ingredientName)).toFixed(2)
+                                    : unit === 'szt'
+                                      ? (amount * getIngredientPrice(ingredientName)).toFixed(2)
+                                      : ((amount * getIngredientPrice(ingredientName)) / 100).toFixed(2)
+                                } zł
+                              </span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 ml-6">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={getIngredientPrice(ingredient)}
-                              onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
-                              className="w-20 h-7 text-xs"
-                              placeholder="0.00"
-                            />
-                            <span className="text-xs text-gray-600">zł/100g</span>
-                            <span className="text-sm text-gray-600 ml-auto">
-                              = {((amount * getIngredientPrice(ingredient)) / 100).toFixed(2)} zł
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {oils.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne (ml)</h3>
-                  <div className="space-y-2">
-                    {oils.map((ingredient) => {
-                      const amount = neededIngredients[ingredient];
-                      return (
-                        <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                          <div className="flex items-center gap-3">
-                            <Checkbox
-                              id={`oil-${ingredient}`}
-                              checked={checkedIngredients[ingredient] || false}
-                              onCheckedChange={() => toggleIngredientCheck(ingredient)}
-                            />
-                            <div className="flex-1 flex justify-between items-center">
-                              <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
-                                {ingredient.replace('olejek ', '')}
+                ))}
+              </div>
+            ) : (
+              // Widok zsumowany (istniejący kod)
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {herbs.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-3">Surowce Ziołowe (g)</h3>
+                    <div className="space-y-2">
+                      {herbs.map((ingredient) => {
+                        const amount = neededIngredients[ingredient];
+                        return (
+                          <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                id={`herb-${ingredient}`}
+                                checked={checkedIngredients[ingredient] || false}
+                                onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                              />
+                              <div className="flex-1 flex justify-between items-center">
+                                <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                                  {ingredient}
+                                </span>
+                                <Badge variant="outline">{amount.toFixed(1)} g</Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-6">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={getIngredientPrice(ingredient)}
+                                onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
+                                className="w-20 h-7 text-xs"
+                                placeholder="0.00"
+                              />
+                              <span className="text-xs text-gray-600">zł/100g</span>
+                              <span className="text-sm text-gray-600 ml-auto">
+                                = {((amount * getIngredientPrice(ingredient)) / 100).toFixed(2)} zł
                               </span>
-                              <Badge variant="outline">{amount.toFixed(1)} ml</Badge>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 ml-6">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={getIngredientPrice(ingredient)}
-                              onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
-                              className="w-20 h-7 text-xs"
-                              placeholder="0.00"
-                            />
-                            <span className="text-xs text-gray-600">zł/10ml</span>
-                            <span className="text-sm text-gray-600 ml-auto">
-                              = {calculateOilPrice(amount, getIngredientPrice(ingredient)).toFixed(2)} zł
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+                
+                {oils.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-3">Olejki Eteryczne (ml)</h3>
+                    <div className="space-y-2">
+                      {oils.map((ingredient) => {
+                        const amount = neededIngredients[ingredient];
+                        return (
+                          <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                id={`oil-${ingredient}`}
+                                checked={checkedIngredients[ingredient] || false}
+                                onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                              />
+                              <div className="flex-1 flex justify-between items-center">
+                                <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                                  {ingredient.replace('olejek ', '')}
+                                </span>
+                                <Badge variant="outline">{amount.toFixed(1)} ml</Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-6">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={getIngredientPrice(ingredient)}
+                                onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
+                                className="w-20 h-7 text-xs"
+                                placeholder="0.00"
+                              />
+                              <span className="text-xs text-gray-600">zł/10ml</span>
+                              <span className="text-sm text-gray-600 ml-auto">
+                                = {calculateOilPrice(amount, getIngredientPrice(ingredient)).toFixed(2)} zł
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
-              {others.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Inne (szt)</h3>
-                  <div className="space-y-2">
-                    {others.map((ingredient) => {
-                      const unit = ingredientUnits[ingredient] || 'szt';
-                      const amount = neededIngredients[ingredient];
-                      const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
-                      
-                      return (
-                        <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                          <div className="flex items-center gap-3">
-                            <Checkbox
-                              id={`other-${ingredient}`}
-                              checked={checkedIngredients[ingredient] || false}
-                              onCheckedChange={() => toggleIngredientCheck(ingredient)}
-                            />
-                            <div className="flex-1 flex justify-between items-center">
-                              <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
-                                {ingredient}
+                {others.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-3">Inne (szt)</h3>
+                    <div className="space-y-2">
+                      {others.map((ingredient) => {
+                        const unit = ingredientUnits[ingredient] || 'szt';
+                        const amount = neededIngredients[ingredient];
+                        const displayAmount = unit === 'szt' ? amount.toFixed(0) : amount.toFixed(1);
+                        
+                        return (
+                          <div key={ingredient} className={`flex flex-col gap-2 p-3 rounded-lg border ${checkedIngredients[ingredient] ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                id={`other-${ingredient}`}
+                                checked={checkedIngredients[ingredient] || false}
+                                onCheckedChange={() => toggleIngredientCheck(ingredient)}
+                              />
+                              <div className="flex-1 flex justify-between items-center">
+                                <span className={`capitalize text-sm ${checkedIngredients[ingredient] ? 'line-through text-gray-500' : ''}`}>
+                                  {ingredient}
+                                </span>
+                                <Badge variant="outline">{displayAmount} {unit}</Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-6">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={getIngredientPrice(ingredient)}
+                                onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
+                                className="w-20 h-7 text-xs"
+                                placeholder="0.00"
+                              />
+                              <span className="text-xs text-gray-600">zł/{unit}</span>
+                              <span className="text-sm text-gray-600 ml-auto">
+                                = {(amount * getIngredientPrice(ingredient)).toFixed(2)} zł
                               </span>
-                              <Badge variant="outline">{displayAmount} {unit}</Badge>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 ml-6">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={getIngredientPrice(ingredient)}
-                              onChange={(e) => updatePrice(ingredient, parseFloat(e.target.value) || 0)}
-                              className="w-20 h-7 text-xs"
-                              placeholder="0.00"
-                            />
-                            <span className="text-xs text-gray-600">zł/{unit}</span>
-                            <span className="text-sm text-gray-600 ml-auto">
-                              = {(amount * getIngredientPrice(ingredient)).toFixed(2)} zł
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
             
             <div className="mt-6 space-y-3">
               <div className="p-4 bg-red-50 rounded-lg">
