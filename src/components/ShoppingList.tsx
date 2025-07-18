@@ -687,6 +687,26 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     }
   }, 0);
 
+  // Oblicz koszty poszczególnych kategorii
+  const herbsCost = filteredHerbs.reduce((sum, ingredient) => {
+    const amount = neededIngredients[ingredient];
+    const price = getIngredientPrice(ingredient);
+    return sum + (amount * price / 100); // surowce - cena za 100g
+  }, 0);
+
+  const oilsCost = filteredOils.reduce((sum, ingredient) => {
+    const amount = neededIngredients[ingredient];
+    const price = getIngredientPrice(ingredient);
+    return sum + calculateOilPrice(amount, price);
+  }, 0);
+
+  const othersCost = filteredOthers.reduce((sum, ingredient) => {
+    const amount = neededIngredients[ingredient];
+    const price = getIngredientPrice(ingredient);
+    const unit = ingredientUnits[ingredient] || 'szt';
+    return sum + (amount * price); // inne - cena za sztukę
+  }, 0);
+
   // Oblicz potencjalny przychód
   const totalPotentialRevenueGross = compositions.reduce((sum, composition) => {
     const quantity = quantities[composition.id] || 0;
@@ -1135,6 +1155,34 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
             )}
             
             <div className="mt-6 space-y-3">
+              {/* Koszty kategorii */}
+              {showHerbs && filteredHerbs.length > 0 && (
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-green-800">🌿 Koszt ziół:</span>
+                    <span className="text-lg font-semibold text-green-600">{herbsCost.toFixed(2)} zł</span>
+                  </div>
+                </div>
+              )}
+              
+              {showOils && filteredOils.length > 0 && (
+                <div className="p-3 bg-purple-50 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-purple-800">🌸 Koszt olejków:</span>
+                    <span className="text-lg font-semibold text-purple-600">{oilsCost.toFixed(2)} zł</span>
+                  </div>
+                </div>
+              )}
+              
+              {showOthers && filteredOthers.length > 0 && (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-800">📦 Koszt innych:</span>
+                    <span className="text-lg font-semibold text-gray-600">{othersCost.toFixed(2)} zł</span>
+                  </div>
+                </div>
+              )}
+
               <div className="p-4 bg-red-50 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-semibold text-red-800">Całkowity koszt zakupów:</span>
