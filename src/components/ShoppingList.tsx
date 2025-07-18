@@ -314,61 +314,82 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
 
     const currentDate = new Date().toLocaleDateString('pl-PL');
     
-    const pdfContent = `
+    let pdfContent = '';
+
+    if (showByComposition) {
+      // PDF z podziałem na zestawy
+      pdfContent = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Lista Zakupów</title>
+    <title>Lista Zakupów - Podział na Zestawy</title>
     <style>
         body { 
             font-family: Arial, sans-serif; 
-            margin: 15px; 
+            margin: 10px; 
             color: #333; 
-            line-height: 1.4;
-            font-size: 12px;
+            line-height: 1.2;
+            font-size: 10px;
         }
         .header { 
             text-align: center; 
-            margin-bottom: 20px; 
+            margin-bottom: 15px; 
             border-bottom: 2px solid #4CAF50;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
         .header h1 { 
             color: #2E7D32; 
             margin: 0; 
-            font-size: 20px;
+            font-size: 16px;
         }
         .date { 
             color: #666; 
-            margin-top: 8px; 
+            margin-top: 5px; 
+            font-size: 9px;
+        }
+        .composition-section { 
+            margin: 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            page-break-inside: avoid;
+        }
+        .composition-header {
+            background-color: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: bold;
             font-size: 11px;
-        }
-        .section { 
-            margin: 20px 0; 
-        }
-        .section-title { 
-            background-color: #E8F5E8; 
-            padding: 8px 12px; 
             border-left: 4px solid #4CAF50;
-            font-size: 14px; 
+        }
+        .category-section { 
+            margin: 8px 0; 
+        }
+        .category-title { 
+            background-color: #E8F5E8; 
+            padding: 5px 8px; 
+            border-left: 3px solid #4CAF50;
+            font-size: 10px; 
             font-weight: bold; 
             color: #2E7D32;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
-        .ingredients-list { 
+        .ingredients-grid { 
             display: grid; 
-            gap: 6px; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 4px; 
         }
         .ingredient-item { 
             display: flex; 
             justify-content: space-between; 
             align-items: center;
-            padding: 8px 12px;
+            padding: 4px 8px;
             border: 1px solid #ddd; 
-            border-radius: 4px;
+            border-radius: 3px;
             background-color: #fafafa;
-            font-size: 11px;
+            font-size: 9px;
         }
         .ingredient-name { 
             font-weight: 500; 
@@ -378,30 +399,201 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
         .ingredient-amount { 
             font-weight: bold; 
             color: #2E7D32;
-            min-width: 60px;
+            min-width: 40px;
             text-align: right;
         }
         .checkbox { 
-            width: 14px; 
-            height: 14px; 
-            margin-right: 10px;
+            width: 12px; 
+            height: 12px; 
+            margin-right: 8px;
             border: 2px solid #4CAF50;
         }
         .footer { 
-            margin-top: 30px; 
+            margin-top: 20px; 
             text-align: center; 
-            font-size: 10px; 
+            font-size: 8px; 
             color: #666; 
             border-top: 1px solid #ddd;
-            padding-top: 10px;
+            padding-top: 8px;
         }
         .summary {
             background-color: #f0f8f0;
-            padding: 10px;
+            padding: 8px;
             border-radius: 4px;
-            margin: 15px 0;
+            margin: 10px 0;
             text-align: center;
-            font-size: 12px;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 Lista Zakupów - Podział na Zestawy</h1>
+        <div class="date">Wygenerowano: ${currentDate}</div>
+    </div>
+    
+    <div class="summary">
+        <strong>Liczba zestawów: ${Object.keys(neededByComposition).length}</strong>
+    </div>
+    
+    ${Object.entries(neededByComposition).map(([compositionId, { composition, ingredients }]) => {
+      const compositionHerbs = Object.entries(ingredients).filter(([ingredientName]) => herbs.includes(ingredientName));
+      const compositionOils = Object.entries(ingredients).filter(([ingredientName]) => oils.includes(ingredientName));  
+      const compositionOthers = Object.entries(ingredients).filter(([ingredientName]) => others.includes(ingredientName));
+      
+      return `
+        <div class="composition-section">
+          <div class="composition-header">
+            ${composition.name} (${quantities[compositionId]} szt.)
+          </div>
+          
+          ${showHerbs && compositionHerbs.length > 0 ? `
+          <div class="category-section">
+            <div class="category-title">🌿 Surowce Ziołowe (g)</div>
+            <div class="ingredients-grid">
+              ${compositionHerbs.map(([ingredientName, amount]) => `
+                <div class="ingredient-item">
+                  <input type="checkbox" class="checkbox">
+                  <span class="ingredient-name">${ingredientName}</span>
+                  <span class="ingredient-amount">${amount.toFixed(1)} g</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+          
+          ${showOils && compositionOils.length > 0 ? `
+          <div class="category-section">
+            <div class="category-title">🌸 Olejki Eteryczne (ml)</div>
+            <div class="ingredients-grid">
+              ${compositionOils.map(([ingredientName, amount]) => `
+                <div class="ingredient-item">
+                  <input type="checkbox" class="checkbox">
+                  <span class="ingredient-name">${ingredientName.replace('olejek ', '')}</span>
+                  <span class="ingredient-amount">${amount.toFixed(1)} ml</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          ` : ''}
+          
+          ${showOthers && compositionOthers.length > 0 ? `
+          <div class="category-section">
+            <div class="category-title">📦 Inne</div>
+            <div class="ingredients-grid">
+              ${compositionOthers.map(([ingredientName, amount]) => {
+                const unit = ingredientUnits[ingredientName] || 'szt';
+                return `
+                <div class="ingredient-item">
+                  <input type="checkbox" class="checkbox">
+                  <span class="ingredient-name">${ingredientName}</span>
+                  <span class="ingredient-amount">${amount.toFixed(unit === 'szt' ? 0 : 1)} ${unit}</span>
+                </div>
+              `;
+              }).join('')}
+            </div>
+          </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('')}
+    
+    <div class="footer">
+        <p>Lista wygenerowana z systemu zarządzania kompozycjami ziołowymi</p>
+    </div>
+</body>
+</html>
+      `;
+    } else {
+      // PDF zsumowany (istniejący kod)
+      pdfContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Lista Zakupów</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 10px; 
+            color: #333; 
+            line-height: 1.2;
+            font-size: 10px;
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 8px;
+        }
+        .header h1 { 
+            color: #2E7D32; 
+            margin: 0; 
+            font-size: 16px;
+        }
+        .date { 
+            color: #666; 
+            margin-top: 5px; 
+            font-size: 9px;
+        }
+        .section { 
+            margin: 15px 0; 
+        }
+        .section-title { 
+            background-color: #E8F5E8; 
+            padding: 6px 10px; 
+            border-left: 4px solid #4CAF50;
+            font-size: 11px; 
+            font-weight: bold; 
+            color: #2E7D32;
+            margin-bottom: 8px;
+        }
+        .ingredients-list { 
+            display: grid; 
+            gap: 4px; 
+        }
+        .ingredient-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            padding: 5px 8px;
+            border: 1px solid #ddd; 
+            border-radius: 3px;
+            background-color: #fafafa;
+            font-size: 9px;
+        }
+        .ingredient-name { 
+            font-weight: 500; 
+            text-transform: capitalize;
+            flex: 1;
+        }
+        .ingredient-amount { 
+            font-weight: bold; 
+            color: #2E7D32;
+            min-width: 50px;
+            text-align: right;
+        }
+        .checkbox { 
+            width: 12px; 
+            height: 12px; 
+            margin-right: 8px;
+            border: 2px solid #4CAF50;
+        }
+        .footer { 
+            margin-top: 20px; 
+            text-align: center; 
+            font-size: 8px; 
+            color: #666; 
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+        }
+        .summary {
+            background-color: #f0f8f0;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 10px;
         }
     </style>
 </head>
@@ -447,7 +639,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
     
     ${filteredOthers.length > 0 ? `
     <div class="section">
-        <div class="section-title">📦 Inne (szt)</div>
+        <div class="section-title">📦 Inne</div>
         <div class="ingredients-list">
             ${filteredOthers.map((ingredient) => {
               const unit = ingredientUnits[ingredient] || 'szt';
@@ -470,6 +662,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
 </body>
 </html>
     `;
+    }
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -478,7 +671,7 @@ const ShoppingList: React.FC<ShoppingListProps> = ({ prices, onPriceUpdate }) =>
       printWindow.print();
     }
   };
-  
+
   // Oblicz całkowity koszt using global prices
   const totalCost = Object.entries(neededIngredients).reduce((sum, [ingredient, amount]) => {
     const price = getIngredientPrice(ingredient);
