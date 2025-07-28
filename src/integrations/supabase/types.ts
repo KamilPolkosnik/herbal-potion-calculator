@@ -433,6 +433,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_current_user_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       update_ingredient_amount: {
         Args: { ingredient_name: string; amount_change: number }
         Returns: undefined

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import bcrypt from 'bcryptjs';
 
 export interface AppUser {
   id: string;
@@ -32,8 +33,9 @@ export const useUserManagement = () => {
 
   const createUser = async (username: string, password: string, role: string = 'user') => {
     try {
-      // Simple password hashing - in production, use proper bcrypt
-      const passwordHash = btoa(password); // Basic encoding - replace with proper hashing
+      // Secure password hashing with bcrypt
+      const saltRounds = 12;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
       
       const { data, error } = await supabase
         .from('app_users')
@@ -89,7 +91,9 @@ export const useUserManagement = () => {
 
   const changePassword = async (id: string, newPassword: string) => {
     try {
-      const passwordHash = btoa(newPassword); // Basic encoding - replace with proper hashing
+      // Secure password hashing with bcrypt
+      const saltRounds = 12;
+      const passwordHash = await bcrypt.hash(newPassword, saltRounds);
       
       const { error } = await supabase
         .from('app_users')

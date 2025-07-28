@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import bcrypt from 'bcryptjs';
 
 interface User {
   username: string;
@@ -24,25 +25,28 @@ export const useAuth = () => {
 
   const login = async (username: string, password: string) => {
     try {
-      // Simple password verification - in production, use proper bcrypt
-      const passwordHash = btoa(password); // Basic encoding to match what's stored
-      
       console.log('Login attempt for username:', username);
       
-      const { data, error } = await supabase
+      // First get the user's password hash from database
+      const { data: userWithHash, error: userError } = await supabase
         .from('app_users')
-        .select('username, role')
+        .select('username, role, password_hash')
         .eq('username', username)
-        .eq('password_hash', passwordHash)
         .single();
 
-      console.log('Login query result:', { data, error });
-
-      if (error || !data) {
+      if (userError || !userWithHash) {
         return false;
       }
 
-      const userData = { username: data.username, role: data.role };
+      // Verify password using bcrypt
+      const isPasswordValid = await bcrypt.compare(password, userWithHash.password_hash);
+      
+      if (!isPasswordValid) {
+        return false;
+      }
+
+      const userData = { username: userWithHash.username, role: userWithHash.role };
+
       console.log('Setting user data:', userData);
       setUser(userData);
       localStorage.setItem('auth_user', JSON.stringify(userData));
