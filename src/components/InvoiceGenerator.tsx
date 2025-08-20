@@ -86,6 +86,8 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
   };
 
   const generatePDF = (isOriginal: boolean = true) => {
+    console.log('Attempting to generate PDF, isOriginal:', isOriginal);
+    
     const vatRate = 0.23;
     const totalGrossAmount = transaction.total_price;
     const totalNetAmount = totalGrossAmount / (1 + vatRate);
@@ -263,11 +265,26 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
 </html>
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(invoiceContent);
-      printWindow.document.close();
-      printWindow.print();
+    console.log('Attempting to open print window...');
+    
+    try {
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (printWindow) {
+        console.log('Print window opened successfully');
+        printWindow.document.write(invoiceContent);
+        printWindow.document.close();
+        
+        // Add a slight delay before printing to ensure content is loaded
+        setTimeout(() => {
+          printWindow.print();
+        }, 100);
+      } else {
+        console.error('Print window was blocked by popup blocker');
+        alert('Popup został zablokowany. Proszę zezwolić na wyskakujące okna dla tej strony, aby móc drukować faktury.');
+      }
+    } catch (error) {
+      console.error('Error opening print window:', error);
+      alert('Wystąpił błąd podczas otwierania okna druku. Sprawdź ustawienia przeglądarki.');
     }
   };
 

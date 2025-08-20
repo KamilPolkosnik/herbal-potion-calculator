@@ -93,9 +93,12 @@ const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
   };
 
   const generateReceiptPDF = async (isOriginal: boolean = true) => {
+    console.log('Attempting to generate receipt PDF, isOriginal:', isOriginal);
+    
     // Assign receipt number if it doesn't exist
     let finalReceiptNumber = receiptNumber;
     if (!finalReceiptNumber) {
+      console.log('Receipt number not found, assigning new one...');
       finalReceiptNumber = await assignReceiptNumber(transaction.id);
       setReceiptNumber(finalReceiptNumber);
     }
@@ -253,11 +256,26 @@ const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
 </html>
     `;
 
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(receiptContent);
-      printWindow.document.close();
-      printWindow.print();
+    console.log('Attempting to open receipt print window...');
+    
+    try {
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (printWindow) {
+        console.log('Receipt print window opened successfully');
+        printWindow.document.write(receiptContent);
+        printWindow.document.close();
+        
+        // Add a slight delay before printing to ensure content is loaded
+        setTimeout(() => {
+          printWindow.print();
+        }, 100);
+      } else {
+        console.error('Receipt print window was blocked by popup blocker');
+        alert('Popup został zablokowany. Proszę zezwolić na wyskakujące okna dla tej strony, aby móc drukować rachunki.');
+      }
+    } catch (error) {
+      console.error('Error opening receipt print window:', error);
+      alert('Wystąpił błąd podczas otwierania okna druku. Sprawdź ustawienia przeglądarki.');
     }
   };
 
