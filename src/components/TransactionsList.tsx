@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import InvoiceGenerator from './InvoiceGenerator';
 import CorrectionInvoiceGenerator from './CorrectionInvoiceGenerator';
+import ReceiptGenerator from './ReceiptGenerator';
 
 interface TransactionsListProps {
   onDataChange?: () => void | Promise<void>;
@@ -388,11 +389,18 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                               {!group.transaction.is_reversed ? (
                                 // Przyciski dla aktywnych transakcji
                                 <>
-                                  <InvoiceGenerator 
-                                    transaction={group.transaction}
-                                    companySettings={companySettings}
-                                    transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
-                                  />
+                                  {companySettings?.is_vat_registered ? (
+                                    <InvoiceGenerator 
+                                      transaction={group.transaction}
+                                      companySettings={companySettings}
+                                      transactionNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
+                                    />
+                                  ) : (
+                                    <ReceiptGenerator 
+                                      transaction={group.transaction}
+                                      companySettings={companySettings}
+                                    />
+                                  )}
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -413,11 +421,13 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                               ) : (
                                 // Przyciski dla cofniętych transakcji
                                 <>
-                                  <CorrectionInvoiceGenerator 
-                                    transaction={group.transaction}
-                                    companySettings={companySettings}
-                                    originalInvoiceNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
-                                  />
+                                  {companySettings?.is_vat_registered && (
+                                    <CorrectionInvoiceGenerator 
+                                      transaction={group.transaction}
+                                      companySettings={companySettings}
+                                      originalInvoiceNumber={group.transaction.invoice_number.toString().padStart(9, '0')}
+                                    />
+                                  )}
                                   {user?.role === 'admin' && (
                                     <Button
                                       variant="destructive"

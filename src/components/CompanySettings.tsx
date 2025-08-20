@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Building, Save, Users, MapPin, FileBarChart } from 'lucide-react';
+import { Building, Save, Users, MapPin, FileBarChart, FileText } from 'lucide-react';
 import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -30,7 +30,8 @@ const CompanySettings: React.FC = () => {
     company_website: '',
     bank_account: '',
     bank_name: '',
-    show_ues_generator: true
+    show_ues_generator: true,
+    is_vat_registered: false
   });
   const [saving, setSaving] = useState(false);
 
@@ -80,7 +81,8 @@ const CompanySettings: React.FC = () => {
         company_website: settings.company_website || '',
         bank_account: settings.bank_account || '',
         bank_name: settings.bank_name || '',
-        show_ues_generator: settings.show_ues_generator
+        show_ues_generator: settings.show_ues_generator,
+        is_vat_registered: settings.is_vat_registered || false
       });
     }
   }, [settings]);
@@ -123,7 +125,8 @@ const CompanySettings: React.FC = () => {
         company_website: formData.company_website,
         bank_account: formData.bank_account,
         bank_name: formData.bank_name,
-        show_ues_generator: formData.show_ues_generator
+        show_ues_generator: formData.show_ues_generator,
+        is_vat_registered: formData.is_vat_registered
       });
 
       // Odśwież ustawienia aby zmiana była widoczna od razu w innych komponentach
@@ -318,6 +321,28 @@ const CompanySettings: React.FC = () => {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Ustawienia działalności */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Typ Działalności</h3>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="is_vat_registered"
+                      checked={formData.is_vat_registered}
+                      onCheckedChange={(checked) => handleChange('is_vat_registered', checked)}
+                    />
+                    <Label htmlFor="is_vat_registered" className="flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Działalność z VAT (wystawianie faktur)
+                    </Label>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {formData.is_vat_registered 
+                      ? "Będą wystawiane faktury z VAT" 
+                      : "Będą wystawiane rachunki bez VAT (działalność nierejestrowana)"
+                    }
+                  </p>
                 </div>
 
                 {/* Ustawienia aplikacji */}

@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -53,6 +53,7 @@ export type Database = {
           company_website: string | null
           created_at: string
           id: string
+          is_vat_registered: boolean
           show_ues_generator: boolean
           updated_at: string
         }
@@ -67,6 +68,7 @@ export type Database = {
           company_website?: string | null
           created_at?: string
           id?: string
+          is_vat_registered?: boolean
           show_ues_generator?: boolean
           updated_at?: string
         }
@@ -81,6 +83,7 @@ export type Database = {
           company_website?: string | null
           created_at?: string
           id?: string
+          is_vat_registered?: boolean
           show_ues_generator?: boolean
           updated_at?: string
         }
@@ -318,6 +321,7 @@ export type Database = {
           invoice_number: number
           is_reversed: boolean
           quantity: number
+          receipt_number: number | null
           reversed_at: string | null
           total_price: number
           unit_price: number
@@ -335,6 +339,7 @@ export type Database = {
           invoice_number?: number
           is_reversed?: boolean
           quantity: number
+          receipt_number?: number | null
           reversed_at?: string | null
           total_price: number
           unit_price: number
@@ -352,6 +357,7 @@ export type Database = {
           invoice_number?: number
           is_reversed?: boolean
           quantity?: number
+          receipt_number?: number | null
           reversed_at?: string | null
           total_price?: number
           unit_price?: number
@@ -433,6 +439,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_receipt_number: {
+        Args: { p_transaction_id: string }
+        Returns: number
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -442,7 +452,7 @@ export type Database = {
         Returns: boolean
       }
       update_ingredient_amount: {
-        Args: { ingredient_name: string; amount_change: number }
+        Args: { amount_change: number; ingredient_name: string }
         Returns: undefined
       }
     }
