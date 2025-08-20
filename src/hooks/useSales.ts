@@ -14,6 +14,7 @@ export interface Transaction {
   total_price: number;
   is_reversed: boolean;
   invoice_number: number;
+  was_vat_registered: boolean;
   buyer_name: string | null;
   buyer_email: string | null;
   buyer_phone: string | null;
@@ -73,7 +74,8 @@ export const useSales = () => {
     compositionName: string,
     quantity: number,
     unitPrice: number,
-    buyerData: BuyerData = {}
+    buyerData: BuyerData = {},
+    vatRegistered?: boolean
   ) => {
     if (processing) {
       console.log('Sale already in progress, skipping...');
@@ -108,6 +110,7 @@ export const useSales = () => {
             quantity: quantity,
             unit_price: unitPrice,
             total_price: totalPrice,
+            was_vat_registered: vatRegistered ?? false,
             buyer_name: buyerData.name || null,
             buyer_email: buyerData.email || null,
             buyer_phone: buyerData.phone || null,
@@ -360,7 +363,8 @@ export const useSales = () => {
       ingredients: Array<{ name: string; amount: number; unit: string }>;
     }>,
     buyerData: BuyerData = {},
-    saleDate?: Date
+    saleDate?: Date,
+    vatRegistered?: boolean
   ) => {
     if (processing) {
       console.log('Sale already in progress, skipping cart sale...');
@@ -415,6 +419,7 @@ export const useSales = () => {
         quantity: totalQuantity,
         unit_price: totalQuantity > 0 ? totalPrice / totalQuantity : 0, // Average unit price
         total_price: totalPrice,
+        was_vat_registered: vatRegistered ?? false,
         buyer_name: buyerData.name || null,
         buyer_email: buyerData.email || null,
         buyer_phone: buyerData.phone || null,

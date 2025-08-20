@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ShoppingCart, Package, User, AlertTriangle, Trash2, Plus, CalendarIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSales, BuyerData } from '@/hooks/useSales';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
 import { convertToBaseUnit, areUnitsCompatible } from '@/utils/unitConverter';
 import { format } from 'date-fns';
@@ -47,6 +48,7 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
   const [buyerData, setBuyerData] = useState<BuyerData>({});
   const [saleDate, setSaleDate] = useState<Date>(new Date());
   const { processSale, processCartSale, checkIngredientAvailability } = useSales();
+  const { settings: companySettings } = useCompanySettings();
   const { toast } = useToast();
 
   const loadCompositions = async () => {
@@ -358,7 +360,8 @@ const SalesManager: React.FC<SalesManagerProps> = ({ onDataChange }) => {
           ingredients: item.ingredients
         })),
         buyerData,
-        saleDate
+        saleDate,
+        companySettings?.is_vat_registered
       );
 
       toast({

@@ -391,7 +391,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                               {!group.transaction.is_reversed ? (
                                 // Przyciski dla aktywnych transakcji
                                 <>
-                                  {companySettings?.is_vat_registered ? (
+                                  {group.transaction.was_vat_registered ? (
                                     <InvoiceGenerator 
                                       transaction={group.transaction}
                                       companySettings={companySettings}
@@ -423,7 +423,7 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
                               ) : (
                                 // Przyciski dla cofniętych transakcji
                                 <>
-                                  {companySettings?.is_vat_registered && (
+                                  {group.transaction.was_vat_registered && (
                                     <CorrectionInvoiceGenerator 
                                       transaction={group.transaction}
                                       companySettings={companySettings}

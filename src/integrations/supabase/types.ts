@@ -325,6 +325,7 @@ export type Database = {
           reversed_at: string | null
           total_price: number
           unit_price: number
+          was_vat_registered: boolean
         }
         Insert: {
           buyer_address?: string | null
@@ -343,6 +344,7 @@ export type Database = {
           reversed_at?: string | null
           total_price: number
           unit_price: number
+          was_vat_registered?: boolean
         }
         Update: {
           buyer_address?: string | null
@@ -361,6 +363,7 @@ export type Database = {
           reversed_at?: string | null
           total_price?: number
           unit_price?: number
+          was_vat_registered?: boolean
         }
         Relationships: [
           {
