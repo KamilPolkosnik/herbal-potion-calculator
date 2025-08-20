@@ -256,26 +256,41 @@ const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
 </html>
     `;
 
-    console.log('Attempting to open receipt print window...');
+    // Create hidden iframe for printing
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
     
-    try {
-      const printWindow = window.open('', '_blank', 'width=800,height=600');
-      if (printWindow) {
-        console.log('Receipt print window opened successfully');
-        printWindow.document.write(receiptContent);
-        printWindow.document.close();
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.write(receiptContent);
+      iframeDoc.close();
+      
+      iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
         
-        // Add a slight delay before printing to ensure content is loaded
+        // Remove iframe after printing
         setTimeout(() => {
-          printWindow.print();
-        }, 100);
-      } else {
-        console.error('Receipt print window was blocked by popup blocker');
-        alert('Popup został zablokowany. Proszę zezwolić na wyskakujące okna dla tej strony, aby móc drukować rachunki.');
-      }
-    } catch (error) {
-      console.error('Error opening receipt print window:', error);
-      alert('Wystąpił błąd podczas otwierania okna druku. Sprawdź ustawienia przeglądarki.');
+          document.body.removeChild(iframe);
+        }, 1000);
+      };
+      
+      // Fallback if onload doesn't fire
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        
+        // Remove iframe after printing
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      }, 100);
     }
   };
 
