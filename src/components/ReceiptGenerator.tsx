@@ -280,17 +280,6 @@ const ReceiptGenerator: React.FC<ReceiptGeneratorProps> = ({
           document.body.removeChild(iframe);
         }, 1000);
       };
-      
-      // Fallback if onload doesn't fire
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        
-        // Remove iframe after printing
-        setTimeout(() => {
-          document.body.removeChild(iframe);
-        }, 1000);
-      }, 100);
     }
   };
 

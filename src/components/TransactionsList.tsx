@@ -81,6 +81,8 @@ const TransactionsList: React.FC<TransactionsListProps> = ({ onDataChange }) => 
       window.dispatchEvent(new CustomEvent('refreshSummary'));
       // Odśwież statystyki sprzedaży
       window.dispatchEvent(new CustomEvent('refreshSalesStatistics'));
+      // Odśwież składniki po cofnięciu transakcji
+      window.dispatchEvent(new CustomEvent('refreshIngredients'));
     } catch (error) {
       console.error('Error reversing transaction:', error);
       toast({
